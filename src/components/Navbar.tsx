@@ -57,7 +57,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'anugerah' as TabType, label: 'Ruang Anugerah', icon: Award },
     { id: 'portal' as TabType, label: 'Portal & Muat Turun', icon: Download },
     { id: 'hubungi' as TabType, label: 'Hubungi Kami', icon: PhoneCall },
-    { id: 'gas_code' as TabType, label: 'Kod Google Apps Script', icon: Code2, badge: 'Code.gs' }
+    ...(isAdmin ? [{ id: 'gas_code' as TabType, label: 'Kod Apps Script', icon: Code2, badge: 'Admin' }] : [])
   ];
 
   return (

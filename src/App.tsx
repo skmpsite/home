@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Lock } from 'lucide-react';
 import {
   SchoolProfile,
   Staff,
@@ -317,7 +318,27 @@ export default function App() {
           <ContactSection profile={profile} onSubmitFeedback={handleAddFeedback} />
         )}
 
-        {activeTab === 'gas_code' && <GasScriptSection />}
+        {activeTab === 'gas_code' && (
+          isAdmin ? (
+            <GasScriptSection />
+          ) : (
+            <div className="max-w-md mx-auto my-16 p-8 bg-white/10 backdrop-blur-xl border border-white/15 rounded-3xl text-center text-white shadow-2xl">
+              <div className="w-16 h-16 bg-yellow-400/20 border border-yellow-300/40 rounded-2xl flex items-center justify-center mx-auto mb-4 text-yellow-300">
+                <Lock className="w-8 h-8" />
+              </div>
+              <h3 className="text-lg font-black mb-2">Akses Terhad Pentadbir</h3>
+              <p className="text-xs text-slate-300 mb-6 leading-relaxed">
+                Sumber kod Google Apps Script dan konfigurasi teknikal pangkalan data hanya boleh diakses oleh Pentadbir Sistem SKMP yang sah.
+              </p>
+              <button
+                onClick={() => setLoginModalOpen(true)}
+                className="w-full py-3 bg-yellow-400 hover:bg-yellow-300 text-blue-950 font-black rounded-xl text-xs transition shadow-lg shadow-yellow-400/20"
+              >
+                Log Masuk Admin Sekolah
+              </button>
+            </div>
+          )
+        )}
 
         {activeTab === 'admin_cms' && isAdmin && (
           <AdminDashboard
@@ -353,6 +374,7 @@ export default function App() {
         profile={profile}
         onNavigate={setActiveTab}
         onOpenAdminLogin={() => setLoginModalOpen(true)}
+        isAdmin={isAdmin}
       />
 
       {/* Admin Login Modal */}

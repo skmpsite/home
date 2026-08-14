@@ -7,9 +7,10 @@ interface FooterProps {
   profile: SchoolProfile;
   onNavigate: (tab: TabType) => void;
   onOpenAdminLogin: () => void;
+  isAdmin: boolean;
 }
 
-export const Footer: React.FC<FooterProps> = ({ profile, onNavigate, onOpenAdminLogin }) => {
+export const Footer: React.FC<FooterProps> = ({ profile, onNavigate, onOpenAdminLogin, isAdmin }) => {
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -123,18 +124,31 @@ export const Footer: React.FC<FooterProps> = ({ profile, onNavigate, onOpenAdmin
             Dikuasakan oleh Google Apps Script & Google Sheets dengan integrasi pangkalan data automatik.
           </p>
           <div className="pt-2 flex flex-col gap-2">
-            <button
-              onClick={() => onNavigate('gas_code')}
-              className="px-3 py-2 bg-yellow-400 hover:bg-yellow-300 text-blue-950 font-black rounded-xl text-xs text-center transition shadow-md shadow-yellow-400/20"
-            >
-              Sumber Kod Google Apps Script
-            </button>
-            <button
-              onClick={onOpenAdminLogin}
-              className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold rounded-xl text-xs text-center transition backdrop-blur-md"
-            >
-              Log Masuk Admin Sekolah
-            </button>
+            {isAdmin ? (
+              <>
+                <button
+                  onClick={() => onNavigate('gas_code')}
+                  className="px-3 py-2 bg-yellow-400 hover:bg-yellow-300 text-blue-950 font-black rounded-xl text-xs text-center transition shadow-md shadow-yellow-400/20 flex items-center justify-center gap-1.5"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  Sumber Kod Google Apps Script (Admin)
+                </button>
+                <button
+                  onClick={() => onNavigate('admin_cms')}
+                  className="px-3 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs text-center transition shadow-md"
+                >
+                  Buka Panel CMS Pentadbir
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={onOpenAdminLogin}
+                className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold rounded-xl text-xs text-center transition backdrop-blur-md flex items-center justify-center gap-1.5"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-yellow-400" />
+                Log Masuk Admin Sekolah
+              </button>
+            )}
           </div>
         </div>
       </div>
