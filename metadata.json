@@ -1,0 +1,6 @@
+{
+  "name": "Portal SK Merbau Pulas",
+  "description": "Laman Sesawang Rasmi Sekolah Kebangsaan Merbau Pulas dengan Pengurusan Pentadbir, Maklumat Akademik, Kokurikulum, Berita, & Integrasi Google Apps Script.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
