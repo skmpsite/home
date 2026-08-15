@@ -21,7 +21,7 @@ interface FacebookSmartphoneSectionProps {
 
 export const FacebookSmartphoneSection: React.FC<FacebookSmartphoneSectionProps> = ({ profile }) => {
   const [currentTime, setCurrentTime] = useState<string>('09:41');
-  const [zoomScale, setZoomScale] = useState<number>(0.86);
+  const [zoomScale, setZoomScale] = useState<number>(0.7);
   const [iframeKey, setIframeKey] = useState<number>(0);
   const [toastMsg, setToastMsg] = useState<string>('');
 
@@ -53,11 +53,11 @@ export const FacebookSmartphoneSection: React.FC<FacebookSmartphoneSectionProps>
   };
 
   const handleZoomOut = () => {
-    setZoomScale((prev) => Math.max(0.7, +(prev - 0.05).toFixed(2)));
+    setZoomScale((prev) => Math.max(0.5, +(prev - 0.05).toFixed(2)));
   };
 
   const handleResetZoom = () => {
-    setZoomScale(0.86);
+    setZoomScale(0.7);
   };
 
   const handleShare = (url: string) => {
@@ -220,9 +220,6 @@ export const FacebookSmartphoneSection: React.FC<FacebookSmartphoneSectionProps>
             </div>
             <span className="truncate">Feed Live Facebook SK Merbau Pulas & PPD KBB</span>
           </h3>
-          <p className="text-xs text-slate-300 max-w-2xl">
-            Paparan siaran langsung rasmi menggunakan <strong>Plugin Web Asal Facebook (iFrame)</strong> di dalam kerangka <strong>Telefon Pintar (Mobile)</strong> dengan paparan kiriman, foto asli, dan video semasa.
-          </p>
         </div>
 
         {/* Zoom & Quick Action Tools */}
@@ -253,7 +250,7 @@ export const FacebookSmartphoneSection: React.FC<FacebookSmartphoneSectionProps>
               type="button"
               onClick={handleResetZoom}
               className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg text-xs transition ml-0.5"
-              title="Tetapkan Semula (86%)"
+              title="Tetapkan Semula (70%)"
             >
               <RotateCcw className="w-3 h-3" />
             </button>
