@@ -8,15 +8,20 @@ import {
   DownloadDocument,
   FeedbackEntry
 } from '../types';
+import { DEFAULT_GAS_URL } from '../config';
 
 const GAS_URL_KEY = 'skmp_gas_url_v1';
 
 export function getGasWebAppUrl(): string {
   try {
-    return localStorage.getItem(GAS_URL_KEY) || '';
+    const customUrl = localStorage.getItem(GAS_URL_KEY);
+    if (customUrl && customUrl.trim()) {
+      return customUrl.trim();
+    }
+    return DEFAULT_GAS_URL;
   } catch (err) {
     console.warn('Failed to read GAS URL from localStorage', err);
-    return '';
+    return DEFAULT_GAS_URL;
   }
 }
 
@@ -113,3 +118,117 @@ export async function syncBulkDataToGoogleSheets(payload: {
     };
   }
 }
+
+/**
+ * Muat turun data terkini secara langsung dari Google Sheets
+ */
+export async function fetchSchoolDataFromGoogleSheets(): Promise<any | null> {
+  const url = getGasWebAppUrl();
+  if (!url) return null;
+
+  try {
+    const fetchUrl = url.includes('?') ? `${url}&action=getData` : `${url}?action=getData`;
+    const response = await fetch(fetchUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Status HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (err) {
+    console.warn('Gagal memuat turun data dari Google Sheets secara langsung:', err);
+    return null;
+  }
+}
+
+/**
+ * Memetakan data dari Google Sheets ke format data aplikasi portal
+ */
+export function parseSchoolDataFromSheets(rawData: any): {
+  events?: CalendarEvent[];
+  staffList?: Staff[];
+  newsList?: NewsItem[];
+  profileUpdates?: Partial<SchoolProfile>;
+} {
+  if (!rawData || typeof rawData !== 'object') return {};
+
+  const parsed: {
+    events?: CalendarEvent[];
+    staffList?: Staff[];
+    newsList?: NewsItem[];
+    profileUpdates?: Partial<SchoolProfile>;
+  } = {};
+
+  // 1. Takwim Sekolah
+  if (Array.isArray(rawData.Takwim_Sekolah) && rawData.Takwim_Sekolah.length > 0) {
+    const validEvents: CalendarEvent[] = rawData.Takwim_Sekolah
+      .filter((row: any) => row.Tajuk && (row.Tarikh_Mula || row.Date))
+      .map((row: any, idx: number) => ({
+        id: row.ID || `evt-sheet-${idx + 1}`,
+        title: row.Tajuk || row.Title || '',
+        date: row.Tarikh_Mula || row.Date || '',
+        endDate: row.Tarikh_Tamat || row.EndDate || undefined,
+        category: (row.Kategori || 'acara').toLowerCase() as any,
+        description: row.Penerangan || row.Description || '',
+        location: row.Lokasi || row.Location || '',
+        targetGroup: row.Kumpulan_Sasaran || row.TargetGroup || ''
+      }));
+
+    if (validEvents.length > 0) {
+      parsed.events = validEvents;
+    }
+  }
+
+  // 2. Warga Sekolah
+  if (Array.isArray(rawData.Warga_Sekolah) && rawData.Warga_Sekolah.length > 0) {
+    const validStaff: Staff[] = rawData.Warga_Sekolah
+      .filter((row: any) => row.Nama)
+      .map((row: any, idx: number) => ({
+        id: row.ID || `staf-sheet-${idx + 1}`,
+        name: row.Nama || '',
+        position: row.Jawatan || 'Guru',
+        category: (row.Kategori || 'guru').toLowerCase() as any,
+        grade: row.Gred || 'DG41',
+        subject: row['Subjek/Tugas'] || row.Subject || '',
+        email: row['E-mel'] || row.Email || '',
+        phone: row.Telefon || row.Phone || '',
+        photoUrl: row.Foto_URL || row.PhotoUrl || '',
+        order: Number(row.Susunan) || idx + 1
+      }));
+
+    if (validStaff.length > 0) {
+      parsed.staffList = validStaff;
+    }
+  }
+
+  // 3. Berita & Pengumuman
+  if (Array.isArray(rawData.Berita_Pengumuman) && rawData.Berita_Pengumuman.length > 0) {
+    const validNews: NewsItem[] = rawData.Berita_Pengumuman
+      .filter((row: any) => row.Tajuk)
+      .map((row: any, idx: number) => ({
+        id: row.ID || `news-sheet-${idx + 1}`,
+        title: row.Tajuk || '',
+        date: row.Tarikh || new Date().toLocaleDateString('ms-MY'),
+        category: (row.Kategori || 'pengumuman').toLowerCase() as any,
+        summary: row.Ringkasan || '',
+        content: row.Kandungan || '',
+        imageUrl: row.Gambar_URL || '',
+        author: row.Penulis || 'Pentadbiran SKMP',
+        isPinned: String(row.Sematkan).toLowerCase() === 'true' || String(row.Sematkan) === '1',
+        views: 100
+      }));
+
+    if (validNews.length > 0) {
+      parsed.newsList = validNews;
+    }
+  }
+
+  return parsed;
+}
+

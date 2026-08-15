@@ -57,6 +57,13 @@ function doGet(e) {
     // AUTOMATIK: Menyemak dan mencipta kesemua tab & header jika belum wujud
     autoSetupDatabaseSheets();
 
+    var action = (e && e.parameter && e.parameter.action) || "";
+    if (action === "getData" || action === "getSchoolData") {
+      var schoolData = getSchoolData();
+      return ContentService.createTextOutput(schoolData)
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     var template = HtmlService.createTemplateFromFile('Index');
     return template.evaluate()
       .setTitle('SK Merbau Pulas | Laman Sesawang Rasmi')
@@ -81,6 +88,12 @@ function doPost(e) {
       return ContentService.createTextOutput(JSON.stringify(res))
         .setMimeType(ContentService.MimeType.JSON);
     }
+
+    if (action === "syncBulkData") {
+      var resBulk = handleBulkSync(contents.payload || {});
+      return ContentService.createTextOutput(JSON.stringify(resBulk))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
     
     return ContentService.createTextOutput(JSON.stringify({ success: true, message: "Data diterima!" }))
       .setMimeType(ContentService.MimeType.JSON);
@@ -88,6 +101,116 @@ function doPost(e) {
     return ContentService.createTextOutput(JSON.stringify({ success: false, error: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+/**
+ * Menyimpan keseluruhan data kemas kini (Takwim, Guru, Profil, Berita) ke helaian Google Sheets
+ */
+function handleBulkSync(payload) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // 1. Kemas kini Takwim Persekolahan
+  if (payload.events && Array.isArray(payload.events)) {
+    var sheetEvt = ss.getSheetByName(SHEETS_CONFIG.TAKWIM.name);
+    if (sheetEvt) {
+      if (sheetEvt.getLastRow() > 1) {
+        sheetEvt.getRange(2, 1, sheetEvt.getLastRow() - 1, sheetEvt.getLastColumn()).clearContent();
+      }
+      var rowsEvt = payload.events.map(function(ev) {
+        return [
+          ev.id || "",
+          ev.title || "",
+          ev.date || "",
+          ev.endDate || "",
+          ev.category || "acara",
+          ev.description || "",
+          ev.location || "SK Merbau Pulas",
+          ev.targetGroup || "Warga Sekolah"
+        ];
+      });
+      if (rowsEvt.length > 0) {
+        sheetEvt.getRange(2, 1, rowsEvt.length, SHEETS_CONFIG.TAKWIM.headers.length).setValues(rowsEvt);
+      }
+    }
+  }
+
+  // 2. Kemas kini Warga Sekolah / Guru
+  if (payload.staffList && Array.isArray(payload.staffList)) {
+    var sheetStaff = ss.getSheetByName(SHEETS_CONFIG.WARGA.name);
+    if (sheetStaff) {
+      if (sheetStaff.getLastRow() > 1) {
+        sheetStaff.getRange(2, 1, sheetStaff.getLastRow() - 1, sheetStaff.getLastColumn()).clearContent();
+      }
+      var rowsStaff = payload.staffList.map(function(s, idx) {
+        return [
+          s.id || "staf-" + (idx + 1),
+          s.name || "",
+          s.position || "Guru",
+          s.category || "guru",
+          s.grade || "DG41",
+          s.subject || "",
+          s.email || "",
+          s.phone || "",
+          s.photoUrl || "",
+          s.order || (idx + 1)
+        ];
+      });
+      if (rowsStaff.length > 0) {
+        sheetStaff.getRange(2, 1, rowsStaff.length, SHEETS_CONFIG.WARGA.headers.length).setValues(rowsStaff);
+      }
+    }
+  }
+
+  // 3. Kemas kini Berita
+  if (payload.newsList && Array.isArray(payload.newsList)) {
+    var sheetNews = ss.getSheetByName(SHEETS_CONFIG.BERITA.name);
+    if (sheetNews) {
+      if (sheetNews.getLastRow() > 1) {
+        sheetNews.getRange(2, 1, sheetNews.getLastRow() - 1, sheetNews.getLastColumn()).clearContent();
+      }
+      var rowsNews = payload.newsList.map(function(n) {
+        return [
+          n.id || "",
+          n.date || "",
+          n.title || "",
+          n.category || "pengumuman",
+          n.summary || "",
+          n.content || "",
+          n.imageUrl || "",
+          n.author || "Pentadbiran SKMP",
+          n.isPinned ? "TRUE" : "FALSE"
+        ];
+      });
+      if (rowsNews.length > 0) {
+        sheetNews.getRange(2, 1, rowsNews.length, SHEETS_CONFIG.BERITA.headers.length).setValues(rowsNews);
+      }
+    }
+  }
+
+  // 4. Kemas kini Profil Sekolah
+  if (payload.profile) {
+    var sheetProf = ss.getSheetByName(SHEETS_CONFIG.PROFIL.name);
+    if (sheetProf) {
+      var p = payload.profile;
+      var profRows = [
+        ["Nama_Sekolah", p.name || "Sekolah Kebangsaan Merbau Pulas"],
+        ["Kod_Sekolah", p.code || "KBA5012"],
+        ["Alamat", p.address || ""],
+        ["Telefon", p.phone || ""],
+        ["Email", p.email || ""],
+        ["Guru_Besar", p.principalName || ""],
+        ["Jawatan_Guru_Besar", p.principalTitle || ""],
+        ["Foto_Guru_Besar", p.principalPhotoUrl || ""],
+        ["Perutusan_Guru_Besar", p.principalSpeech || ""],
+        ["Motto", p.motto || ""],
+        ["Visi", p.vision || ""],
+        ["Misi", p.mission || ""]
+      ];
+      sheetProf.getRange(2, 1, profRows.length, 2).setValues(profRows);
+    }
+  }
+
+  return { success: true, message: "Semua data portal berjaya diselaraskan ke Google Sheets!" };
 }
 
 /**

@@ -209,8 +209,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         </div>
       </div>
 
-      {/* Facebook Live Feed Section - Dual Column Layout (SKMP & PPD KBB) */}
-      <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-white/20 shadow-2xl space-y-6">
+      {/* Facebook Live Feed Section - Optimized for Desktop & Mobile */}
+      <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-4 sm:p-8 border border-white/20 shadow-2xl space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
           <div className="space-y-1">
@@ -220,22 +220,22 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               <span>Siaran Real-Time Facebook</span>
             </div>
             <h3 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-lg shadow-md shadow-blue-600/30">
+              <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-lg shadow-md shadow-blue-600/30 flex-shrink-0">
                 f
               </div>
-              <span>Feed Live Facebook SKMP & PPD KBB</span>
+              <span className="truncate">Feed Live FB SKMP & PPD KBB</span>
             </h3>
             <p className="text-xs text-slate-300">
-              Paparan penuh terus dari halaman Facebook Rasmi <strong className="text-yellow-300 font-bold">SK Merbau Pulas</strong> dan <strong className="text-yellow-300 font-bold">PPD Kulim Bandar Baharu</strong>.
+              Paparan penuh terus dari Facebook Rasmi <strong className="text-yellow-300 font-bold">SK Merbau Pulas</strong> dan <strong className="text-yellow-300 font-bold">PPD Kulim Bandar Baharu</strong>.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
             <a
               href="https://www.facebook.com/SKMPKBA5012/"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 shadow-lg shadow-blue-600/30 transition border border-blue-400/30"
+              className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-blue-600/30 transition border border-blue-400/30"
             >
               <span>FB SKMP</span>
               <ExternalLink className="w-3.5 h-3.5" />
@@ -244,7 +244,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               href="https://www.facebook.com/p/PPD-Kulim-Bandar-Baharu-61553992422357/"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3.5 py-2 bg-blue-700 hover:bg-blue-600 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 shadow-lg shadow-blue-700/30 transition border border-blue-400/30"
+              className="px-3.5 py-2 bg-blue-700 hover:bg-blue-600 text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-blue-700/30 transition border border-blue-400/30"
             >
               <span>FB PPD KBB</span>
               <ExternalLink className="w-3.5 h-3.5" />
@@ -252,13 +252,13 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           </div>
         </div>
 
-        {/* 2-Column Grid: Left Facebook SK Merbau Pulas & Right Facebook PPD KBB */}
-        <div className="grid lg:grid-cols-2 gap-6 items-stretch">
-          {/* Left Column: Direct Live Facebook Frame - SK Merbau Pulas */}
-          <div className="bg-slate-900/70 backdrop-blur-md rounded-2xl border border-white/10 p-4 sm:p-5 flex flex-col space-y-4 shadow-xl">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-xl p-1 shadow border border-yellow-400/50 flex items-center justify-center flex-shrink-0">
+        {/* 2-Column Responsive Grid: SK Merbau Pulas & PPD Kulim Bandar Baharu */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6 items-stretch">
+          {/* Column 1: Direct Live Facebook Frame - SK Merbau Pulas */}
+          <div className="bg-slate-900/70 backdrop-blur-md rounded-2xl border border-white/10 p-3.5 sm:p-5 flex flex-col space-y-3 sm:space-y-4 shadow-xl">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10 gap-2">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 bg-white/10 backdrop-blur-md rounded-xl p-1 shadow border border-yellow-400/50 flex items-center justify-center flex-shrink-0">
                   <img
                     src={profile.logoUrl}
                     alt="Logo SKMP"
@@ -267,29 +267,30 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1">
-                    <h4 className="font-black text-sm text-white truncate">SK Merbau Pulas Rasmi</h4>
+                    <h4 className="font-black text-xs sm:text-sm text-white truncate">SK Merbau Pulas Rasmi</h4>
                     <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 fill-blue-500/20 flex-shrink-0" />
                   </div>
-                  <p className="text-[11px] text-yellow-300 font-bold">@SKMPKBA5012 • Sekolah</p>
+                  <p className="text-[10px] sm:text-[11px] text-yellow-300 font-bold truncate">@SKMPKBA5012 • Sekolah</p>
                 </div>
               </div>
               <a
                 href="https://www.facebook.com/SKMPKBA5012/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold rounded-xl text-xs flex items-center gap-1 transition shadow border border-blue-400/30 flex-shrink-0"
+                className="px-2.5 sm:px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold rounded-xl text-[11px] sm:text-xs flex items-center gap-1 transition shadow border border-blue-400/30 flex-shrink-0"
               >
-                <span>FB SKMP</span>
+                <span>Buka FB</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>
 
-            <div className="w-full bg-white rounded-2xl overflow-hidden shadow-2xl border border-white/20 h-[680px]">
+            {/* Responsive Container for Mobile & Desktop */}
+            <div className="w-full bg-white rounded-2xl overflow-hidden shadow-2xl border border-white/20 h-[500px] sm:h-[600px] lg:h-[680px]">
               <iframe
                 src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2FSKMPKBA5012%2F&tabs=timeline&width=500&height=680&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true&appId"
                 width="100%"
-                height="680"
-                style={{ border: 'none', overflow: 'hidden', height: '100%', minHeight: '680px' }}
+                height="100%"
+                style={{ border: 'none', overflow: 'hidden', width: '100%', height: '100%' }}
                 scrolling="no"
                 frameBorder="0"
                 allowFullScreen={true}
@@ -300,38 +301,39 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             </div>
           </div>
 
-          {/* Right Column: Direct Live Facebook Frame - PPD Kulim Bandar Baharu */}
-          <div className="bg-slate-900/70 backdrop-blur-md rounded-2xl border border-white/10 p-4 sm:p-5 flex flex-col space-y-4 shadow-xl">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-md flex-shrink-0 border border-blue-400/40">
+          {/* Column 2: Direct Live Facebook Frame - PPD Kulim Bandar Baharu */}
+          <div className="bg-slate-900/70 backdrop-blur-md rounded-2xl border border-white/10 p-3.5 sm:p-5 flex flex-col space-y-3 sm:space-y-4 shadow-xl">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10 gap-2">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-base sm:text-lg shadow-md flex-shrink-0 border border-blue-400/40">
                   f
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1">
-                    <h4 className="font-black text-sm text-white truncate">PPD Kulim Bandar Baharu</h4>
+                    <h4 className="font-black text-xs sm:text-sm text-white truncate">PPD Kulim Bandar Baharu</h4>
                     <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 fill-blue-500/20 flex-shrink-0" />
                   </div>
-                  <p className="text-[11px] text-yellow-300 font-bold">PPD KBB • Pejabat Pendidikan Daerah</p>
+                  <p className="text-[10px] sm:text-[11px] text-yellow-300 font-bold truncate">PPD KBB • Pejabat Pendidikan</p>
                 </div>
               </div>
               <a
                 href="https://www.facebook.com/p/PPD-Kulim-Bandar-Baharu-61553992422357/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-3 py-1.5 bg-blue-700 hover:bg-blue-600 text-white font-extrabold rounded-xl text-xs flex items-center gap-1 transition shadow border border-blue-400/30 flex-shrink-0"
+                className="px-2.5 sm:px-3 py-1.5 bg-blue-700 hover:bg-blue-600 text-white font-extrabold rounded-xl text-[11px] sm:text-xs flex items-center gap-1 transition shadow border border-blue-400/30 flex-shrink-0"
               >
-                <span>FB PPD KBB</span>
+                <span>Buka FB</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>
 
-            <div className="w-full bg-white rounded-2xl overflow-hidden shadow-2xl border border-white/20 h-[680px]">
+            {/* Responsive Container for Mobile & Desktop */}
+            <div className="w-full bg-white rounded-2xl overflow-hidden shadow-2xl border border-white/20 h-[500px] sm:h-[600px] lg:h-[680px]">
               <iframe
                 src="https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Fp%2FPPD-Kulim-Bandar-Baharu-61553992422357%2F&tabs=timeline&width=500&height=680&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true&appId"
                 width="100%"
-                height="680"
-                style={{ border: 'none', overflow: 'hidden', height: '100%', minHeight: '680px' }}
+                height="100%"
+                style={{ border: 'none', overflow: 'hidden', width: '100%', height: '100%' }}
                 scrolling="no"
                 frameBorder="0"
                 allowFullScreen={true}
@@ -343,18 +345,18 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           </div>
         </div>
 
-        {/* Bottom Callout Bar */}
+        {/* Bottom Callout Bar Responsive */}
         <div className="bg-yellow-400/10 border border-yellow-400/30 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-200">
-          <div className="flex items-center gap-2.5">
-            <Globe className="w-4 h-4 text-yellow-400 flex-shrink-0" />
-            <span>Sertai dan ikuti maklumat terkini di halaman Facebook rasmi <strong>SK Merbau Pulas</strong> dan <strong>PPD Kulim Bandar Baharu</strong>!</span>
+          <div className="flex items-center gap-2.5 text-center sm:text-left">
+            <Globe className="w-4 h-4 text-yellow-400 flex-shrink-0 hidden sm:inline" />
+            <span>Sertai dan ikuti maklumat terkini di Facebook rasmi <strong>SK Merbau Pulas</strong> dan <strong>PPD Kulim Bandar Baharu</strong>!</span>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto flex-shrink-0">
             <a
               href="https://www.facebook.com/SKMPKBA5012/"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3 py-1.5 bg-yellow-400 hover:bg-yellow-300 text-blue-950 font-black rounded-xl text-xs flex items-center gap-1 transition shadow"
+              className="px-3 py-2 bg-yellow-400 hover:bg-yellow-300 text-blue-950 font-black rounded-xl text-xs flex items-center justify-center gap-1 transition shadow"
             >
               <span>FB SKMP</span>
               <ExternalLink className="w-3 h-3" />
@@ -363,7 +365,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               href="https://www.facebook.com/p/PPD-Kulim-Bandar-Baharu-61553992422357/"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl text-xs flex items-center gap-1 transition shadow"
+              className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl text-xs flex items-center justify-center gap-1 transition shadow"
             >
               <span>FB PPD KBB</span>
               <ExternalLink className="w-3 h-3" />

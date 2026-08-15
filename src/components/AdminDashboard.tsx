@@ -33,9 +33,12 @@ import {
   Pin,
   Trophy,
   Upload,
-  BookOpen
+  BookOpen,
+  UploadCloud,
+  RefreshCw
 } from 'lucide-react';
 import { GasScriptSection } from './sections/GasScriptSection';
+import { syncBulkDataToGoogleSheets } from '../utils/googleSheetsSync';
 
 interface AdminDashboardProps {
   profile: SchoolProfile;
@@ -102,10 +105,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   >('news');
 
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [isQuickSyncing, setIsQuickSyncing] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
-    setTimeout(() => setToastMsg(null), 3000);
+    setTimeout(() => setToastMsg(null), 4000);
+  };
+
+  const handleQuickSyncToSheets = async () => {
+    setIsQuickSyncing(true);
+    const res = await syncBulkDataToGoogleSheets({
+      profile,
+      staffList,
+      newsList,
+      events,
+      awards,
+      documents,
+      gallery
+    });
+    setIsQuickSyncing(false);
+    if (res.success) {
+      showToast('🚀 Semua Data Portal Berjaya Ditolak Masuk Ke Google Sheets!');
+    } else {
+      showToast(res.message || 'Gagal menyegerak ke Google Sheets. Sila semak URL Web App.');
+    }
   };
 
   // Profile Edit State
@@ -618,16 +641,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            onResetAll();
-            showToast('Semua data diset semula ke tetapan asal!');
-          }}
-          className="px-4 py-2.5 bg-rose-600/80 hover:bg-rose-600 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition border border-rose-500 shadow-md flex-shrink-0"
-        >
-          <RotateCcw className="w-4 h-4" />
-          <span>Reset Ke Tetapan Asal</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-3 flex-shrink-0">
+          <button
+            type="button"
+            onClick={handleQuickSyncToSheets}
+            disabled={isQuickSyncing}
+            className="px-4 py-2.5 bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-blue-950 font-black rounded-xl text-xs flex items-center gap-2 transition border border-yellow-300 shadow-xl shadow-yellow-400/20 disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${isQuickSyncing ? 'animate-spin' : ''}`} />
+            <span>{isQuickSyncing ? 'Sedang Menyegerak...' : '🚀 Tolak Data Ke Google Sheets'}</span>
+          </button>
+
+          <button
+            onClick={() => {
+              onResetAll();
+              showToast('Semua data diset semula ke tetapan asal!');
+            }}
+            className="px-4 py-2.5 bg-rose-600/80 hover:bg-rose-600 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition border border-rose-500 shadow-md"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span>Reset Ke Tetapan Asal</span>
+          </button>
+        </div>
       </div>
 
       {/* Toast Notification - Floating Fixed Bottom Right */}
@@ -2264,7 +2299,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       )}
 
       {/* ==================== MODULE 10: GOOGLE APPS SCRIPT CODE ==================== */}
-      {activeTab === 'gas_code' && <GasScriptSection />}
+      {activeTab === 'gas_code' && (
+        <GasScriptSection
+          profile={profile}
+          staffList={staffList}
+          newsList={newsList}
+          events={events}
+          awards={awards}
+          documents={documents}
+          gallery={gallery}
+        />
+      )}
     </div>
   );
 };

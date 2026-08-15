@@ -38,7 +38,11 @@ import {
   loadCoCurriculum,
   resetAllToDefault
 } from './utils/storage';
-import { syncFeedbackToGoogleSheets } from './utils/googleSheetsSync';
+import {
+  syncFeedbackToGoogleSheets,
+  fetchSchoolDataFromGoogleSheets,
+  parseSchoolDataFromSheets
+} from './utils/googleSheetsSync';
 import { Header } from './components/Header';
 import { Navbar, TabType } from './components/Navbar';
 import { HeroSection } from './components/sections/HeroSection';
@@ -78,40 +82,120 @@ export default function App() {
   const [selectedNewsReader, setSelectedNewsReader] = useState<NewsItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Persist Updates Handlers
+  // Auto-sync data dari Google Sheets Web App pada permulaan & setiap 15 saat (untuk semua peranti & telefon)
+  const refreshFromGoogleSheets = async () => {
+    try {
+      const raw = await fetchSchoolDataFromGoogleSheets();
+      if (raw) {
+        const parsed = parseSchoolDataFromSheets(raw);
+        if (parsed.events && parsed.events.length > 0) {
+          setEvents(parsed.events);
+          saveCalendarEvents(parsed.events);
+        }
+        if (parsed.staffList && parsed.staffList.length > 0) {
+          setStaffList(parsed.staffList);
+          saveStaff(parsed.staffList);
+        }
+        if (parsed.newsList && parsed.newsList.length > 0) {
+          setNewsList(parsed.newsList);
+          saveNews(parsed.newsList);
+        }
+        if (parsed.profileUpdates) {
+          setProfile(prev => {
+            const updated = { ...prev, ...parsed.profileUpdates };
+            saveProfile(updated);
+            return updated;
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Gagal memuat turun data langsung Google Sheets:', err);
+    }
+  };
+
+  useEffect(() => {
+    // 1. Muat turun serta-merta semasa aplikasi mula dibuka
+    refreshFromGoogleSheets();
+
+    // 2. Semak data baru setiap 15 saat secara latar belakang
+    const interval = setInterval(refreshFromGoogleSheets, 15000);
+
+    // 3. Semak data serta-merta apabila pengguna membuka atau kembali ke tab pelayar / telefon
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshFromGoogleSheets();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  // Helper untuk tolak data ke Google Sheets secara automatik apabila Admin mengemas kini
+  const autoPushToCloud = (partialUpdate: {
+    profile?: SchoolProfile;
+    staffList?: Staff[];
+    newsList?: NewsItem[];
+    events?: CalendarEvent[];
+    gallery?: GalleryItem[];
+    awards?: AwardItem[];
+    documents?: DownloadDocument[];
+  }) => {
+    syncBulkDataToGoogleSheets({
+      profile: partialUpdate.profile || profile,
+      staffList: partialUpdate.staffList || staffList,
+      newsList: partialUpdate.newsList || newsList,
+      events: partialUpdate.events || events,
+      gallery: partialUpdate.gallery || gallery,
+      awards: partialUpdate.awards || awards,
+      documents: partialUpdate.documents || documents
+    }).catch(err => console.warn('Auto cloud sync failed:', err));
+  };
+
+  // Persist Updates Handlers - Disegerakkan terus ke Google Sheets secara real-time
   const handleUpdateProfile = (p: SchoolProfile) => {
     setProfile(p);
     saveProfile(p);
+    autoPushToCloud({ profile: p });
   };
 
   const handleUpdateStaff = (s: Staff[]) => {
     setStaffList(s);
     saveStaff(s);
+    autoPushToCloud({ staffList: s });
   };
 
   const handleUpdateNews = (n: NewsItem[]) => {
     setNewsList(n);
     saveNews(n);
+    autoPushToCloud({ newsList: n });
   };
 
   const handleUpdateEvents = (e: CalendarEvent[]) => {
     setEvents(e);
     saveCalendarEvents(e);
+    autoPushToCloud({ events: e });
   };
 
   const handleUpdateGallery = (g: GalleryItem[]) => {
     setGallery(g);
     saveGallery(g);
+    autoPushToCloud({ gallery: g });
   };
 
   const handleUpdateAwards = (a: AwardItem[]) => {
     setAwards(a);
     saveAwards(a);
+    autoPushToCloud({ awards: a });
   };
 
   const handleUpdateDocuments = (d: DownloadDocument[]) => {
     setDocuments(d);
     saveDocuments(d);
+    autoPushToCloud({ documents: d });
   };
 
   const handleUpdateFeedback = (f: FeedbackEntry[]) => {

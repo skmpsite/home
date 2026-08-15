@@ -1,9 +1,52 @@
 import React, { useState, useEffect } from 'react';
 import { CODE_GS_SCRIPT, INDEX_HTML_SCRIPT } from '../../data/gasCodeTemplate';
 import { getGasWebAppUrl, saveGasWebAppUrl, syncBulkDataToGoogleSheets } from '../../utils/googleSheetsSync';
-import { Code2, Copy, Download, Check, FileCode, Database, Sparkles, Terminal, Link, CheckCircle2, RefreshCw, Send, AlertCircle } from 'lucide-react';
+import {
+  SchoolProfile,
+  Staff,
+  NewsItem,
+  CalendarEvent,
+  AwardItem,
+  DownloadDocument,
+  GalleryItem
+} from '../../types';
+import {
+  Code2,
+  Copy,
+  Download,
+  Check,
+  FileCode,
+  Database,
+  Sparkles,
+  Terminal,
+  Link,
+  CheckCircle2,
+  RefreshCw,
+  Send,
+  AlertCircle,
+  UploadCloud,
+  Share2
+} from 'lucide-react';
 
-export const GasScriptSection: React.FC = () => {
+interface GasScriptSectionProps {
+  profile?: SchoolProfile;
+  staffList?: Staff[];
+  newsList?: NewsItem[];
+  events?: CalendarEvent[];
+  awards?: AwardItem[];
+  documents?: DownloadDocument[];
+  gallery?: GalleryItem[];
+}
+
+export const GasScriptSection: React.FC<GasScriptSectionProps> = ({
+  profile,
+  staffList,
+  newsList,
+  events,
+  awards,
+  documents,
+  gallery
+}) => {
   const [activeCodeTab, setActiveCodeTab] = useState<'gs' | 'html'>('gs');
   const [copiedGs, setCopiedGs] = useState(false);
   const [copiedHtml, setCopiedHtml] = useState(false);
@@ -24,10 +67,18 @@ export const GasScriptSection: React.FC = () => {
     setTimeout(() => setSavedStatus(false), 3000);
   };
 
-  const handleTestSync = async () => {
+  const handleSyncAllData = async () => {
     setSyncing(true);
     setSyncResult(null);
-    const res = await syncBulkDataToGoogleSheets({});
+    const res = await syncBulkDataToGoogleSheets({
+      profile,
+      staffList,
+      newsList,
+      events,
+      awards,
+      documents,
+      gallery
+    });
     setSyncResult(res);
     setSyncing(false);
   };
@@ -63,10 +114,47 @@ export const GasScriptSection: React.FC = () => {
           <Code2 className="w-3.5 h-3.5 text-yellow-400" />
           <span>Pengaturcaraan & Backend Google Sheets</span>
         </div>
-        <h2 className="text-2xl sm:text-3xl font-black text-white">Sambungan Automatik Google Sheets</h2>
+        <h2 className="text-2xl sm:text-3xl font-black text-white">Sambungan & Penyegerakan Data Google Sheets</h2>
         <p className="text-xs sm:text-sm text-slate-200 mt-1 max-w-2xl">
-          Sambungkan portal sekolah terus ke <strong className="text-yellow-300">Google Sheet pangkalan data anda</strong> melalui Google Apps Script Web App.
+          Segerakkan acara takwim, gambar Guru Besar, maklumat guru, dan berita terus ke <strong className="text-yellow-300">Google Sheets</strong> agar dapat dilihat pada semua peranti dan telefon pintar secara seragam.
         </p>
+      </div>
+
+      {/* SYNC TO CLOUD CALLOUT CARD */}
+      <div className="bg-gradient-to-r from-blue-950 to-indigo-950 border-2 border-yellow-400/60 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-4">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-400/20 text-yellow-300 border border-yellow-400/30 rounded-full text-xs font-black">
+              <UploadCloud className="w-4 h-4 text-yellow-400" />
+              <span>Penyegerakan Menyeluruh (Semua Peranti)</span>
+            </div>
+            <h3 className="text-xl font-black text-white">Tolak Segala Perubahan Data Terkini ke Google Sheets</h3>
+            <p className="text-xs text-slate-200 max-w-2xl leading-relaxed">
+              Klik butang di bawah selepas anda menambah/menyunting acara takwim (seperti <strong>Acara Cobaan</strong>), menukar gambar Guru Besar, atau maklumat sekolah untuk memastikan semua peranti lain memuat turun data terkini yang sama secara langsung.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleSyncAllData}
+            disabled={syncing || !webAppUrl}
+            className="w-full md:w-auto px-6 py-4 bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-blue-950 font-black text-sm rounded-2xl transition shadow-xl shadow-yellow-400/20 flex items-center justify-center gap-3 disabled:opacity-50 flex-shrink-0"
+          >
+            <RefreshCw className={`w-5 h-5 ${syncing ? 'animate-spin' : ''}`} />
+            <span>{syncing ? 'Sedang Menyegerak...' : '🚀 Segerakkan Semua Data Ke Google Sheets'}</span>
+          </button>
+        </div>
+
+        {syncResult && (
+          <div className={`p-4 rounded-2xl text-xs font-bold border flex items-center gap-3 mt-4 ${
+            syncResult.success
+              ? 'bg-emerald-500/20 border-emerald-400/60 text-emerald-200'
+              : 'bg-rose-500/20 border-rose-400/60 text-rose-200'
+          }`}>
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+            <span>{syncResult.message}</span>
+          </div>
+        )}
       </div>
 
       {/* URL Configuration Card */}
@@ -79,7 +167,7 @@ export const GasScriptSection: React.FC = () => {
             <div>
               <h3 className="font-extrabold text-base text-white">Konfigurasi URL Google Apps Script Web App</h3>
               <p className="text-xs text-slate-300">
-                Data borang aduan/maklum balas dan kemaskini portal akan dihantar secara automatik ke Google Sheet ini.
+                Pautan Web App aktif untuk integrasi pangkalan data dan borang maklum balas sekolah.
               </p>
             </div>
           </div>
@@ -103,37 +191,14 @@ export const GasScriptSection: React.FC = () => {
               onChange={(e) => setWebAppUrl(e.target.value)}
               className="flex-1 w-full px-4 py-3 bg-white/10 border border-white/20 rounded-2xl text-xs text-white placeholder-slate-400 focus:outline-none focus:border-yellow-400 font-mono"
             />
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <button
-                type="submit"
-                className="flex-1 sm:flex-initial px-5 py-3 bg-yellow-400 hover:bg-yellow-300 text-blue-950 font-black text-xs rounded-2xl transition shadow-lg flex items-center justify-center gap-2"
-              >
-                {savedStatus ? <Check className="w-4 h-4 text-emerald-950" /> : <Send className="w-4 h-4" />}
-                <span>{savedStatus ? 'Disimpan!' : 'Simpan URL'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleTestSync}
-                disabled={syncing || !webAppUrl}
-                className="flex-1 sm:flex-initial px-4 py-3 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-2xl transition border border-white/10 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-                <span>Uji Sambungan</span>
-              </button>
-            </div>
+            <button
+              type="submit"
+              className="w-full sm:w-auto px-5 py-3 bg-yellow-400 hover:bg-yellow-300 text-blue-950 font-black text-xs rounded-2xl transition shadow-lg flex items-center justify-center gap-2"
+            >
+              {savedStatus ? <Check className="w-4 h-4 text-emerald-950" /> : <Send className="w-4 h-4 text-blue-950" />}
+              <span>{savedStatus ? 'Disimpan!' : 'Simpan URL'}</span>
+            </button>
           </div>
-
-          {syncResult && (
-            <div className={`p-3 rounded-xl text-xs font-medium border flex items-center gap-2 ${
-              syncResult.success
-                ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-200'
-                : 'bg-rose-500/20 border-rose-400/40 text-rose-200'
-            }`}>
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-              <span>{syncResult.message}</span>
-            </div>
-          )}
         </form>
       </div>
 
