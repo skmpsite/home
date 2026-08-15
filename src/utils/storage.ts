@@ -67,6 +67,12 @@ export function loadProfile(): SchoolProfile {
   if (!profile.logoUrl || profile.logoUrl.includes('unsplash.com')) {
     profile.logoUrl = initialSchoolProfile.logoUrl;
   }
+  if (!profile.principalPhotoUrl || profile.principalPhotoUrl.includes('unsplash.com')) {
+    profile.principalPhotoUrl = initialSchoolProfile.principalPhotoUrl;
+  }
+  if (!profile.principalName || profile.principalName === 'Puan Norhafiza binti Mohamad') {
+    profile.principalName = initialSchoolProfile.principalName;
+  }
   return profile;
 }
 
@@ -75,7 +81,18 @@ export function saveProfile(profile: SchoolProfile): void {
 }
 
 export function loadStaff(): Staff[] {
-  return getStored<Staff[]>(KEYS.STAFF, initialStaffList);
+  const staff = getStored<Staff[]>(KEYS.STAFF, initialStaffList);
+  if (staff && staff.length > 0) {
+    if (staff[0].position.toLowerCase().includes('guru besar')) {
+      if (!staff[0].photoUrl || staff[0].photoUrl.includes('unsplash.com')) {
+        staff[0].photoUrl = initialSchoolProfile.principalPhotoUrl;
+      }
+      if (staff[0].name === 'Puan Norhafiza binti Mohamad') {
+        staff[0].name = initialSchoolProfile.principalName;
+      }
+    }
+  }
+  return staff;
 }
 
 export function saveStaff(staffList: Staff[]): void {

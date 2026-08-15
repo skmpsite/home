@@ -25,10 +25,10 @@ export const initialSchoolProfile: SchoolProfile = {
   phone: "04-403 1200",
   fax: "04-403 1201",
   email: "KBA5012@moe.edu.my",
-  principalName: "Puan Norhafiza binti Mohamad",
-  principalTitle: "Guru Besar SK Merbau Pulas",
+  principalName: "Puan Norhafiza Binti Dolah",
+  principalTitle: "Guru Besar (DG48)",
   principalPhotoUrl: guruBesarPhoto,
-  principalSpeech: "Selamat datang ke laman web rasmi SK Merbau Pulas. Semoga platform ini menjadi jembatan perhubungan yang mantap antara warga sekolah, ibu bapa, dan komuniti dalam mencapai kecemerlangan modal insan.",
+  principalSpeech: "Selamat datang ke laman web rasmi SK Merbau Pulas. Semoga platform ini menjadi jambatan perhubungan yang mantap antara warga sekolah, ibu bapa, dan komuniti dalam mencapai kecemerlangan modal insan.",
   motto: "Berilmu, Beramal, Berbakti",
   vision: "Pendidikan Berkualiti Insan Terdidik Negara Sejahtera.",
   mission: "Melestarikan Sistem Pendidikan Yang Berkualiti Untuk Membangunkan Potensi Individu Bagi Memenuhi Aspirasi Negara.",
@@ -71,7 +71,7 @@ export const initialSchoolProfile: SchoolProfile = {
 export const initialStaffList: Staff[] = [
   {
     id: "staf-1",
-    name: "Puan Norhafiza binti Mohamad",
+    name: "Puan Norhafiza Binti Dolah",
     position: "Guru Besar (DG48)",
     category: "pentadbir",
     grade: "DG48",

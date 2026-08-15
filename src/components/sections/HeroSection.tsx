@@ -46,9 +46,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     (s) => s.position.toLowerCase().includes('guru besar') || (s.category === 'pentadbir' && s.order === 1)
   );
 
-  const displayName = guruBesarFromStaff ? guruBesarFromStaff.name : profile.principalName;
-  const displayPhoto = guruBesarFromStaff?.photoUrl || profile.principalPhotoUrl || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200";
-  const displayTitle = guruBesarFromStaff ? guruBesarFromStaff.position : profile.principalTitle;
+  const displayName = profile.principalName || (guruBesarFromStaff ? guruBesarFromStaff.name : 'Puan Norhafiza Binti Dolah');
+  const displayPhoto = profile.principalPhotoUrl || guruBesarFromStaff?.photoUrl;
+  const displayTitle = profile.principalTitle || (guruBesarFromStaff ? guruBesarFromStaff.position : 'Guru Besar (DG48)');
   const pinnedNews = latestNews.filter((n) => n.isPinned)[0] || latestNews[0];
 
   return (
