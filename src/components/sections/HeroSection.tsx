@@ -24,7 +24,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { TabType } from '../Navbar';
-import { getSafeNewsImageUrl } from '../../utils/imageHelpers';
+import { getSafeNewsImageUrl, SECONDARY_FALLBACK_PHOTOS } from '../../utils/imageHelpers';
 
 interface HeroSectionProps {
   profile: SchoolProfile;
@@ -403,11 +403,11 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 <div>
                   <div className="h-40 overflow-hidden relative bg-slate-900/40">
                     <img
-                      src={getSafeNewsImageUrl(news.imageUrl, news.category)}
+                      src={getSafeNewsImageUrl(news.imageUrl, news.category, news.id)}
                       alt={news.title}
                       referrerPolicy="no-referrer"
                       onError={(e) => {
-                        e.currentTarget.src = getSafeNewsImageUrl('', news.category);
+                        e.currentTarget.src = SECONDARY_FALLBACK_PHOTOS[news.category] || SECONDARY_FALLBACK_PHOTOS.default;
                       }}
                       className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                     />

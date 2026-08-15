@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { NewsItem } from '../../types';
 import { Newspaper, Search, Clock, User, Eye, Tag, Pin, ArrowRight, X, Share2 } from 'lucide-react';
-import { getSafeNewsImageUrl } from '../../utils/imageHelpers';
+import { getSafeNewsImageUrl, SECONDARY_FALLBACK_PHOTOS } from '../../utils/imageHelpers';
 
 interface NewsSectionProps {
   newsList: NewsItem[];
@@ -88,11 +88,11 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
             <div>
               <div className="h-48 overflow-hidden relative bg-slate-900/50">
                 <img
-                  src={getSafeNewsImageUrl(news.imageUrl, news.category)}
+                  src={getSafeNewsImageUrl(news.imageUrl, news.category, news.id)}
                   alt={news.title}
                   referrerPolicy="no-referrer"
                   onError={(e) => {
-                    e.currentTarget.src = getSafeNewsImageUrl('', news.category);
+                    e.currentTarget.src = SECONDARY_FALLBACK_PHOTOS[news.category] || SECONDARY_FALLBACK_PHOTOS.default;
                   }}
                   className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                 />
@@ -163,11 +163,11 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
 
             <div className="rounded-2xl overflow-hidden max-h-72 bg-slate-900">
               <img
-                src={getSafeNewsImageUrl(selectedNewsItem.imageUrl, selectedNewsItem.category)}
+                src={getSafeNewsImageUrl(selectedNewsItem.imageUrl, selectedNewsItem.category, selectedNewsItem.id)}
                 alt={selectedNewsItem.title}
                 referrerPolicy="no-referrer"
                 onError={(e) => {
-                  e.currentTarget.src = getSafeNewsImageUrl('', selectedNewsItem.category);
+                  e.currentTarget.src = SECONDARY_FALLBACK_PHOTOS[selectedNewsItem.category] || SECONDARY_FALLBACK_PHOTOS.default;
                 }}
                 className="w-full h-full object-cover"
               />

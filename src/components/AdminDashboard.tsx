@@ -39,7 +39,7 @@ import {
 } from 'lucide-react';
 import { GasScriptSection } from './sections/GasScriptSection';
 import { syncBulkDataToGoogleSheets } from '../utils/googleSheetsSync';
-import { getSafeNewsImageUrl, compressAndResizeImage } from '../utils/imageHelpers';
+import { getSafeNewsImageUrl, compressAndResizeImage, OFFICIAL_NEWS_PHOTOS, SECONDARY_FALLBACK_PHOTOS } from '../utils/imageHelpers';
 
 interface AdminDashboardProps {
   profile: SchoolProfile;
@@ -828,7 +828,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           {/* Current News Table */}
           <div className="bg-white/10 backdrop-blur-md rounded-3xl border border-white/10 p-6 shadow-lg space-y-4">
-            <h3 className="font-extrabold text-base text-white border-b border-white/10 pb-2">Senarai Berita Terbit ({newsList.length})</h3>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-white/10 pb-2">
+              <h3 className="font-extrabold text-base text-white">Senarai Berita Terbit ({newsList.length})</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  const restored = newsList.map((n) => ({
+                    ...n,
+                    imageUrl: OFFICIAL_NEWS_PHOTOS[n.id] || OFFICIAL_NEWS_PHOTOS[n.category] || OFFICIAL_NEWS_PHOTOS.default
+                  }));
+                  onSaveNews(restored);
+                  showToast('Semua gambar berita berjaya dipulihkan kepada foto fotografi rasmi berkualiti tinggi!');
+                }}
+                className="px-3 py-1.5 bg-yellow-400/20 hover:bg-yellow-400/30 text-yellow-300 border border-yellow-400/40 rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Pulihkan Semua Foto Rasmi Berita</span>
+              </button>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
@@ -846,11 +863,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <tr key={n.id} className="hover:bg-white/5">
                       <td className="p-3">
                         <img
-                          src={getSafeNewsImageUrl(n.imageUrl, n.category)}
+                          src={getSafeNewsImageUrl(n.imageUrl, n.category, n.id)}
                           alt=""
                           referrerPolicy="no-referrer"
                           onError={(e) => {
-                            e.currentTarget.src = getSafeNewsImageUrl('', n.category);
+                            e.currentTarget.src = SECONDARY_FALLBACK_PHOTOS[n.category] || SECONDARY_FALLBACK_PHOTOS.default;
                           }}
                           className="w-10 h-10 object-cover rounded-lg border border-white/20"
                         />
@@ -971,11 +988,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <label className="block font-bold text-slate-200 mb-1">Tukar Gambar (Gambar / Foto Upload)</label>
                 <div className="flex items-center gap-3">
                   <img
-                    src={getSafeNewsImageUrl(editingNews.imageUrl, editingNews.category)}
+                    src={getSafeNewsImageUrl(editingNews.imageUrl, editingNews.category, editingNews.id)}
                     alt=""
                     referrerPolicy="no-referrer"
                     onError={(e) => {
-                      e.currentTarget.src = getSafeNewsImageUrl('', editingNews.category);
+                      e.currentTarget.src = SECONDARY_FALLBACK_PHOTOS[editingNews.category] || SECONDARY_FALLBACK_PHOTOS.default;
                     }}
                     className="w-12 h-12 rounded-xl object-cover border"
                   />

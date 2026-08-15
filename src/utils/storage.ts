@@ -103,10 +103,22 @@ export function saveStaff(staffList: Staff[]): void {
 export function loadNews(): NewsItem[] {
   const news = getStored<NewsItem[]>(KEYS.NEWS, initialNewsList);
   if (Array.isArray(news)) {
-    return news.map((item) => ({
-      ...item,
-      imageUrl: getSafeNewsImageUrl(item.imageUrl, item.category)
-    }));
+    let hasCorrupted = false;
+    const sanitized = news.map((item) => {
+      const safeUrl = getSafeNewsImageUrl(item.imageUrl, item.category, item.id);
+      if (safeUrl !== item.imageUrl) {
+        hasCorrupted = true;
+      }
+      return {
+        ...item,
+        imageUrl: safeUrl
+      };
+    });
+
+    if (hasCorrupted) {
+      setStored(KEYS.NEWS, sanitized);
+    }
+    return sanitized;
   }
   return initialNewsList;
 }

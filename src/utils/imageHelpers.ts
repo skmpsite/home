@@ -1,39 +1,57 @@
 /**
  * Utility untuk pengurusan imej yang selamat, mampatan gambar bagi Google Sheets,
- * dan penyediaan fallback grafik SVG beresolusi tinggi tanpa sebarang ralat corrupt.
+ * dan penyediaan gambar foto berkualiti tinggi tanpa sebarang teks rosak/corrupt.
  */
 
-// SVG Banner Vektor Beresolusi Tinggi (100% Selamat & Ringan, Tiada Pergantungan Internet)
-export const CATEGORY_FALLBACK_IMAGES: Record<string, string> = {
-  pengumuman: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%231e3a8a"/><stop offset="100%" stop-color="%230f172a"/></linearGradient><linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%23facc15"/><stop offset="100%" stop-color="%23eab308"/></linearGradient></defs><rect width="100%" height="100%" fill="url(%23bg)"/><circle cx="700" cy="80" r="180" fill="%23ffffff" fill-opacity="0.04"/><circle cx="100" cy="380" r="140" fill="%23ffffff" fill-opacity="0.03"/><rect x="50" y="50" width="700" height="350" rx="24" fill="none" stroke="%23facc15" stroke-width="3" stroke-opacity="0.3" stroke-dasharray="10 10"/><g transform="translate(400, 180)" text-anchor="middle"><circle cx="0" cy="-20" r="56" fill="url(%23gold)"/><path d="M-18 -20 L-6 -32 L-6 -8 L-18 -20 Z M-6 -26 L12 -34 L12 -6 L-6 -14 Z M16 -24 A6 6 0 0 1 16 -16 M20 -28 A12 12 0 0 1 20 -12" fill="none" stroke="%231e3a8a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><text y="75" fill="%23ffffff" font-size="28" font-weight="900" font-family="system-ui, sans-serif" letter-spacing="1">PENGUMUMAN RASMI</text><text y="108" fill="%23facc15" font-size="16" font-weight="700" font-family="system-ui, sans-serif" letter-spacing="3">SK MERBAU PULAS</text></g></svg>`,
-  
-  aktiviti: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%23064e3b"/><stop offset="100%" stop-color="%230f172a"/></linearGradient><linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%2334d399"/><stop offset="100%" stop-color="%23059669"/></linearGradient></defs><rect width="100%" height="100%" fill="url(%23bg)"/><circle cx="120" cy="100" r="160" fill="%23ffffff" fill-opacity="0.04"/><rect x="50" y="50" width="700" height="350" rx="24" fill="none" stroke="%2334d399" stroke-width="3" stroke-opacity="0.3"/><g transform="translate(400, 180)" text-anchor="middle"><circle cx="0" cy="-20" r="56" fill="url(%23gold)"/><path d="M-16 -34 H16 V-18 C16 -10 10 -4 0 -4 C-10 -4 -16 -10 -16 -18 Z M-16 -28 H-24 C-24 -18 -16 -14 -16 -14 M16 -28 H24 C24 -18 16 -14 16 -14 M0 -4 V8 M-12 8 H12" fill="none" stroke="%23ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><text y="75" fill="%23ffffff" font-size="28" font-weight="900" font-family="system-ui, sans-serif" letter-spacing="1">AKTIVITI &amp; PROGRAM SEKOLAH</text><text y="108" fill="%2334d399" font-size="16" font-weight="700" font-family="system-ui, sans-serif" letter-spacing="3">SK MERBAU PULAS</text></g></svg>`,
+// Senarai Foto Rasmi Berkualiti Tinggi Mengikut Kategori & ID Berita
+export const OFFICIAL_NEWS_PHOTOS: Record<string, string> = {
+  'news-1': 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&q=80&w=800',
+  'news-2': 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&q=80&w=800',
+  'news-3': 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&q=80&w=800',
+  pengumuman: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&q=80&w=800',
+  aktiviti: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&q=80&w=800',
+  pekeliling: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&q=80&w=800',
+  default: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&q=80&w=800'
+};
 
-  pekeliling: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%23312e81"/><stop offset="100%" stop-color="%230f172a"/></linearGradient><linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%23818cf8"/><stop offset="100%" stop-color="%234f46e5"/></linearGradient></defs><rect width="100%" height="100%" fill="url(%23bg)"/><circle cx="680" cy="350" r="160" fill="%23ffffff" fill-opacity="0.04"/><rect x="50" y="50" width="700" height="350" rx="24" fill="none" stroke="%23818cf8" stroke-width="3" stroke-opacity="0.3"/><g transform="translate(400, 180)" text-anchor="middle"><circle cx="0" cy="-20" r="56" fill="url(%23gold)"/><path d="M-14 -38 H6 L18 -26 V-2 C18 4 12 10 6 10 H-14 C-20 10 -26 4 -26 -2 V-26 C-26 -32 -20 -38 -14 -38 Z M4 -36 V-24 H16 M-14 -12 H6 M-14 -2 H2" fill="none" stroke="%23ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><text y="75" fill="%23ffffff" font-size="28" font-weight="900" font-family="system-ui, sans-serif" letter-spacing="1">PEKELILING &amp; SIARAN RASMI</text><text y="108" fill="%23a5b4fc" font-size="16" font-weight="700" font-family="system-ui, sans-serif" letter-spacing="3">KEMENTERIAN PENDIDIKAN MALAYSIA</text></g></svg>`,
-
-  default: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%231e293b"/><stop offset="100%" stop-color="%230f172a"/></linearGradient></defs><rect width="100%" height="100%" fill="url(%23bg)"/><rect x="50" y="50" width="700" height="350" rx="24" fill="none" stroke="%23facc15" stroke-width="3" stroke-opacity="0.3"/><g transform="translate(400, 180)" text-anchor="middle"><circle cx="0" cy="-20" r="56" fill="%23facc15"/><path d="M-18 -10 L0 -26 L18 -10 L18 10 L-18 10 Z" fill="none" stroke="%230f172a" stroke-width="4" stroke-linejoin="round"/><text y="75" fill="%23ffffff" font-size="28" font-weight="900" font-family="system-ui, sans-serif" letter-spacing="1">SK MERBAU PULAS</text><text y="108" fill="%23facc15" font-size="16" font-weight="700" font-family="system-ui, sans-serif" letter-spacing="3">BERILMU • BERAMAL • BERBAKTI</text></g></svg>`
+// URL Gantian Sekunder Jika Unsplash Disekat Rangkaian Sekolah
+export const SECONDARY_FALLBACK_PHOTOS: Record<string, string> = {
+  pengumuman: 'https://images.pexels.com/photos/8471799/pexels-photo-8471799.jpeg?auto=compress&cs=tinysrgb&w=800',
+  aktiviti: 'https://images.pexels.com/photos/8613317/pexels-photo-8613317.jpeg?auto=compress&cs=tinysrgb&w=800',
+  pekeliling: 'https://images.pexels.com/photos/5905709/pexels-photo-5905709.jpeg?auto=compress&cs=tinysrgb&w=800',
+  default: 'https://images.pexels.com/photos/8471799/pexels-photo-8471799.jpeg?auto=compress&cs=tinysrgb&w=800'
 };
 
 /**
- * Mengesahkan dan mengembalikan URL imej yang sah, atau fallback jika rosak / kosong
+ * Mengesahkan dan mengembalikan URL foto yang sah.
+ * Menapis dan membuang sebarang data SVG teks lama yang kelihatan rosak / corrupt.
  */
-export function getSafeNewsImageUrl(url?: string | null, category?: string): string {
+export function getSafeNewsImageUrl(url?: string | null, category?: string, newsId?: string): string {
   const cat = (category || 'pengumuman').toLowerCase();
-  const fallback = CATEGORY_FALLBACK_IMAGES[cat] || CATEGORY_FALLBACK_IMAGES.default;
+  const defaultPhoto = (newsId && OFFICIAL_NEWS_PHOTOS[newsId]) || OFFICIAL_NEWS_PHOTOS[cat] || OFFICIAL_NEWS_PHOTOS.default;
 
   if (!url || typeof url !== 'string') {
-    return fallback;
+    return defaultPhoto;
   }
 
   const trimmed = url.trim();
-  if (trimmed === '' || trimmed === 'null' || trimmed === 'undefined') {
-    return fallback;
+  if (
+    trimmed === '' ||
+    trimmed === 'null' ||
+    trimmed === 'undefined' ||
+    trimmed.startsWith('data:image/svg') ||
+    trimmed.includes('<svg') ||
+    trimmed.includes('BERILMU') ||
+    trimmed.includes('PENGUMUMAN RASMI') ||
+    trimmed.length < 15
+  ) {
+    return defaultPhoto;
   }
 
   // Semak jika base64 terpotong (truncated data uri)
-  if (trimmed.startsWith('data:image')) {
-    if (!trimmed.includes(';base64,') || trimmed.length < 50) {
-      return fallback;
+  if (trimmed.startsWith('data:image/')) {
+    if (!trimmed.includes(';base64,') || trimmed.length < 100) {
+      return defaultPhoto;
     }
   }
 
@@ -90,3 +108,4 @@ export function compressAndResizeImage(
     reader.readAsDataURL(file);
   });
 }
+
