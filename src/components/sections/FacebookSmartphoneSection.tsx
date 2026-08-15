@@ -21,11 +21,20 @@ interface FacebookSmartphoneSectionProps {
 
 export const FacebookSmartphoneSection: React.FC<FacebookSmartphoneSectionProps> = ({ profile }) => {
   const [currentTime, setCurrentTime] = useState<string>('09:41');
-  const [zoomScale, setZoomScale] = useState<number>(0.7);
+  
+  // Tampilan 85% di komputer/desktop (>= 1024px) dan 70% di mobile (< 1024px)
+  const getResponsiveDefaultScale = () => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+      return 0.85;
+    }
+    return 0.70;
+  };
+
+  const [zoomScale, setZoomScale] = useState<number>(getResponsiveDefaultScale);
   const [iframeKey, setIframeKey] = useState<number>(0);
   const [toastMsg, setToastMsg] = useState<string>('');
 
-  // Update clock every minute for realistic smartphone status bar
+  // Update clock every minute for realistic smartphone status bar & respond to screen resize
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
@@ -35,7 +44,23 @@ export const FacebookSmartphoneSection: React.FC<FacebookSmartphoneSectionProps>
     };
     updateTime();
     const timer = setInterval(updateTime, 30000);
-    return () => clearInterval(timer);
+
+    const handleResize = () => {
+      // Auto adjust if screen is resized
+      const isDesktop = window.innerWidth >= 1024;
+      setZoomScale((prev) => {
+        // If current is around the default presets (0.70 or 0.85), switch smoothly
+        if (prev === 0.70 && isDesktop) return 0.85;
+        if (prev === 0.85 && !isDesktop) return 0.70;
+        return prev;
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   const showToast = (msg: string) => {
@@ -49,7 +74,7 @@ export const FacebookSmartphoneSection: React.FC<FacebookSmartphoneSectionProps>
   };
 
   const handleZoomIn = () => {
-    setZoomScale((prev) => Math.min(1.1, +(prev + 0.05).toFixed(2)));
+    setZoomScale((prev) => Math.min(1.2, +(prev + 0.05).toFixed(2)));
   };
 
   const handleZoomOut = () => {
@@ -57,7 +82,9 @@ export const FacebookSmartphoneSection: React.FC<FacebookSmartphoneSectionProps>
   };
 
   const handleResetZoom = () => {
-    setZoomScale(0.7);
+    const defaultScale = typeof window !== 'undefined' && window.innerWidth >= 1024 ? 0.85 : 0.70;
+    setZoomScale(defaultScale);
+    showToast(`🔄 Skala ditetapkan semula ke ${Math.round(defaultScale * 100)}%`);
   };
 
   const handleShare = (url: string) => {
@@ -83,7 +110,7 @@ export const FacebookSmartphoneSection: React.FC<FacebookSmartphoneSectionProps>
       : 'https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Fp%2FPPD-Kulim-Bandar-Baharu-61553992422357%2F&tabs=timeline&width=450&height=850&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true&appId';
 
     return (
-      <div className="relative mx-auto w-full max-w-[420px]">
+      <div className="relative mx-auto w-full max-w-[420px] lg:max-w-[480px]">
         {/* Phone Outer Chassis with realistic volume buttons & power button */}
         <div className="relative rounded-[36px] sm:rounded-[48px] p-2 sm:p-2.5 bg-gradient-to-b from-slate-700 via-slate-800 to-slate-900 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85),0_0_30px_rgba(59,130,246,0.25)] border border-slate-600/70 ring-1 ring-white/20">
           
@@ -93,7 +120,7 @@ export const FacebookSmartphoneSection: React.FC<FacebookSmartphoneSectionProps>
           <div className="hidden sm:block absolute -right-[7px] top-28 w-[4px] h-14 bg-slate-700 rounded-r-md" />
 
           {/* Inner Phone Screen */}
-          <div className="relative rounded-[28px] sm:rounded-[40px] bg-slate-950 overflow-hidden border border-slate-800 flex flex-col h-[650px] sm:h-[720px]">
+          <div className="relative rounded-[28px] sm:rounded-[40px] bg-slate-950 overflow-hidden border border-slate-800 flex flex-col h-[650px] sm:h-[720px] lg:h-[760px]">
             
             {/* Top Smartphone Status Bar */}
             <div className="bg-slate-950 text-white px-4 sm:px-5 pt-2.5 sm:pt-3 pb-1.5 flex items-center justify-between text-xs font-semibold select-none flex-shrink-0 z-30">
