@@ -576,6 +576,21 @@ export const initialCoCurriculumUnits: CoCurriculumUnit[] = [
 
 export const initialFacebookPosts: FacebookPost[] = [
   {
+    id: "fb-0",
+    author: "SK Merbau Pulas Rasmi",
+    authorAvatar: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgYVyl_qKknZ3_eiUbvgojY6Y3OiP28frcG3qy92a9yH5jt776tl5293zJX7Adg6-hvQYW5gLILFL-BXnte2ZkXw3Hdtl3MYQqWTV4_L6UbCsBIVVWieiyipL4Dbp33EIrrcXgxX-qLLFKZ/s1600/logo+skmp+warna+stroke.png",
+    date: "14 Ogos 2026",
+    timeAgo: "2 jam yang lalu",
+    content: "Terima kasih kepada waris yang memberikan maklum balas menerusi GF (Google Form) yang diberikan. Insya-Allah pihak sekolah akan membuat nilai tambah untuk penambahbaikan program seterusnya.\n\nTahniah dan terima kasih atas komitmen dan kerjasama padu seluruh waris dan komuniti yang hadir. 👍👍🌹\n\n#warisgurumurid #berpisahtiada #skmpunggul #SKMPKBA5012 #PendidikanKedah",
+    imageUrl: "https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&q=80&w=800",
+    postUrl: "https://www.facebook.com/SKMPKBA5012/",
+    likesCount: 168,
+    commentsCount: 32,
+    sharesCount: 24,
+    tags: ["#warisgurumurid", "#berpisahtiada", "#skmpunggul"],
+    source: "skmp"
+  },
+  {
     id: "fb-1",
     author: "SK Merbau Pulas Rasmi",
     authorAvatar: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgYVyl_qKknZ3_eiUbvgojY6Y3OiP28frcG3qy92a9yH5jt776tl5293zJX7Adg6-hvQYW5gLILFL-BXnte2ZkXw3Hdtl3MYQqWTV4_L6UbCsBIVVWieiyipL4Dbp33EIrrcXgxX-qLLFKZ/s1600/logo+skmp+warna+stroke.png",
@@ -587,7 +602,8 @@ export const initialFacebookPosts: FacebookPost[] = [
     likesCount: 142,
     commentsCount: 28,
     sharesCount: 19,
-    tags: ["#BulanKebangsaan", "#SKMPKBA5012", "#MalaysiaMadani"]
+    tags: ["#BulanKebangsaan", "#SKMPKBA5012", "#MalaysiaMadani"],
+    source: "skmp"
   },
   {
     id: "fb-2",
@@ -601,7 +617,8 @@ export const initialFacebookPosts: FacebookPost[] = [
     likesCount: 198,
     commentsCount: 45,
     sharesCount: 34,
-    tags: ["#SukanTahunan", "#RumahSukan", "#PIBGSKMP"]
+    tags: ["#SukanTahunan", "#RumahSukan", "#PIBGSKMP"],
+    source: "skmp"
   },
   {
     id: "fb-3",
@@ -615,6 +632,37 @@ export const initialFacebookPosts: FacebookPost[] = [
     likesCount: 116,
     commentsCount: 18,
     sharesCount: 12,
-    tags: ["#DialogPrestasi", "#PBD2026", "#IbuBapaSKMP"]
+    tags: ["#DialogPrestasi", "#PBD2026", "#IbuBapaSKMP"],
+    source: "skmp"
+  },
+  {
+    id: "fb-4",
+    author: "PPD Kulim Bandar Baharu",
+    authorAvatar: "https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&q=80&w=120",
+    date: "11 Ogos 2026",
+    timeAgo: "1 hari yang lalu",
+    content: "🌟 LAWATAN BIMBINGAN DAN PENANDAARASAN PENGURUSAN PENDIDIKAN DIGITAL DAERAH KULIM BANDAR BAHARU\n\nPejabat Pendidikan Daerah Kulim Bandar Baharu komited menyokong inisiatif transformasi digital di semua sekolah zon Merbau Pulas dan sekitarnya. Syabas kepada kepimpinan sekolah dan warga pendidik atas usaha berterusan memacu kecemerlangan murid berasaskan Dasar Pendidikan Digital (DPD) KPM.\n\n#PPDKulimBandarBaharu #PendidikanKedah #PenerajuKecemerlangan #KPM",
+    imageUrl: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&q=80&w=800",
+    postUrl: "https://www.facebook.com/p/PPD-Kulim-Bandar-Baharu-61553992422357/",
+    likesCount: 235,
+    commentsCount: 31,
+    sharesCount: 27,
+    tags: ["#PPDKulimBandarBaharu", "#TransformasiDigital", "#PendidikanKedah"],
+    source: "ppdkbb"
+  },
+  {
+    id: "fb-5",
+    author: "PPD Kulim Bandar Baharu",
+    authorAvatar: "https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&q=80&w=120",
+    date: "09 Ogos 2026",
+    timeAgo: "3 hari yang lalu",
+    content: "📢 MAKLUMAN PENGAMBILAN & PENDAFTARAN MURID TAHUN 1 SESI 2027/2028 DAERAH KULIM BANDAR BAHARU\n\nIbu bapa/penjaga dipohon melengkapkan permohonan kemasukan Tahun 1 melalui Sistem Pengurusan Murid (idMe KPM) sebelum tarikh tutup. Pastikan dokumen sokongan disahkan oleh pihak sekolah berhampiran.\n\n#PPDKBB #Tahun1 #idMeKPM #PendidikanHolistik",
+    imageUrl: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&q=80&w=800",
+    postUrl: "https://www.facebook.com/p/PPD-Kulim-Bandar-Baharu-61553992422357/",
+    likesCount: 312,
+    commentsCount: 54,
+    sharesCount: 68,
+    tags: ["#PengurusanMurid", "#PendaftaranTahun1", "#KPM"],
+    source: "ppdkbb"
   }
 ];

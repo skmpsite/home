@@ -163,6 +163,7 @@ export interface FacebookPost {
   commentsCount: number;
   sharesCount: number;
   tags?: string[];
+  source?: 'skmp' | 'ppdkbb';
 }
 
 export interface SearchResultItem {
