@@ -13,7 +13,7 @@ import {
   CoCurriculumUnit,
   FacebookPost
 } from '../types';
-import guruBesarPhoto from '../assets/images/guru_besar_norhafiza_1786556385385.jpg';
+import guruBesarPhoto from '../assets/images/guru_besar_norhafiza_1786808669012.jpg';
 
 export const initialSchoolProfile: SchoolProfile = {
   name: "Sekolah Kebangsaan Merbau Pulas",
@@ -487,7 +487,7 @@ export const initialPibgCommittee: PibgCommittee[] = [
   },
   {
     id: "pibg-c-2",
-    name: "Puan Norhafiza binti Mohamad",
+    name: "Puan Norhafiza Binti Dolah",
     position: "Penasihat (Guru Besar)",
     category: "guru",
     photoUrl: guruBesarPhoto
