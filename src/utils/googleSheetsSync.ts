@@ -9,6 +9,7 @@ import {
   FeedbackEntry
 } from '../types';
 import { DEFAULT_GAS_URL } from '../config';
+import { getSafeNewsImageUrl } from './imageHelpers';
 
 const GAS_URL_KEY = 'skmp_gas_url_v1';
 
@@ -218,7 +219,7 @@ export function parseSchoolDataFromSheets(rawData: any): {
         category: (row.Kategori || 'pengumuman').toLowerCase() as any,
         summary: row.Ringkasan || '',
         content: row.Kandungan || '',
-        imageUrl: row.Gambar_URL || '',
+        imageUrl: getSafeNewsImageUrl(row.Gambar_URL, row.Kategori),
         author: row.Penulis || 'Pentadbiran SKMP',
         isPinned: String(row.Sematkan).toLowerCase() === 'true' || String(row.Sematkan) === '1',
         views: 100

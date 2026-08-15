@@ -34,14 +34,18 @@ import {
   loadFeedback,
   saveFeedback,
   loadPibgActivities,
+  savePibgActivities,
   loadPibgCommittee,
+  savePibgCommittee,
   loadCoCurriculum,
+  saveCoCurriculum,
   resetAllToDefault
 } from './utils/storage';
 import {
   syncFeedbackToGoogleSheets,
   fetchSchoolDataFromGoogleSheets,
-  parseSchoolDataFromSheets
+  parseSchoolDataFromSheets,
+  syncBulkDataToGoogleSheets
 } from './utils/googleSheetsSync';
 import { Header } from './components/Header';
 import { Navbar, TabType } from './components/Navbar';

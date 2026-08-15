@@ -26,6 +26,7 @@ import {
   initialPibgCommittee,
   initialCoCurriculumUnits
 } from '../data/initialData';
+import { getSafeNewsImageUrl } from './imageHelpers';
 
 const KEYS = {
   PROFILE: 'skmp_profile_v1',
@@ -100,7 +101,14 @@ export function saveStaff(staffList: Staff[]): void {
 }
 
 export function loadNews(): NewsItem[] {
-  return getStored<NewsItem[]>(KEYS.NEWS, initialNewsList);
+  const news = getStored<NewsItem[]>(KEYS.NEWS, initialNewsList);
+  if (Array.isArray(news)) {
+    return news.map((item) => ({
+      ...item,
+      imageUrl: getSafeNewsImageUrl(item.imageUrl, item.category)
+    }));
+  }
+  return initialNewsList;
 }
 
 export function saveNews(newsList: NewsItem[]): void {

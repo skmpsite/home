@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NewsItem } from '../../types';
 import { Newspaper, Search, Clock, User, Eye, Tag, Pin, ArrowRight, X, Share2 } from 'lucide-react';
+import { getSafeNewsImageUrl } from '../../utils/imageHelpers';
 
 interface NewsSectionProps {
   newsList: NewsItem[];
@@ -87,8 +88,12 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
             <div>
               <div className="h-48 overflow-hidden relative bg-slate-900/50">
                 <img
-                  src={news.imageUrl}
+                  src={getSafeNewsImageUrl(news.imageUrl, news.category)}
                   alt={news.title}
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    e.currentTarget.src = getSafeNewsImageUrl('', news.category);
+                  }}
                   className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                 />
                 <span className="absolute top-3 left-3 px-2.5 py-1 bg-blue-950/90 text-yellow-300 font-bold rounded-lg text-[10px] uppercase border border-white/20">
@@ -158,8 +163,12 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
 
             <div className="rounded-2xl overflow-hidden max-h-72 bg-slate-900">
               <img
-                src={selectedNewsItem.imageUrl}
+                src={getSafeNewsImageUrl(selectedNewsItem.imageUrl, selectedNewsItem.category)}
                 alt={selectedNewsItem.title}
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  e.currentTarget.src = getSafeNewsImageUrl('', selectedNewsItem.category);
+                }}
                 className="w-full h-full object-cover"
               />
             </div>

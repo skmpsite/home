@@ -62,6 +62,10 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ galleryItems }) 
             <img
               src={item.url}
               alt={item.title}
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                e.currentTarget.src = "https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&q=80&w=600";
+              }}
               className="w-full h-full object-cover group-hover:scale-110 transition duration-300 opacity-90 group-hover:opacity-100"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent opacity-0 group-hover:opacity-100 transition p-4 flex flex-col justify-end text-white">

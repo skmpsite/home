@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { GasScriptSection } from './sections/GasScriptSection';
 import { syncBulkDataToGoogleSheets } from '../utils/googleSheetsSync';
+import { getSafeNewsImageUrl, compressAndResizeImage } from '../utils/imageHelpers';
 
 interface AdminDashboardProps {
   profile: SchoolProfile;
@@ -784,12 +785,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <input
                       type="file"
                       accept="image/*"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          const r = new FileReader();
-                          r.onloadend = () => setNewNews({ ...newNews, imageUrl: r.result as string });
-                          r.readAsDataURL(file);
+                          try {
+                            const compressed = await compressAndResizeImage(file, 640, 480, 0.75);
+                            setNewNews({ ...newNews, imageUrl: compressed });
+                          } catch {
+                            const r = new FileReader();
+                            r.onloadend = () => setNewNews({ ...newNews, imageUrl: r.result as string });
+                            r.readAsDataURL(file);
+                          }
                         }
                       }}
                       className="block w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-yellow-400 file:text-blue-950 cursor-pointer"
@@ -839,7 +845,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   {newsList.map((n) => (
                     <tr key={n.id} className="hover:bg-white/5">
                       <td className="p-3">
-                        <img src={n.imageUrl} alt="" className="w-10 h-10 object-cover rounded-lg border border-white/20" />
+                        <img
+                          src={getSafeNewsImageUrl(n.imageUrl, n.category)}
+                          alt=""
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            e.currentTarget.src = getSafeNewsImageUrl('', n.category);
+                          }}
+                          className="w-10 h-10 object-cover rounded-lg border border-white/20"
+                        />
                       </td>
                       <td className="p-3 font-bold text-white max-w-xs truncate">{n.title}</td>
                       <td className="p-3">
@@ -956,16 +970,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <div>
                 <label className="block font-bold text-slate-200 mb-1">Tukar Gambar (Gambar / Foto Upload)</label>
                 <div className="flex items-center gap-3">
-                  <img src={editingNews.imageUrl} alt="" className="w-12 h-12 rounded-xl object-cover border" />
+                  <img
+                    src={getSafeNewsImageUrl(editingNews.imageUrl, editingNews.category)}
+                    alt=""
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      e.currentTarget.src = getSafeNewsImageUrl('', editingNews.category);
+                    }}
+                    className="w-12 h-12 rounded-xl object-cover border"
+                  />
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        const r = new FileReader();
-                        r.onloadend = () => setEditingNews({ ...editingNews, imageUrl: r.result as string });
-                        r.readAsDataURL(file);
+                        try {
+                          const compressed = await compressAndResizeImage(file, 640, 480, 0.75);
+                          setEditingNews({ ...editingNews, imageUrl: compressed });
+                        } catch {
+                          const r = new FileReader();
+                          r.onloadend = () => setEditingNews({ ...editingNews, imageUrl: r.result as string });
+                          r.readAsDataURL(file);
+                        }
                       }
                     }}
                     className="block w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-yellow-400 file:text-blue-950 cursor-pointer"
@@ -1055,12 +1082,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        const r = new FileReader();
-                        r.onloadend = () => setNewStaff({ ...newStaff, photoUrl: r.result as string });
-                        r.readAsDataURL(file);
+                        try {
+                          const compressed = await compressAndResizeImage(file, 400, 500, 0.75);
+                          setNewStaff({ ...newStaff, photoUrl: compressed });
+                        } catch {
+                          const r = new FileReader();
+                          r.onloadend = () => setNewStaff({ ...newStaff, photoUrl: r.result as string });
+                          r.readAsDataURL(file);
+                        }
                       }
                     }}
                     className="block w-full text-xs text-slate-300 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-yellow-400 file:text-blue-950 cursor-pointer"
@@ -1209,12 +1241,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        const r = new FileReader();
-                        r.onloadend = () => setEditingStaff({ ...editingStaff, photoUrl: r.result as string });
-                        r.readAsDataURL(file);
+                        try {
+                          const compressed = await compressAndResizeImage(file, 400, 500, 0.75);
+                          setEditingStaff({ ...editingStaff, photoUrl: compressed });
+                        } catch {
+                          const r = new FileReader();
+                          r.onloadend = () => setEditingStaff({ ...editingStaff, photoUrl: r.result as string });
+                          r.readAsDataURL(file);
+                        }
                       }
                     }}
                     className="block w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-yellow-400 file:text-blue-950 cursor-pointer"
@@ -1653,12 +1690,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (file) {
-                      const r = new FileReader();
-                      r.onloadend = () => setNewGallery({ ...newGallery, url: r.result as string });
-                      r.readAsDataURL(file);
+                      try {
+                        const compressed = await compressAndResizeImage(file, 800, 600, 0.75);
+                        setNewGallery({ ...newGallery, url: compressed });
+                      } catch {
+                        const r = new FileReader();
+                        r.onloadend = () => setNewGallery({ ...newGallery, url: r.result as string });
+                        r.readAsDataURL(file);
+                      }
                     }
                   }}
                   className="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-yellow-400 file:text-blue-950 cursor-pointer"
