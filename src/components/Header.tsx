@@ -50,8 +50,8 @@ export const Header: React.FC<HeaderProps> = ({
               {profile.email}
             </span>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-white/10 text-yellow-300 px-2.5 py-0.5 rounded-full border border-white/15">
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold bg-white/10 text-yellow-300 px-2.5 py-0.5 rounded-full border border-white/15">
               Kod Sekolah: {profile.code}
             </span>
             {isAdmin ? (
@@ -75,23 +75,25 @@ export const Header: React.FC<HeaderProps> = ({
             ) : (
               <button
                 onClick={onOpenLogin}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-yellow-400 hover:text-yellow-300 transition"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-yellow-400 hover:text-yellow-300 transition px-2 py-0.5 rounded-md hover:bg-white/5"
               >
                 <Lock className="w-3.5 h-3.5 text-yellow-400" />
-                <span>Log Masuk Admin</span>
+                <span>Admin</span>
               </button>
             )}
 
-            {/* Butang Tab Tiga Garisan (Menu Hamburger) di Sebelah Kanan Sekali Log Masuk Admin */}
+            {/* Garisan Pemisah & Jarak Jelas Agar Tidak Rapat */}
+            <div className="h-4 w-px bg-white/25 mx-1 sm:mx-2" />
+
+            {/* Butang Tab Tiga Garisan di Hujung Kanan Sekali */}
             {onToggleMobileMenu && (
               <button
                 onClick={onToggleMobileMenu}
-                className="p-1 sm:px-2.5 sm:py-1 bg-yellow-400/20 hover:bg-yellow-400 text-yellow-300 hover:text-blue-950 rounded-lg border border-yellow-400/40 transition flex items-center gap-1.5 text-xs font-black shadow-sm"
+                className="p-1.5 bg-yellow-400 hover:bg-yellow-300 text-blue-950 rounded-lg border border-yellow-300 transition flex items-center justify-center shadow-md shadow-yellow-400/20"
                 aria-label="Menu Tab Navigasi"
-                title="Buka / Tutup Menu Tab"
+                title="Buka / Tutup Pilihan Menu Tab"
               >
                 {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-                <span className="hidden sm:inline text-[11px]">Menu Tab</span>
               </button>
             )}
           </div>
