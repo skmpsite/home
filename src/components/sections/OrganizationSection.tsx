@@ -1,15 +1,70 @@
 import React, { useState } from 'react';
-import { Staff } from '../../types';
+import { Staff, SchoolProfile } from '../../types';
+import { initialSchoolProfile } from '../../data/initialData';
 import { Users, Mail, Phone, BookOpen, ShieldCheck, X, Search, UserCheck } from 'lucide-react';
 
 interface OrganizationSectionProps {
   staffList: Staff[];
+  profile?: SchoolProfile;
 }
 
-export const OrganizationSection: React.FC<OrganizationSectionProps> = ({ staffList }) => {
+export const OrganizationSection: React.FC<OrganizationSectionProps> = ({ staffList, profile }) => {
   const [selectedCategory, setSelectedCategory] = useState<'semua' | 'pentadbir' | 'guru' | 'staf'>('semua');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStaffModal, setSelectedStaffModal] = useState<Staff | null>(null);
+
+  const getStaffName = (staff: Staff): string => {
+    const isGuruBesar =
+      staff.id === 'staf-1' ||
+      (staff.position && staff.position.toLowerCase().includes('guru besar')) ||
+      (staff.name && staff.name.toLowerCase().includes('norhafiza'));
+    if (isGuruBesar) {
+      return profile?.principalName || staff.name || 'Puan Norhafiza Binti Dolah';
+    }
+    return staff.name;
+  };
+
+  const getStaffPosition = (staff: Staff): string => {
+    const isGuruBesar =
+      staff.id === 'staf-1' ||
+      (staff.position && staff.position.toLowerCase().includes('guru besar')) ||
+      (staff.name && staff.name.toLowerCase().includes('norhafiza'));
+    if (isGuruBesar) {
+      return profile?.principalTitle || staff.position || 'Guru Besar (DG48)';
+    }
+    return staff.position;
+  };
+
+  const getStaffPhoto = (staff: Staff): string => {
+    const isGuruBesar =
+      staff.id === 'staf-1' ||
+      (staff.position && staff.position.toLowerCase().includes('guru besar')) ||
+      (staff.name && staff.name.toLowerCase().includes('norhafiza'));
+
+    if (isGuruBesar) {
+      // Keutamaan 1: Foto terkini yang dimuat naik admin dalam profil
+      if (profile?.principalPhotoUrl && profile.principalPhotoUrl.trim() !== '') {
+        return profile.principalPhotoUrl;
+      }
+      // Keutamaan 2: Foto yang disimpan dalam rekod staf
+      if (
+        staff.photoUrl &&
+        staff.photoUrl.trim() !== '' &&
+        !staff.photoUrl.includes('unsplash.com') &&
+        !staff.photoUrl.includes('1786556385385') &&
+        !staff.photoUrl.includes('1786555771027')
+      ) {
+        return staff.photoUrl;
+      }
+      // Keutamaan 3: Gambar rasmi lalai
+      return initialSchoolProfile.principalPhotoUrl || '';
+    }
+
+    if (!staff.photoUrl || staff.photoUrl.trim() === '') {
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(staff.name)}&background=0284c7&color=fff`;
+    }
+    return staff.photoUrl;
+  };
 
   const administrators = staffList.filter((s) => s.category === 'pentadbir');
   
@@ -52,19 +107,26 @@ export const OrganizationSection: React.FC<OrganizationSectionProps> = ({ staffL
             >
               <div className="w-24 h-24 rounded-2xl bg-yellow-400 p-0.5 shadow-md overflow-hidden mb-3 border-2 border-yellow-300 group-hover:scale-105 transition">
                 <img
-                  src={admin.photoUrl}
+                  src={getStaffPhoto(admin)}
                   alt={admin.name}
+                  onError={(e) => {
+                    if (admin.position.toLowerCase().includes('guru besar') || admin.name.toLowerCase().includes('norhafiza')) {
+                      e.currentTarget.src = initialSchoolProfile.principalPhotoUrl || '';
+                    } else {
+                      e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(admin.name)}&background=0284c7&color=fff`;
+                    }
+                  }}
                   className="w-full h-full object-cover rounded-xl"
                 />
               </div>
               <span className="px-2.5 py-0.5 bg-blue-950 text-yellow-300 font-black rounded-md text-[10px] uppercase mb-2 border border-white/20">
-                {admin.grade}
+                {admin.position.toLowerCase().includes('guru besar') ? 'DG48' : admin.grade}
               </span>
               <h4 className="font-extrabold text-xs sm:text-sm text-white group-hover:text-yellow-300 transition line-clamp-1">
-                {admin.name}
+                {getStaffName(admin)}
               </h4>
               <p className="text-xs text-yellow-400 font-bold mt-1 line-clamp-2">
-                {admin.position}
+                {getStaffPosition(admin)}
               </p>
             </div>
           ))}
@@ -124,20 +186,27 @@ export const OrganizationSection: React.FC<OrganizationSectionProps> = ({ staffL
             >
               <div className="w-14 h-14 rounded-xl bg-yellow-400 p-0.5 overflow-hidden flex-shrink-0 shadow-sm">
                 <img
-                  src={staff.photoUrl}
-                  alt={staff.name}
+                  src={getStaffPhoto(staff)}
+                  alt={getStaffName(staff)}
+                  onError={(e) => {
+                    if (staff.position.toLowerCase().includes('guru besar') || staff.name.toLowerCase().includes('norhafiza')) {
+                      e.currentTarget.src = initialSchoolProfile.principalPhotoUrl || '';
+                    } else {
+                      e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(staff.name)}&background=0284c7&color=fff`;
+                    }
+                  }}
                   className="w-full h-full object-cover rounded-lg group-hover:scale-105 transition"
                 />
               </div>
               <div className="space-y-0.5 overflow-hidden">
                 <span className="text-[10px] font-bold text-yellow-300 uppercase bg-yellow-500/20 px-1.5 py-0.2 rounded border border-yellow-400/30">
-                  {staff.grade}
+                  {staff.position.toLowerCase().includes('guru besar') ? 'DG48' : staff.grade}
                 </span>
                 <h5 className="font-extrabold text-xs text-white group-hover:text-yellow-300 transition truncate">
-                  {staff.name}
+                  {getStaffName(staff)}
                 </h5>
                 <p className="text-[11px] text-slate-300 truncate font-medium">
-                  {staff.position}
+                  {getStaffPosition(staff)}
                 </p>
                 {staff.subject && (
                   <p className="text-[10px] text-yellow-400 font-semibold truncate">
@@ -164,21 +233,28 @@ export const OrganizationSection: React.FC<OrganizationSectionProps> = ({ staffL
             <div className="flex flex-col items-center text-center space-y-3">
               <div className="w-24 h-24 rounded-2xl bg-yellow-400 p-1 shadow-lg overflow-hidden">
                 <img
-                  src={selectedStaffModal.photoUrl}
-                  alt={selectedStaffModal.name}
+                  src={getStaffPhoto(selectedStaffModal)}
+                  alt={getStaffName(selectedStaffModal)}
+                  onError={(e) => {
+                    if (selectedStaffModal.position.toLowerCase().includes('guru besar') || selectedStaffModal.name.toLowerCase().includes('norhafiza')) {
+                      e.currentTarget.src = initialSchoolProfile.principalPhotoUrl || '';
+                    } else {
+                      e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedStaffModal.name)}&background=0284c7&color=fff`;
+                    }
+                  }}
                   className="w-full h-full object-cover rounded-xl"
                 />
               </div>
 
               <div>
                 <span className="px-2.5 py-0.5 bg-blue-950 text-yellow-300 font-black rounded-md text-[10px] uppercase border border-white/20">
-                  {selectedStaffModal.grade}
+                  {selectedStaffModal.position.toLowerCase().includes('guru besar') ? 'DG48' : selectedStaffModal.grade}
                 </span>
                 <h3 className="font-extrabold text-base text-white mt-2">
-                  {selectedStaffModal.name}
+                  {getStaffName(selectedStaffModal)}
                 </h3>
                 <p className="text-xs text-yellow-400 font-bold">
-                  {selectedStaffModal.position}
+                  {getStaffPosition(selectedStaffModal)}
                 </p>
               </div>
 
@@ -207,3 +283,4 @@ export const OrganizationSection: React.FC<OrganizationSectionProps> = ({ staffL
     </div>
   );
 };
+

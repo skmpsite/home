@@ -381,7 +381,9 @@ export default function App() {
 
         {activeTab === 'profil' && <ProfileSection profile={profile} />}
 
-        {activeTab === 'organisasi' && <OrganizationSection staffList={staffList} />}
+        {activeTab === 'organisasi' && (
+          <OrganizationSection profile={profile} staffList={staffList} />
+        )}
 
         {activeTab === 'akademik' && <AcademicSection events={events} />}
 

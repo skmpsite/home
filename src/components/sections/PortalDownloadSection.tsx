@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { DownloadDocument, SystemLink, PibgActivity, PibgCommittee } from '../../types';
+import { initialSchoolProfile } from '../../data/initialData';
 import {
   Download,
   ExternalLink,
@@ -281,8 +282,25 @@ export const PortalDownloadSection: React.FC<PortalDownloadSectionProps> = ({
                 >
                   <div className="w-20 h-20 rounded-2xl bg-yellow-400 p-0.5 shadow overflow-hidden">
                     <img
-                      src={comm.photoUrl}
+                      src={
+                        comm.position.toLowerCase().includes('penasihat') ||
+                        comm.position.toLowerCase().includes('guru besar') ||
+                        comm.name.toLowerCase().includes('norhafiza')
+                          ? comm.photoUrl || initialSchoolProfile.principalPhotoUrl || ''
+                          : comm.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(comm.name)}&background=0284c7&color=fff`
+                      }
                       alt={comm.name}
+                      onError={(e) => {
+                        if (
+                          comm.position.toLowerCase().includes('penasihat') ||
+                          comm.position.toLowerCase().includes('guru besar') ||
+                          comm.name.toLowerCase().includes('norhafiza')
+                        ) {
+                          e.currentTarget.src = initialSchoolProfile.principalPhotoUrl || '';
+                        } else {
+                          e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(comm.name)}&background=0284c7&color=fff`;
+                        }
+                      }}
                       className="w-full h-full object-cover rounded-xl"
                     />
                   </div>

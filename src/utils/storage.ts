@@ -83,17 +83,26 @@ export function saveProfile(profile: SchoolProfile): void {
 
 export function loadStaff(): Staff[] {
   const staff = getStored<Staff[]>(KEYS.STAFF, initialStaffList);
-  if (staff && staff.length > 0) {
-    if (staff[0].position.toLowerCase().includes('guru besar')) {
-      if (!staff[0].photoUrl || staff[0].photoUrl.includes('unsplash.com') || staff[0].photoUrl.includes('1786556385385') || staff[0].photoUrl.includes('1786555771027')) {
-        staff[0].photoUrl = initialSchoolProfile.principalPhotoUrl;
+  if (Array.isArray(staff) && staff.length > 0) {
+    const updated = staff.map((s) => {
+      if (
+        s.id === 'staf-1' ||
+        s.position.toLowerCase().includes('guru besar') ||
+        s.name.toLowerCase().includes('norhafiza')
+      ) {
+        return {
+          ...s,
+          name: initialSchoolProfile.principalName,
+          grade: 'DG48',
+          position: 'Guru Besar (DG48)',
+          photoUrl: s.photoUrl && !s.photoUrl.includes('unsplash.com') ? s.photoUrl : initialSchoolProfile.principalPhotoUrl
+        };
       }
-      if (staff[0].name === 'Puan Norhafiza binti Mohamad') {
-        staff[0].name = initialSchoolProfile.principalName;
-      }
-    }
+      return s;
+    });
+    return updated;
   }
-  return staff;
+  return initialStaffList;
 }
 
 export function saveStaff(staffList: Staff[]): void {
@@ -195,7 +204,21 @@ export function savePibgActivities(list: PibgActivity[]): void {
 }
 
 export function loadPibgCommittee(): PibgCommittee[] {
-  return getStored<PibgCommittee[]>(KEYS.PIBG_COMM, initialPibgCommittee);
+  const comm = getStored<PibgCommittee[]>(KEYS.PIBG_COMM, initialPibgCommittee);
+  if (Array.isArray(comm) && comm.length > 0) {
+    const updated = comm.map((c) => {
+      if (c.position.toLowerCase().includes('guru besar') || c.name.toLowerCase().includes('norhafiza')) {
+        return {
+          ...c,
+          name: initialSchoolProfile.principalName,
+          photoUrl: initialSchoolProfile.principalPhotoUrl
+        };
+      }
+      return c;
+    });
+    return updated;
+  }
+  return initialPibgCommittee;
 }
 
 export function savePibgCommittee(list: PibgCommittee[]): void {

@@ -61,18 +61,24 @@ export function getSafeNewsImageUrl(url?: string | null, category?: string, news
 /**
  * Memampatkan fail imej secara automatik sebelum disimpan ke Google Sheets / Storan.
  * Ini memastikan saiz data URI muat dalam had sel Google Sheets (< 50,000 aksara)
- * dan menghalang isu gambar terpotong / corrupt.
+ * dan menghalang isu gambar terpotong / corrupt atau QuotaExceededError.
  */
 export function compressAndResizeImage(
   file: File,
-  maxWidth: number = 640,
-  maxHeight: number = 480,
-  quality: number = 0.75
+  maxWidth: number = 500,
+  maxHeight: number = 400,
+  quality: number = 0.7
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('Gagal membaca fail imej.'));
     reader.onload = (e) => {
+      const result = e.target?.result as string;
+      if (!result) {
+        reject(new Error('Fail imej kosong.'));
+        return;
+      }
+
       const img = new Image();
       img.onerror = () => reject(new Error('Format imej tidak sah.'));
       img.onload = () => {
@@ -80,8 +86,8 @@ export function compressAndResizeImage(
 
         if (width > maxWidth || height > maxHeight) {
           const ratio = Math.min(maxWidth / width, maxHeight / height);
-          width = Math.round(width * ratio);
-          height = Math.round(height * ratio);
+          width = Math.max(1, Math.round(width * ratio));
+          height = Math.max(1, Math.round(height * ratio));
         }
 
         const canvas = document.createElement('canvas');
@@ -90,7 +96,7 @@ export function compressAndResizeImage(
 
         const ctx = canvas.getContext('2d');
         if (!ctx) {
-          resolve(e.target?.result as string);
+          resolve(result);
           return;
         }
 
@@ -99,13 +105,22 @@ export function compressAndResizeImage(
         ctx.fillRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Eksport ke JPEG berkualiti optimum dan saiz sangat padat (~15KB)
+        // Eksport ke JPEG berkualiti optimum dan saiz sangat padat (<20KB)
         const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
         resolve(compressedDataUrl);
       };
-      img.src = e.target?.result as string;
+      img.src = result;
     };
     reader.readAsDataURL(file);
   });
 }
+
+/**
+ * Mampatan khas untuk gambar profil / potret warga sekolah (saiz padat ~8-12KB)
+ * Memastikan keselamatan storan localStorage & had sel Google Sheets.
+ */
+export function compressStaffPhoto(file: File): Promise<string> {
+  return compressAndResizeImage(file, 260, 320, 0.68);
+}
+
 

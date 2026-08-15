@@ -188,20 +188,55 @@ export function parseSchoolDataFromSheets(rawData: any): {
 
   // 2. Warga Sekolah
   if (Array.isArray(rawData.Warga_Sekolah) && rawData.Warga_Sekolah.length > 0) {
+    // Dapatkan data staf setempat sedia ada untuk mengekalkan foto tempatan jika sheet belum ada foto
+    let localStaffList: Staff[] = [];
+    try {
+      const rawStored = localStorage.getItem('skmp_staff_v1');
+      if (rawStored) {
+        localStaffList = JSON.parse(rawStored);
+      }
+    } catch {
+      // ignore
+    }
+
     const validStaff: Staff[] = rawData.Warga_Sekolah
       .filter((row: any) => row.Nama)
-      .map((row: any, idx: number) => ({
-        id: row.ID || `staf-sheet-${idx + 1}`,
-        name: row.Nama || '',
-        position: row.Jawatan || 'Guru',
-        category: (row.Kategori || 'guru').toLowerCase() as any,
-        grade: row.Gred || 'DG41',
-        subject: row['Subjek/Tugas'] || row.Subject || '',
-        email: row['E-mel'] || row.Email || '',
-        phone: row.Telefon || row.Phone || '',
-        photoUrl: row.Foto_URL || row.PhotoUrl || '',
-        order: Number(row.Susunan) || idx + 1
-      }));
+      .map((row: any, idx: number) => {
+        const name = (row.Nama || '').trim();
+        const position = (row.Jawatan || 'Guru').trim();
+        const isGuruBesar = position.toLowerCase().includes('guru besar') || name.toLowerCase().includes('norhafiza');
+        const rawPhoto = (row.Foto_URL || row.PhotoUrl || '').trim();
+        
+        let photoUrl = rawPhoto;
+        if (isGuruBesar) {
+          if (!rawPhoto || rawPhoto.includes('unsplash.com') || rawPhoto.includes('1786556385385') || rawPhoto.includes('1786555771027')) {
+            photoUrl = ''; // will fallback to official principal photo in component
+          }
+        } else {
+          // Jika Google Sheets tiada foto (atau kosong), semak jika staf setempat ada foto yang telah dimuat naik
+          if (!photoUrl || photoUrl === '' || photoUrl === 'null' || photoUrl === 'undefined') {
+            const localMatch = localStaffList.find(
+              (ls) => (row.ID && ls.id === row.ID) || (name && ls.name.toLowerCase() === name.toLowerCase())
+            );
+            if (localMatch && localMatch.photoUrl && !localMatch.photoUrl.includes('ui-avatars.com')) {
+              photoUrl = localMatch.photoUrl;
+            }
+          }
+        }
+        
+        return {
+          id: row.ID || `staf-sheet-${idx + 1}`,
+          name: isGuruBesar ? (name || 'Puan Norhafiza Binti Dolah') : name,
+          position: isGuruBesar ? 'Guru Besar (DG48)' : position,
+          category: (row.Kategori || (isGuruBesar ? 'pentadbir' : 'guru')).toLowerCase() as any,
+          grade: isGuruBesar ? 'DG48' : (row.Gred || 'DG41'),
+          subject: row['Subjek/Tugas'] || row.Subject || '',
+          email: row['E-mel'] || row.Email || '',
+          phone: row.Telefon || row.Phone || '',
+          photoUrl: photoUrl,
+          order: Number(row.Susunan) || idx + 1
+        };
+      });
 
     if (validStaff.length > 0) {
       parsed.staffList = validStaff;

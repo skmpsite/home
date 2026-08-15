@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   SchoolProfile,
   Staff,
@@ -37,9 +37,10 @@ import {
   UploadCloud,
   RefreshCw
 } from 'lucide-react';
+import { initialSchoolProfile } from '../data/initialData';
 import { GasScriptSection } from './sections/GasScriptSection';
 import { syncBulkDataToGoogleSheets } from '../utils/googleSheetsSync';
-import { getSafeNewsImageUrl, compressAndResizeImage, OFFICIAL_NEWS_PHOTOS, SECONDARY_FALLBACK_PHOTOS } from '../utils/imageHelpers';
+import { getSafeNewsImageUrl, compressAndResizeImage, compressStaffPhoto, OFFICIAL_NEWS_PHOTOS, SECONDARY_FALLBACK_PHOTOS } from '../utils/imageHelpers';
 
 interface AdminDashboardProps {
   profile: SchoolProfile;
@@ -135,6 +136,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // Profile Edit State
   const [editProfileData, setEditProfileData] = useState<SchoolProfile>({ ...profile });
 
+  useEffect(() => {
+    setEditProfileData({ ...profile });
+  }, [profile]);
+
+  const getStaffPhoto = (s: Staff | null | undefined): string => {
+    if (!s) return initialSchoolProfile.principalPhotoUrl || '';
+    const isGuruBesar =
+      s.id === 'staf-1' ||
+      (s.position && s.position.toLowerCase().includes('guru besar')) ||
+      (s.name && s.name.toLowerCase().includes('norhafiza'));
+
+    if (isGuruBesar) {
+      if (editProfileData.principalPhotoUrl && editProfileData.principalPhotoUrl.trim() !== '') {
+        return editProfileData.principalPhotoUrl;
+      }
+      if (profile.principalPhotoUrl && profile.principalPhotoUrl.trim() !== '') {
+        return profile.principalPhotoUrl;
+      }
+      if (
+        s.photoUrl &&
+        s.photoUrl.trim() !== '' &&
+        !s.photoUrl.includes('unsplash.com') &&
+        !s.photoUrl.includes('1786556385385') &&
+        !s.photoUrl.includes('1786555771027')
+      ) {
+        return s.photoUrl;
+      }
+      return initialSchoolProfile.principalPhotoUrl || '';
+    }
+
+    if (!s.photoUrl || s.photoUrl.trim() === '' || s.photoUrl.includes('unsplash.com')) {
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=0284c7&color=fff`;
+    }
+    return s.photoUrl;
+  };
+
   // News State & Modal
   const [newNews, setNewNews] = useState({
     title: '',
@@ -155,7 +192,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     grade: 'DG41',
     subject: '',
     email: '',
-    photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300'
+    photoUrl: ''
   });
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
 
@@ -231,10 +268,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     if (editProfileData.principalName || editProfileData.principalPhotoUrl) {
       if (staffList.length > 0) {
         const updatedStaff = staffList.map((s) => {
-          if (s.id === 'staf-1' || s.position.toLowerCase().includes('guru besar')) {
+          if (
+            s.id === 'staf-1' ||
+            s.position.toLowerCase().includes('guru besar') ||
+            s.name.toLowerCase().includes('norhafiza')
+          ) {
             return {
               ...s,
               name: editProfileData.principalName || s.name,
+              position: editProfileData.principalTitle || s.position || 'Guru Besar (DG48)',
+              grade: 'DG48',
+              category: 'pentadbir' as const,
               photoUrl: editProfileData.principalPhotoUrl || s.photoUrl
             };
           }
@@ -245,7 +289,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
       if (pibgCommittee.length > 0) {
         const updatedPibg = pibgCommittee.map((c) => {
-          if (c.id === 'pibg-c-2' || c.position.toLowerCase().includes('penasihat') || c.position.toLowerCase().includes('guru besar')) {
+          if (
+            c.id === 'pibg-c-2' ||
+            c.position.toLowerCase().includes('penasihat') ||
+            c.position.toLowerCase().includes('guru besar') ||
+            c.name.toLowerCase().includes('norhafiza')
+          ) {
             return {
               ...c,
               name: editProfileData.principalName || c.name,
@@ -316,13 +365,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     if (!newStaff.name || !newStaff.position) return;
     const staff: Staff = {
       id: 'staf-' + Date.now(),
-      name: newStaff.name,
-      position: newStaff.position,
+      name: newStaff.name.trim(),
+      position: newStaff.position.trim(),
       category: newStaff.category,
-      grade: newStaff.grade,
-      subject: newStaff.subject,
-      email: newStaff.email || `${newStaff.name.toLowerCase().replace(/\s+/g, '')}@moe-dl.edu.my`,
-      photoUrl: newStaff.photoUrl,
+      grade: newStaff.grade || 'DG41',
+      subject: newStaff.subject || '',
+      email: newStaff.email || `${newStaff.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@moe-dl.edu.my`,
+      photoUrl: newStaff.photoUrl || '',
       order: staffList.length + 1
     };
     onSaveStaff([...staffList, staff]);
@@ -333,9 +382,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       grade: 'DG41',
       subject: '',
       email: '',
-      photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300'
+      photoUrl: ''
     });
-    showToast('Warga Sekolah Ditambah!');
+    showToast('Warga Sekolah Berjaya Ditambah!');
   };
 
   const handleUpdateStaffSubmit = (e?: React.FormEvent) => {
@@ -1074,7 +1123,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <label className="block text-xs font-bold text-slate-200 mb-1">Kategori</label>
                   <select
                     value={newStaff.category}
-                    onChange={(e) => setNewStaff({ ...newStaff, category: e.target.value as any })}
+                    onChange={(e) => setNewStaff((prev) => ({ ...prev, category: e.target.value as any }))}
                     className="w-full text-xs px-3.5 py-2.5 bg-slate-900 border border-white/20 text-white rounded-xl font-medium"
                   >
                     <option value="pentadbir">Pentadbir Utama</option>
@@ -1088,32 +1137,87 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <input
                     type="text"
                     value={newStaff.grade}
-                    onChange={(e) => setNewStaff({ ...newStaff, grade: e.target.value })}
+                    onChange={(e) => setNewStaff((prev) => ({ ...prev, grade: e.target.value }))}
                     placeholder="DG44 / N22"
                     className="w-full text-xs px-3.5 py-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-200 mb-1">Muat Naik Foto Staf</label>
+                  <label className="block text-xs font-bold text-slate-200 mb-1">E-mel MOE DL (Pilihan)</label>
                   <input
-                    type="file"
-                    accept="image/*"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        try {
-                          const compressed = await compressAndResizeImage(file, 400, 500, 0.75);
-                          setNewStaff({ ...newStaff, photoUrl: compressed });
-                        } catch {
-                          const r = new FileReader();
-                          r.onloadend = () => setNewStaff({ ...newStaff, photoUrl: r.result as string });
-                          r.readAsDataURL(file);
-                        }
-                      }
-                    }}
-                    className="block w-full text-xs text-slate-300 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-yellow-400 file:text-blue-950 cursor-pointer"
+                    type="text"
+                    value={newStaff.email}
+                    onChange={(e) => setNewStaff((prev) => ({ ...prev, email: e.target.value }))}
+                    placeholder="nama@moe-dl.edu.my"
+                    className="w-full text-xs px-3.5 py-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
                   />
+                </div>
+              </div>
+
+              {/* Photo Upload & Preview for New Staff */}
+              <div className="bg-slate-900/60 p-4 rounded-2xl border border-white/10 space-y-2">
+                <label className="block text-xs font-bold text-yellow-300">
+                  Foto Staf / Tenaga Pengajar
+                </label>
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  <div className="w-16 h-20 rounded-xl overflow-hidden border-2 border-yellow-400/60 flex-shrink-0 bg-slate-950 flex items-center justify-center shadow-md">
+                    {newStaff.photoUrl ? (
+                      <img
+                        src={newStaff.photoUrl}
+                        alt="Pratonton"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="text-center p-1 text-[10px] text-slate-400 font-bold">
+                        {newStaff.name ? (
+                          <img
+                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(newStaff.name)}&background=0284c7&color=fff`}
+                            alt="Avatar"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          'Tiada Foto'
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-2 w-full">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            try {
+                              const compressed = await compressStaffPhoto(file);
+                              setNewStaff((prev) => ({ ...prev, photoUrl: compressed }));
+                            } catch (err) {
+                              console.warn('Ralat muat naik foto staf:', err);
+                            }
+                          }
+                        }}
+                        className="block w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-yellow-400 file:text-blue-950 cursor-pointer"
+                      />
+                      {newStaff.photoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setNewStaff((prev) => ({ ...prev, photoUrl: '' }))}
+                          className="px-2.5 py-1.5 bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 rounded-lg text-xs font-bold whitespace-nowrap"
+                        >
+                          Padam Foto
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      value={newStaff.photoUrl && newStaff.photoUrl.startsWith('data:') ? '' : newStaff.photoUrl}
+                      onChange={(e) => setNewStaff((prev) => ({ ...prev, photoUrl: e.target.value }))}
+                      placeholder="Atau tampal URL Gambar (Contoh: https://...)"
+                      className="w-full text-xs px-3 py-1.5 bg-white/5 border border-white/10 text-white rounded-lg placeholder-slate-400"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1144,7 +1248,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   {staffList.map((s) => (
                     <tr key={s.id} className="hover:bg-white/5">
                       <td className="p-3">
-                        <img src={s.photoUrl} alt="" className="w-9 h-11 object-cover rounded-lg border border-white/20" />
+                        <img
+                          src={getStaffPhoto(s)}
+                          alt={s.name}
+                          onError={(e) => {
+                            if (s.position.toLowerCase().includes('guru besar') || s.name.toLowerCase().includes('norhafiza')) {
+                              e.currentTarget.src = initialSchoolProfile.principalPhotoUrl || '';
+                            } else {
+                              e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=0284c7&color=fff`;
+                            }
+                          }}
+                          className="w-9 h-11 object-cover rounded-lg border border-white/20"
+                        />
                       </td>
                       <td className="p-3 font-bold text-white">{s.name}</td>
                       <td className="p-3 text-slate-300">{s.position}</td>
@@ -1251,28 +1366,62 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-200 mb-1">Muat Naik Gambar Foto Staf Baru</label>
-                <div className="flex items-center gap-3">
-                  <img src={editingStaff.photoUrl} alt="" className="w-12 h-14 rounded-xl object-cover border" />
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        try {
-                          const compressed = await compressAndResizeImage(file, 400, 500, 0.75);
-                          setEditingStaff({ ...editingStaff, photoUrl: compressed });
-                        } catch {
-                          const r = new FileReader();
-                          r.onloadend = () => setEditingStaff({ ...editingStaff, photoUrl: r.result as string });
-                          r.readAsDataURL(file);
+              {/* Photo Upload & Preview for Editing Staff */}
+              <div className="bg-slate-950 p-3.5 rounded-2xl border border-white/10 space-y-2">
+                <label className="block font-bold text-yellow-300">
+                  Kemaskini Foto Staf
+                </label>
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                  <div className="w-16 h-20 rounded-xl overflow-hidden border-2 border-yellow-400/60 flex-shrink-0 bg-slate-900 flex items-center justify-center shadow-md">
+                    <img
+                      src={getStaffPhoto(editingStaff)}
+                      alt={editingStaff.name}
+                      onError={(e) => {
+                        if (editingStaff.position.toLowerCase().includes('guru besar') || editingStaff.name.toLowerCase().includes('norhafiza')) {
+                          e.currentTarget.src = initialSchoolProfile.principalPhotoUrl || '';
+                        } else {
+                          e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(editingStaff.name)}&background=0284c7&color=fff`;
                         }
-                      }
-                    }}
-                    className="block w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-yellow-400 file:text-blue-950 cursor-pointer"
-                  />
+                      }}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex-1 space-y-2 w-full">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            try {
+                              const compressed = await compressStaffPhoto(file);
+                              setEditingStaff((prev) => prev ? { ...prev, photoUrl: compressed } : null);
+                            } catch (err) {
+                              console.warn('Ralat muat naik foto staf:', err);
+                            }
+                          }
+                        }}
+                        className="block w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-yellow-400 file:text-blue-950 cursor-pointer"
+                      />
+                      {editingStaff.photoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingStaff((prev) => prev ? { ...prev, photoUrl: '' } : null)}
+                          className="px-2.5 py-1.5 bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 rounded-lg text-xs font-bold whitespace-nowrap"
+                        >
+                          Padam
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      value={editingStaff.photoUrl && editingStaff.photoUrl.startsWith('data:') ? '' : editingStaff.photoUrl}
+                      onChange={(e) => setEditingStaff((prev) => prev ? { ...prev, photoUrl: e.target.value } : null)}
+                      placeholder="Atau masukkan pautan URL Gambar (https://...)"
+                      className="w-full text-xs px-3 py-1.5 bg-white/5 border border-white/10 text-white rounded-lg placeholder-slate-400"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -2215,27 +2364,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <div className="bg-white/5 p-4 rounded-2xl border border-white/10 space-y-3">
               <label className="block font-bold text-yellow-300">Muat Naik / Kemaskini Gambar Rasmi Guru Besar</label>
               <div className="flex flex-col sm:flex-row items-center gap-4">
-                {editProfileData.principalPhotoUrl && (
-                  <div className="w-16 h-20 rounded-xl overflow-hidden border border-yellow-400/50 flex-shrink-0 bg-slate-900">
-                    <img
-                      src={editProfileData.principalPhotoUrl}
-                      alt="Guru Besar"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                )}
+                <div className="w-16 h-20 rounded-xl overflow-hidden border border-yellow-400/50 flex-shrink-0 bg-slate-900">
+                  <img
+                    src={editProfileData.principalPhotoUrl || profile.principalPhotoUrl || initialSchoolProfile.principalPhotoUrl}
+                    alt="Guru Besar"
+                    onError={(e) => {
+                      e.currentTarget.src = initialSchoolProfile.principalPhotoUrl || '';
+                    }}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
                 <div className="flex-1 space-y-2 w-full">
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          setEditProfileData({ ...editProfileData, principalPhotoUrl: reader.result as string });
-                        };
-                        reader.readAsDataURL(file);
+                        try {
+                          const compressed = await compressAndResizeImage(file, 360, 480, 0.72);
+                          setEditProfileData((prev) => ({ ...prev, principalPhotoUrl: compressed }));
+                        } catch (err) {
+                          console.warn('Ralat muat naik foto Guru Besar:', err);
+                        }
                       }
                     }}
                     className="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-yellow-400 file:text-blue-950 hover:file:bg-yellow-300 cursor-pointer"

@@ -1,5 +1,6 @@
 import React from 'react';
 import { SchoolProfile, NewsItem, CalendarEvent, Staff } from '../../types';
+import { initialSchoolProfile } from '../../data/initialData';
 import {
   Bell,
   Megaphone,
@@ -49,7 +50,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   );
 
   const displayName = profile.principalName || (guruBesarFromStaff ? guruBesarFromStaff.name : 'Puan Norhafiza Binti Dolah');
-  const displayPhoto = profile.principalPhotoUrl || guruBesarFromStaff?.photoUrl;
+  const displayPhoto =
+    profile.principalPhotoUrl || guruBesarFromStaff?.photoUrl || initialSchoolProfile.principalPhotoUrl;
   const displayTitle = profile.principalTitle || (guruBesarFromStaff ? guruBesarFromStaff.position : 'Guru Besar (DG48)');
   const pinnedNews = latestNews.filter((n) => n.isPinned)[0] || latestNews[0];
 
@@ -123,6 +125,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                   <img
                     src={displayPhoto}
                     alt={displayName}
+                    onError={(e) => {
+                      e.currentTarget.src = initialSchoolProfile.principalPhotoUrl || '';
+                    }}
                     className="w-full h-full object-cover rounded-xl"
                   />
                 </div>
