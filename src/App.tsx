@@ -83,6 +83,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>('utama');
   const [isAdmin, setIsAdmin] = useState(false);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedNewsReader, setSelectedNewsReader] = useState<NewsItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -334,26 +335,33 @@ export default function App() {
         background: 'radial-gradient(circle at 0% 0%, #1e3a8a 0%, #1e293b 50%, #0f172a 100%)'
       }}
     >
-      {/* Top Header */}
-      <Header
-        profile={profile}
-        isAdmin={isAdmin}
-        onOpenLogin={() => setLoginModalOpen(true)}
-        onLogout={() => setIsAdmin(false)}
-        searchResults={searchResults}
-        onSearchChange={setSearchQuery}
-        searchQuery={searchQuery}
-        onSelectSearchResult={handleSelectSearchResult}
-        onOpenAdminDashboard={() => setActiveTab('admin_cms')}
-      />
+      {/* Top Header & Tab Navigation Bar (Natural Scroll Flow) */}
+      <div className="w-full relative shadow-2xl backdrop-blur-xl bg-slate-950/90 border-b border-white/10">
+        <Header
+          profile={profile}
+          isAdmin={isAdmin}
+          onOpenLogin={() => setLoginModalOpen(true)}
+          onLogout={() => setIsAdmin(false)}
+          searchResults={searchResults}
+          onSearchChange={setSearchQuery}
+          searchQuery={searchQuery}
+          onSelectSearchResult={handleSelectSearchResult}
+          onOpenAdminDashboard={() => setActiveTab('admin_cms')}
+          isMobileMenuOpen={mobileMenuOpen}
+          onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
+        />
 
-      {/* Navbar Menu */}
-      <Navbar
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        isAdmin={isAdmin}
-        unreadFeedbackCount={unreadFeedbackCount}
-      />
+        {/* Navbar Menu */}
+        <Navbar
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          isAdmin={isAdmin}
+          unreadFeedbackCount={unreadFeedbackCount}
+          mobileMenuOpen={mobileMenuOpen}
+          onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
+          onCloseMobileMenu={() => setMobileMenuOpen(false)}
+        />
+      </div>
 
       {/* Main Container View Switcher */}
       <main className="flex-grow max-w-7xl mx-auto w-full px-4 py-8">

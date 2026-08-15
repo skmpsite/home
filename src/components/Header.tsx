@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SchoolProfile, SearchResultItem } from '../types';
-import { Search, Lock, UserCheck, MapPin, Phone, Mail, LogOut, ChevronRight, X, ShieldAlert } from 'lucide-react';
+import { Search, Lock, UserCheck, MapPin, Phone, Mail, LogOut, ChevronRight, X, ShieldAlert, Menu } from 'lucide-react';
 
 interface HeaderProps {
   profile: SchoolProfile;
@@ -12,6 +12,8 @@ interface HeaderProps {
   searchQuery: string;
   onSelectSearchResult: (item: SearchResultItem) => void;
   onOpenAdminDashboard: () => void;
+  isMobileMenuOpen?: boolean;
+  onToggleMobileMenu?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -23,12 +25,14 @@ export const Header: React.FC<HeaderProps> = ({
   onSearchChange,
   searchQuery,
   onSelectSearchResult,
-  onOpenAdminDashboard
+  onOpenAdminDashboard,
+  isMobileMenuOpen,
+  onToggleMobileMenu
 }) => {
   const [showSearchResults, setShowSearchResults] = useState(false);
 
   return (
-    <header className="bg-white/10 backdrop-blur-lg border-b border-white/10 text-white shadow-2xl sticky top-0 z-50">
+    <header className="bg-white/10 backdrop-blur-lg border-b border-white/10 text-white shadow-md">
       {/* Top Banner Info Line */}
       <div className="bg-white/5 backdrop-blur-md text-slate-200 text-xs py-1.5 px-4 border-b border-white/10">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
@@ -75,6 +79,19 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <Lock className="w-3.5 h-3.5 text-yellow-400" />
                 <span>Log Masuk Admin</span>
+              </button>
+            )}
+
+            {/* Butang Tab Tiga Garisan (Menu Hamburger) di Sebelah Kanan Sekali Log Masuk Admin */}
+            {onToggleMobileMenu && (
+              <button
+                onClick={onToggleMobileMenu}
+                className="p-1 sm:px-2.5 sm:py-1 bg-yellow-400/20 hover:bg-yellow-400 text-yellow-300 hover:text-blue-950 rounded-lg border border-yellow-400/40 transition flex items-center gap-1.5 text-xs font-black shadow-sm"
+                aria-label="Menu Tab Navigasi"
+                title="Buka / Tutup Menu Tab"
+              >
+                {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+                <span className="hidden sm:inline text-[11px]">Menu Tab</span>
               </button>
             )}
           </div>

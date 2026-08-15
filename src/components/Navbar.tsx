@@ -36,15 +36,38 @@ interface NavbarProps {
   onTabChange: (tab: TabType) => void;
   isAdmin: boolean;
   unreadFeedbackCount: number;
+  mobileMenuOpen?: boolean;
+  onToggleMobileMenu?: () => void;
+  onCloseMobileMenu?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   onTabChange,
   isAdmin,
-  unreadFeedbackCount
+  unreadFeedbackCount,
+  mobileMenuOpen: controlledMenuOpen,
+  onToggleMobileMenu,
+  onCloseMobileMenu
 }) => {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [internalMenuOpen, setInternalMenuOpen] = useState(false);
+  const isMenuOpen = controlledMenuOpen !== undefined ? controlledMenuOpen : internalMenuOpen;
+
+  const handleToggleMenu = () => {
+    if (onToggleMobileMenu) {
+      onToggleMobileMenu();
+    } else {
+      setInternalMenuOpen((prev) => !prev);
+    }
+  };
+
+  const handleCloseMenu = () => {
+    if (onCloseMobileMenu) {
+      onCloseMobileMenu();
+    } else {
+      setInternalMenuOpen(false);
+    }
+  };
 
   const navItems = [
     { id: 'utama' as TabType, label: 'Utama', icon: Home },
@@ -61,11 +84,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   ];
 
   return (
-    <nav className="bg-white/10 backdrop-blur-md border-b border-white/10 text-white shadow-lg sticky top-[82px] z-40">
+    <nav className="bg-slate-900/60 backdrop-blur-md border-b border-white/10 text-white shadow-md">
       <div className="max-w-7xl mx-auto px-4">
-        <div className="flex items-center justify-between h-12">
-          {/* Desktop Nav Items */}
-          <div className="hidden lg:flex items-center space-x-1 overflow-x-auto py-1 scrollbar-none w-full">
+        <div className="flex items-center justify-between h-11">
+          {/* Desktop & Mobile Scrollable Nav Items */}
+          <div className="flex items-center space-x-1 overflow-x-auto py-1 scrollbar-none w-full">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -73,7 +96,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   key={item.id}
                   onClick={() => onTabChange(item.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition whitespace-nowrap ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition whitespace-nowrap flex-shrink-0 ${
                     isActive
                       ? 'bg-yellow-400 text-blue-950 font-black shadow-md shadow-yellow-400/20 border border-yellow-300'
                       : 'text-slate-200 hover:bg-white/10 hover:text-white border border-transparent'
@@ -94,7 +117,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {isAdmin && (
               <button
                 onClick={() => onTabChange('admin_cms')}
-                className={`ml-auto px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition whitespace-nowrap ${
+                className={`ml-auto px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition whitespace-nowrap flex-shrink-0 ${
                   activeTab === 'admin_cms'
                     ? 'bg-emerald-500 text-slate-950 shadow-md border border-emerald-300'
                     : 'bg-emerald-500/80 hover:bg-emerald-500 text-white border border-emerald-400/40'
@@ -110,66 +133,50 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
           </div>
-
-          {/* Mobile Menu Toggle Button */}
-          <div className="flex lg:hidden items-center justify-between w-full">
-            <span className="text-xs font-black text-yellow-400 uppercase tracking-wide flex items-center gap-1.5">
-              <BookOpen className="w-4 h-4 text-yellow-400" />
-              SKMP Web Portal
-            </span>
-
-            <div className="flex items-center gap-2">
-              {isAdmin && (
-                <button
-                  onClick={() => onTabChange('admin_cms')}
-                  className="px-2.5 py-1 bg-emerald-500 text-slate-950 font-extrabold text-xs rounded-lg flex items-center gap-1"
-                >
-                  <LayoutDashboard className="w-3.5 h-3.5" />
-                  CMS
-                </button>
-              )}
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-1.5 text-slate-200 hover:text-white hover:bg-white/10 rounded-lg transition"
-                aria-label="Toggle Menu"
-              >
-                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </button>
-            </div>
-          </div>
         </div>
 
-        {/* Mobile Navigation Drawer */}
-        {mobileMenuOpen && (
-          <div className="lg:hidden py-3 border-t border-white/10 space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    onTabChange(item.id);
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition ${
-                    isActive
-                      ? 'bg-yellow-400 text-blue-950 font-black'
-                      : 'text-slate-200 hover:bg-white/10'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Icon className="w-4 h-4" />
-                    <span>{item.label}</span>
-                  </div>
-                  {item.badge && (
-                    <span className="text-[10px] bg-slate-900 text-yellow-300 font-bold px-2 py-0.5 rounded border border-white/20">
-                      {item.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+        {/* Full Navigation Drawer when Top-Right 3-lines button is clicked */}
+        {isMenuOpen && (
+          <div className="py-3 border-t border-white/10 space-y-1">
+            <div className="px-2 pb-1.5 flex items-center justify-between text-[11px] font-extrabold text-yellow-400 uppercase tracking-wider">
+              <span>Pilihan Pantas Semua Menu Tab</span>
+              <button
+                onClick={handleCloseMenu}
+                className="text-slate-400 hover:text-white p-1 rounded transition"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      onTabChange(item.id);
+                      handleCloseMenu();
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition ${
+                      isActive
+                        ? 'bg-yellow-400 text-blue-950 font-black shadow-md'
+                        : 'text-slate-200 hover:bg-white/10'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Icon className="w-4 h-4" />
+                      <span>{item.label}</span>
+                    </div>
+                    {item.badge && (
+                      <span className="text-[10px] bg-slate-900 text-yellow-300 font-bold px-2 py-0.5 rounded border border-white/20">
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
