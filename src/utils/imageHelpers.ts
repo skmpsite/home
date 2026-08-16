@@ -59,15 +59,38 @@ export function getSafeNewsImageUrl(url?: string | null, category?: string, news
 }
 
 /**
+ * Menukar pautan perkongsian Google Drive (view/open/uc) kepada URL imej terus (direct image CDN)
+ * yang boleh dipaparkan oleh pelayar web tanpa ralat CORS atau paparan halaman kosong.
+ */
+export function formatGoogleDriveUrl(url?: string | null): string {
+  if (!url || typeof url !== 'string') return '';
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+
+  // Jika sudah data URI
+  if (trimmed.startsWith('data:image/')) return trimmed;
+
+  // Semak jika pautan Google Drive
+  const driveFileRegex = /(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=view&)?id=)|docs\.google\.com\/uc\?id=)([a-zA-Z0-9_-]+)/i;
+  const match = trimmed.match(driveFileRegex);
+  if (match && match[1]) {
+    const fileId = match[1];
+    return `https://lh3.googleusercontent.com/d/${fileId}`;
+  }
+
+  return trimmed;
+}
+
+/**
  * Memampatkan fail imej secara automatik sebelum disimpan ke Google Sheets / Storan.
  * Ini memastikan saiz data URI muat dalam had sel Google Sheets (< 50,000 aksara)
  * dan menghalang isu gambar terpotong / corrupt atau QuotaExceededError.
  */
 export function compressAndResizeImage(
   file: File,
-  maxWidth: number = 500,
+  maxWidth: number = 400,
   maxHeight: number = 400,
-  quality: number = 0.7
+  quality: number = 0.72
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -80,34 +103,48 @@ export function compressAndResizeImage(
       }
 
       const img = new Image();
-      img.onerror = () => reject(new Error('Format imej tidak sah.'));
+      img.onerror = () => {
+        // Fallback selamat jika decoding canvas gagal
+        resolve(result);
+      };
       img.onload = () => {
-        let { width, height } = img;
+        try {
+          let width = img.naturalWidth || img.width;
+          let height = img.naturalHeight || img.height;
 
-        if (width > maxWidth || height > maxHeight) {
-          const ratio = Math.min(maxWidth / width, maxHeight / height);
-          width = Math.max(1, Math.round(width * ratio));
-          height = Math.max(1, Math.round(height * ratio));
-        }
+          if (width <= 0 || height <= 0) {
+            resolve(result);
+            return;
+          }
 
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
+          if (width > maxWidth || height > maxHeight) {
+            const ratio = Math.min(maxWidth / width, maxHeight / height);
+            width = Math.max(1, Math.round(width * ratio));
+            height = Math.max(1, Math.round(height * ratio));
+          }
 
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(result);
+            return;
+          }
+
+          // Lukis latar belakang putih jika PNG ada ketelusan (transparency)
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Eksport ke JPEG berkualiti optimum dan saiz sangat padat (<15KB)
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressedDataUrl);
+        } catch (err) {
+          console.warn('Fallback ke fail asal semasa mampatan:', err);
           resolve(result);
-          return;
         }
-
-        // Lukis latar belakang putih jika PNG ada ketelusan (transparency)
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, width, height);
-        ctx.drawImage(img, 0, 0, width, height);
-
-        // Eksport ke JPEG berkualiti optimum dan saiz sangat padat (<20KB)
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
-        resolve(compressedDataUrl);
       };
       img.src = result;
     };
@@ -116,11 +153,11 @@ export function compressAndResizeImage(
 }
 
 /**
- * Mampatan khas untuk gambar profil / potret warga sekolah (saiz padat ~8-12KB)
+ * Mampatan khas untuk gambar profil / potret warga sekolah (saiz padat ~5-10KB)
  * Memastikan keselamatan storan localStorage & had sel Google Sheets.
  */
 export function compressStaffPhoto(file: File): Promise<string> {
-  return compressAndResizeImage(file, 260, 320, 0.68);
+  return compressAndResizeImage(file, 200, 260, 0.72);
 }
 
 

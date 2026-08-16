@@ -9,7 +9,7 @@ import {
   FeedbackEntry
 } from '../types';
 import { DEFAULT_GAS_URL } from '../config';
-import { getSafeNewsImageUrl } from './imageHelpers';
+import { getSafeNewsImageUrl, formatGoogleDriveUrl } from './imageHelpers';
 
 const GAS_URL_KEY = 'skmp_gas_url_v1';
 
@@ -233,7 +233,7 @@ export function parseSchoolDataFromSheets(rawData: any): {
           subject: row['Subjek/Tugas'] || row.Subject || '',
           email: row['E-mel'] || row.Email || '',
           phone: row.Telefon || row.Phone || '',
-          photoUrl: photoUrl,
+          photoUrl: formatGoogleDriveUrl(photoUrl),
           order: Number(row.Susunan) || idx + 1
         };
       });

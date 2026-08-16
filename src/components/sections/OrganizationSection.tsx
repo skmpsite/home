@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Staff, SchoolProfile } from '../../types';
 import { initialSchoolProfile } from '../../data/initialData';
+import { formatGoogleDriveUrl } from '../../utils/imageHelpers';
 import { Users, Mail, Phone, BookOpen, ShieldCheck, X, Search, UserCheck } from 'lucide-react';
 
 interface OrganizationSectionProps {
@@ -44,7 +45,7 @@ export const OrganizationSection: React.FC<OrganizationSectionProps> = ({ staffL
     if (isGuruBesar) {
       // Keutamaan 1: Foto terkini yang dimuat naik admin dalam profil
       if (profile?.principalPhotoUrl && profile.principalPhotoUrl.trim() !== '') {
-        return profile.principalPhotoUrl;
+        return formatGoogleDriveUrl(profile.principalPhotoUrl);
       }
       // Keutamaan 2: Foto yang disimpan dalam rekod staf
       if (
@@ -54,16 +55,16 @@ export const OrganizationSection: React.FC<OrganizationSectionProps> = ({ staffL
         !staff.photoUrl.includes('1786556385385') &&
         !staff.photoUrl.includes('1786555771027')
       ) {
-        return staff.photoUrl;
+        return formatGoogleDriveUrl(staff.photoUrl);
       }
       // Keutamaan 3: Gambar rasmi lalai
       return initialSchoolProfile.principalPhotoUrl || '';
     }
 
-    if (!staff.photoUrl || staff.photoUrl.trim() === '') {
-      return `https://ui-avatars.com/api/?name=${encodeURIComponent(staff.name)}&background=0284c7&color=fff`;
+    if (!staff.photoUrl || staff.photoUrl.trim() === '' || staff.photoUrl.includes('unsplash.com')) {
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(staff.name || 'Guru')}&background=0284c7&color=fff`;
     }
-    return staff.photoUrl;
+    return formatGoogleDriveUrl(staff.photoUrl);
   };
 
   const administrators = staffList.filter((s) => s.category === 'pentadbir');
