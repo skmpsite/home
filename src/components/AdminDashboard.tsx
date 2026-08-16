@@ -35,7 +35,8 @@ import {
   Upload,
   BookOpen,
   UploadCloud,
-  RefreshCw
+  RefreshCw,
+  UserCheck
 } from 'lucide-react';
 import { initialSchoolProfile } from '../data/initialData';
 import { GasScriptSection } from './sections/GasScriptSection';
@@ -141,7 +142,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   }, [profile]);
 
   const getStaffPhoto = (s: Staff | null | undefined): string => {
-    if (!s) return initialSchoolProfile.principalPhotoUrl || '';
+    if (!s) return '';
     const isGuruBesar =
       s.id === 'staf-1' ||
       (s.position && s.position.toLowerCase().includes('guru besar')) ||
@@ -159,15 +160,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         s.photoUrl.trim() !== '' &&
         !s.photoUrl.includes('unsplash.com') &&
         !s.photoUrl.includes('1786556385385') &&
-        !s.photoUrl.includes('1786555771027')
+        !s.photoUrl.includes('1786555771027') &&
+        !s.photoUrl.includes('guru_besar_norhafiza') &&
+        !s.photoUrl.includes('1786808669012')
       ) {
         return s.photoUrl;
       }
-      return initialSchoolProfile.principalPhotoUrl || '';
+      return '';
     }
 
     if (!s.photoUrl || s.photoUrl.trim() === '' || s.photoUrl.includes('unsplash.com')) {
-      return `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=0284c7&color=fff`;
+      return '';
     }
     return s.photoUrl;
   };
@@ -1245,47 +1248,52 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10 text-slate-200">
-                  {staffList.map((s) => (
-                    <tr key={s.id} className="hover:bg-white/5">
-                      <td className="p-3">
-                        <img
-                          src={getStaffPhoto(s)}
-                          alt={s.name}
-                          onError={(e) => {
-                            if (s.position.toLowerCase().includes('guru besar') || s.name.toLowerCase().includes('norhafiza')) {
-                              e.currentTarget.src = initialSchoolProfile.principalPhotoUrl || '';
-                            } else {
-                              e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=0284c7&color=fff`;
-                            }
-                          }}
-                          className="w-9 h-11 object-cover rounded-lg border border-white/20"
-                        />
-                      </td>
-                      <td className="p-3 font-bold text-white">{s.name}</td>
-                      <td className="p-3 text-slate-300">{s.position}</td>
-                      <td className="p-3">
-                        <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-300 font-bold rounded text-[10px] uppercase border border-yellow-400/30">
-                          {s.category}
-                        </span>
-                      </td>
-                      <td className="p-3 text-center flex items-center justify-center gap-1">
-                        <button
-                          onClick={() => setEditingStaff({ ...s })}
-                          className="p-1.5 text-yellow-400 hover:bg-white/10 rounded-lg transition"
-                          title="Sunting"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteStaff(s.id)}
-                          className="p-1.5 text-rose-400 hover:bg-white/10 rounded-lg transition"
-                          title="Padam"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {staffList.map((s) => {
+                    const photo = getStaffPhoto(s);
+                    return (
+                      <tr key={s.id} className="hover:bg-white/5">
+                        <td className="p-3">
+                          <div className="w-9 h-11 rounded-lg border border-white/20 overflow-hidden bg-slate-800 flex items-center justify-center">
+                            {photo && photo.trim() !== '' ? (
+                              <img
+                                src={photo}
+                                alt={s.name}
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <UserCheck className="w-4 h-4 text-yellow-400 opacity-70" />
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3 font-bold text-white">{s.name}</td>
+                        <td className="p-3 text-slate-300">{s.position}</td>
+                        <td className="p-3">
+                          <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-300 font-bold rounded text-[10px] uppercase border border-yellow-400/30">
+                            {s.category}
+                          </span>
+                        </td>
+                        <td className="p-3 text-center flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => setEditingStaff({ ...s })}
+                            className="p-1.5 text-yellow-400 hover:bg-white/10 rounded-lg transition"
+                            title="Sunting"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteStaff(s.id)}
+                            className="p-1.5 text-rose-400 hover:bg-white/10 rounded-lg transition"
+                            title="Padam"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1373,18 +1381,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </label>
                 <div className="flex flex-col sm:flex-row items-center gap-3">
                   <div className="w-16 h-20 rounded-xl overflow-hidden border-2 border-yellow-400/60 flex-shrink-0 bg-slate-900 flex items-center justify-center shadow-md">
-                    <img
-                      src={getStaffPhoto(editingStaff)}
-                      alt={editingStaff.name}
-                      onError={(e) => {
-                        if (editingStaff.position.toLowerCase().includes('guru besar') || editingStaff.name.toLowerCase().includes('norhafiza')) {
-                          e.currentTarget.src = initialSchoolProfile.principalPhotoUrl || '';
-                        } else {
-                          e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(editingStaff.name)}&background=0284c7&color=fff`;
-                        }
-                      }}
-                      className="w-full h-full object-cover"
-                    />
+                    {getStaffPhoto(editingStaff) && getStaffPhoto(editingStaff).trim() !== '' ? (
+                      <img
+                        src={getStaffPhoto(editingStaff)}
+                        alt={editingStaff.name}
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <UserCheck className="w-7 h-7 text-yellow-400 opacity-70" />
+                    )}
                   </div>
                   <div className="flex-1 space-y-2 w-full">
                     <div className="flex items-center gap-2">
@@ -2364,34 +2372,52 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <div className="bg-white/5 p-4 rounded-2xl border border-white/10 space-y-3">
               <label className="block font-bold text-yellow-300">Muat Naik / Kemaskini Gambar Rasmi Guru Besar</label>
               <div className="flex flex-col sm:flex-row items-center gap-4">
-                <div className="w-16 h-20 rounded-xl overflow-hidden border border-yellow-400/50 flex-shrink-0 bg-slate-900">
-                  <img
-                    src={editProfileData.principalPhotoUrl || profile.principalPhotoUrl || initialSchoolProfile.principalPhotoUrl}
-                    alt="Guru Besar"
-                    onError={(e) => {
-                      e.currentTarget.src = initialSchoolProfile.principalPhotoUrl || '';
-                    }}
-                    className="w-full h-full object-cover"
-                  />
+                <div className="w-16 h-20 rounded-xl overflow-hidden border border-yellow-400/50 flex-shrink-0 bg-slate-900 flex items-center justify-center">
+                  {(editProfileData.principalPhotoUrl || profile.principalPhotoUrl) ? (
+                    <img
+                      src={editProfileData.principalPhotoUrl || profile.principalPhotoUrl}
+                      alt="Guru Besar"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-slate-800 flex flex-col items-center justify-center text-slate-400 text-center p-1">
+                      <UserCheck className="w-6 h-6 mb-1 text-yellow-400 opacity-70" />
+                      <span className="text-[9px] leading-tight text-slate-400">Kosong</span>
+                    </div>
+                  )}
                 </div>
                 <div className="flex-1 space-y-2 w-full">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        try {
-                          const compressed = await compressAndResizeImage(file, 360, 480, 0.72);
-                          setEditProfileData((prev) => ({ ...prev, principalPhotoUrl: compressed }));
-                        } catch (err) {
-                          console.warn('Ralat muat naik foto Guru Besar:', err);
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          try {
+                            const compressed = await compressAndResizeImage(file, 360, 480, 0.72);
+                            setEditProfileData((prev) => ({ ...prev, principalPhotoUrl: compressed }));
+                          } catch (err) {
+                            console.warn('Ralat muat naik foto Guru Besar:', err);
+                          }
                         }
-                      }
-                    }}
-                    className="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-yellow-400 file:text-blue-950 hover:file:bg-yellow-300 cursor-pointer"
-                  />
-                  <p className="text-[11px] text-slate-400">Muat naik fail foto asal Guru Besar untuk dikemaskini di perutusan utama dan carta organisasi.</p>
+                      }}
+                      className="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-yellow-400 file:text-blue-950 hover:file:bg-yellow-300 cursor-pointer"
+                    />
+                    {(editProfileData.principalPhotoUrl || profile.principalPhotoUrl) && (
+                      <button
+                        type="button"
+                        onClick={() => setEditProfileData((prev) => ({ ...prev, principalPhotoUrl: '' }))}
+                        className="px-3 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-bold rounded-xl text-xs whitespace-nowrap transition border border-rose-500/30"
+                      >
+                        Padam Foto
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-400">Muat naik fail foto Guru Besar baharu atau biarkan kosong jika belum ada gambar.</p>
                 </div>
               </div>
             </div>

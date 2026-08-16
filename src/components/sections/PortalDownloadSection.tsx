@@ -275,42 +275,42 @@ export const PortalDownloadSection: React.FC<PortalDownloadSectionProps> = ({
               Barisan Jawatankuasa PIBG Sesi 2026/2027
             </h4>
             <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {pibgCommittee.map((comm) => (
-                <div
-                  key={comm.id}
-                  className="bg-white/10 backdrop-blur-md p-5 rounded-3xl border border-white/10 shadow-lg text-center flex flex-col items-center space-y-2"
-                >
-                  <div className="w-20 h-20 rounded-2xl bg-yellow-400 p-0.5 shadow overflow-hidden">
-                    <img
-                      src={
-                        comm.position.toLowerCase().includes('penasihat') ||
-                        comm.position.toLowerCase().includes('guru besar') ||
-                        comm.name.toLowerCase().includes('norhafiza')
-                          ? comm.photoUrl || initialSchoolProfile.principalPhotoUrl || ''
-                          : comm.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(comm.name)}&background=0284c7&color=fff`
-                      }
-                      alt={comm.name}
-                      onError={(e) => {
-                        if (
-                          comm.position.toLowerCase().includes('penasihat') ||
-                          comm.position.toLowerCase().includes('guru besar') ||
-                          comm.name.toLowerCase().includes('norhafiza')
-                        ) {
-                          e.currentTarget.src = initialSchoolProfile.principalPhotoUrl || '';
-                        } else {
-                          e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(comm.name)}&background=0284c7&color=fff`;
-                        }
-                      }}
-                      className="w-full h-full object-cover rounded-xl"
-                    />
+              {pibgCommittee.map((comm) => {
+                const isGuruBesar =
+                  comm.position.toLowerCase().includes('penasihat') ||
+                  comm.position.toLowerCase().includes('guru besar') ||
+                  comm.name.toLowerCase().includes('norhafiza');
+                const photo = comm.photoUrl;
+
+                return (
+                  <div
+                    key={comm.id}
+                    className="bg-white/10 backdrop-blur-md p-5 rounded-3xl border border-white/10 shadow-lg text-center flex flex-col items-center space-y-2"
+                  >
+                    <div className="w-20 h-20 rounded-2xl bg-yellow-400 p-0.5 shadow overflow-hidden flex items-center justify-center">
+                      {photo && photo.trim() !== '' ? (
+                        <img
+                          src={photo}
+                          alt={comm.name}
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                          className="w-full h-full object-cover rounded-xl"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-slate-900 rounded-xl flex items-center justify-center text-yellow-300">
+                          <UserCheck className="w-8 h-8 opacity-70" />
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-blue-950 text-yellow-300 rounded border border-white/20">
+                      {comm.category === 'ibu_bapa' ? 'Wakil Ibu Bapa' : 'Wakil Guru'}
+                    </span>
+                    <h5 className="font-extrabold text-xs text-white">{comm.name}</h5>
+                    <p className="text-xs text-yellow-400 font-bold">{comm.position}</p>
                   </div>
-                  <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-blue-950 text-yellow-300 rounded border border-white/20">
-                    {comm.category === 'ibu_bapa' ? 'Wakil Ibu Bapa' : 'Wakil Guru'}
-                  </span>
-                  <h5 className="font-extrabold text-xs text-white">{comm.name}</h5>
-                  <p className="text-xs text-yellow-400 font-bold">{comm.position}</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

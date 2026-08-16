@@ -53,16 +53,17 @@ export const OrganizationSection: React.FC<OrganizationSectionProps> = ({ staffL
         staff.photoUrl.trim() !== '' &&
         !staff.photoUrl.includes('unsplash.com') &&
         !staff.photoUrl.includes('1786556385385') &&
-        !staff.photoUrl.includes('1786555771027')
+        !staff.photoUrl.includes('1786555771027') &&
+        !staff.photoUrl.includes('guru_besar_norhafiza') &&
+        !staff.photoUrl.includes('1786808669012')
       ) {
         return formatGoogleDriveUrl(staff.photoUrl);
       }
-      // Keutamaan 3: Gambar rasmi lalai
-      return initialSchoolProfile.principalPhotoUrl || '';
+      return '';
     }
 
     if (!staff.photoUrl || staff.photoUrl.trim() === '' || staff.photoUrl.includes('unsplash.com')) {
-      return `https://ui-avatars.com/api/?name=${encodeURIComponent(staff.name || 'Guru')}&background=0284c7&color=fff`;
+      return '';
     }
     return formatGoogleDriveUrl(staff.photoUrl);
   };
@@ -100,37 +101,42 @@ export const OrganizationSection: React.FC<OrganizationSectionProps> = ({ staffL
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {administrators.map((admin) => (
-            <div
-              key={admin.id}
-              onClick={() => setSelectedStaffModal(admin)}
-              className="bg-white/10 backdrop-blur-md rounded-3xl border border-white/10 p-5 shadow-lg hover:shadow-xl transition text-center cursor-pointer group hover:border-yellow-400/50 flex flex-col items-center"
-            >
-              <div className="w-24 h-24 rounded-2xl bg-yellow-400 p-0.5 shadow-md overflow-hidden mb-3 border-2 border-yellow-300 group-hover:scale-105 transition">
-                <img
-                  src={getStaffPhoto(admin)}
-                  alt={admin.name}
-                  onError={(e) => {
-                    if (admin.position.toLowerCase().includes('guru besar') || admin.name.toLowerCase().includes('norhafiza')) {
-                      e.currentTarget.src = initialSchoolProfile.principalPhotoUrl || '';
-                    } else {
-                      e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(admin.name)}&background=0284c7&color=fff`;
-                    }
-                  }}
-                  className="w-full h-full object-cover rounded-xl"
-                />
+          {administrators.map((admin) => {
+            const photo = getStaffPhoto(admin);
+            return (
+              <div
+                key={admin.id}
+                onClick={() => setSelectedStaffModal(admin)}
+                className="bg-white/10 backdrop-blur-md rounded-3xl border border-white/10 p-5 shadow-lg hover:shadow-xl transition text-center cursor-pointer group hover:border-yellow-400/50 flex flex-col items-center"
+              >
+                <div className="w-24 h-24 rounded-2xl bg-yellow-400 p-0.5 shadow-md overflow-hidden mb-3 border-2 border-yellow-300 group-hover:scale-105 transition flex items-center justify-center">
+                  {photo && photo.trim() !== '' ? (
+                    <img
+                      src={photo}
+                      alt={admin.name}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                      className="w-full h-full object-cover rounded-xl"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-slate-900 rounded-xl flex items-center justify-center text-yellow-300">
+                      <UserCheck className="w-10 h-10 opacity-70" />
+                    </div>
+                  )}
+                </div>
+                <span className="px-2.5 py-0.5 bg-blue-950 text-yellow-300 font-black rounded-md text-[10px] uppercase mb-2 border border-white/20">
+                  {admin.position.toLowerCase().includes('guru besar') ? 'DG48' : admin.grade}
+                </span>
+                <h4 className="font-extrabold text-xs sm:text-sm text-white group-hover:text-yellow-300 transition line-clamp-1">
+                  {getStaffName(admin)}
+                </h4>
+                <p className="text-xs text-yellow-400 font-bold mt-1 line-clamp-2">
+                  {getStaffPosition(admin)}
+                </p>
               </div>
-              <span className="px-2.5 py-0.5 bg-blue-950 text-yellow-300 font-black rounded-md text-[10px] uppercase mb-2 border border-white/20">
-                {admin.position.toLowerCase().includes('guru besar') ? 'DG48' : admin.grade}
-              </span>
-              <h4 className="font-extrabold text-xs sm:text-sm text-white group-hover:text-yellow-300 transition line-clamp-1">
-                {getStaffName(admin)}
-              </h4>
-              <p className="text-xs text-yellow-400 font-bold mt-1 line-clamp-2">
-                {getStaffPosition(admin)}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -179,44 +185,49 @@ export const OrganizationSection: React.FC<OrganizationSectionProps> = ({ staffL
 
         {/* Staff Cards Grid */}
         <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {filteredStaff.map((staff) => (
-            <div
-              key={staff.id}
-              onClick={() => setSelectedStaffModal(staff)}
-              className="bg-white/5 hover:bg-white/10 p-4 rounded-2xl border border-white/10 hover:border-yellow-400/50 transition cursor-pointer shadow-md group flex items-center gap-3.5"
-            >
-              <div className="w-14 h-14 rounded-xl bg-yellow-400 p-0.5 overflow-hidden flex-shrink-0 shadow-sm">
-                <img
-                  src={getStaffPhoto(staff)}
-                  alt={getStaffName(staff)}
-                  onError={(e) => {
-                    if (staff.position.toLowerCase().includes('guru besar') || staff.name.toLowerCase().includes('norhafiza')) {
-                      e.currentTarget.src = initialSchoolProfile.principalPhotoUrl || '';
-                    } else {
-                      e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(staff.name)}&background=0284c7&color=fff`;
-                    }
-                  }}
-                  className="w-full h-full object-cover rounded-lg group-hover:scale-105 transition"
-                />
-              </div>
-              <div className="space-y-0.5 overflow-hidden">
-                <span className="text-[10px] font-bold text-yellow-300 uppercase bg-yellow-500/20 px-1.5 py-0.2 rounded border border-yellow-400/30">
-                  {staff.position.toLowerCase().includes('guru besar') ? 'DG48' : staff.grade}
-                </span>
-                <h5 className="font-extrabold text-xs text-white group-hover:text-yellow-300 transition truncate">
-                  {getStaffName(staff)}
-                </h5>
-                <p className="text-[11px] text-slate-300 truncate font-medium">
-                  {getStaffPosition(staff)}
-                </p>
-                {staff.subject && (
-                  <p className="text-[10px] text-yellow-400 font-semibold truncate">
-                    📖 {staff.subject}
+          {filteredStaff.map((staff) => {
+            const photo = getStaffPhoto(staff);
+            return (
+              <div
+                key={staff.id}
+                onClick={() => setSelectedStaffModal(staff)}
+                className="bg-white/5 hover:bg-white/10 p-4 rounded-2xl border border-white/10 hover:border-yellow-400/50 transition cursor-pointer shadow-md group flex items-center gap-3.5"
+              >
+                <div className="w-14 h-14 rounded-xl bg-yellow-400 p-0.5 overflow-hidden flex-shrink-0 shadow-sm flex items-center justify-center">
+                  {photo && photo.trim() !== '' ? (
+                    <img
+                      src={photo}
+                      alt={getStaffName(staff)}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                      className="w-full h-full object-cover rounded-lg group-hover:scale-105 transition"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-slate-900 rounded-lg flex items-center justify-center text-yellow-300">
+                      <UserCheck className="w-6 h-6 opacity-70" />
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-0.5 overflow-hidden">
+                  <span className="text-[10px] font-bold text-yellow-300 uppercase bg-yellow-500/20 px-1.5 py-0.2 rounded border border-yellow-400/30">
+                    {staff.position.toLowerCase().includes('guru besar') ? 'DG48' : staff.grade}
+                  </span>
+                  <h5 className="font-extrabold text-xs text-white group-hover:text-yellow-300 transition truncate">
+                    {getStaffName(staff)}
+                  </h5>
+                  <p className="text-[11px] text-slate-300 truncate font-medium">
+                    {getStaffPosition(staff)}
                   </p>
-                )}
+                  {staff.subject && (
+                    <p className="text-[10px] text-yellow-400 font-semibold truncate">
+                      📖 {staff.subject}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -232,19 +243,21 @@ export const OrganizationSection: React.FC<OrganizationSectionProps> = ({ staffL
             </button>
 
             <div className="flex flex-col items-center text-center space-y-3">
-              <div className="w-24 h-24 rounded-2xl bg-yellow-400 p-1 shadow-lg overflow-hidden">
-                <img
-                  src={getStaffPhoto(selectedStaffModal)}
-                  alt={getStaffName(selectedStaffModal)}
-                  onError={(e) => {
-                    if (selectedStaffModal.position.toLowerCase().includes('guru besar') || selectedStaffModal.name.toLowerCase().includes('norhafiza')) {
-                      e.currentTarget.src = initialSchoolProfile.principalPhotoUrl || '';
-                    } else {
-                      e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedStaffModal.name)}&background=0284c7&color=fff`;
-                    }
-                  }}
-                  className="w-full h-full object-cover rounded-xl"
-                />
+              <div className="w-24 h-24 rounded-2xl bg-yellow-400 p-1 shadow-lg overflow-hidden flex items-center justify-center">
+                {getStaffPhoto(selectedStaffModal) && getStaffPhoto(selectedStaffModal).trim() !== '' ? (
+                  <img
+                    src={getStaffPhoto(selectedStaffModal)}
+                    alt={getStaffName(selectedStaffModal)}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                    className="w-full h-full object-cover rounded-xl"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-slate-900 rounded-xl flex items-center justify-center text-yellow-300">
+                    <UserCheck className="w-10 h-10 opacity-70" />
+                  </div>
+                )}
               </div>
 
               <div>

@@ -68,8 +68,15 @@ export function loadProfile(): SchoolProfile {
   if (!profile.logoUrl || profile.logoUrl.includes('unsplash.com')) {
     profile.logoUrl = initialSchoolProfile.logoUrl;
   }
-  if (!profile.principalPhotoUrl || profile.principalPhotoUrl.includes('unsplash.com') || profile.principalPhotoUrl.includes('1786556385385') || profile.principalPhotoUrl.includes('1786555771027')) {
-    profile.principalPhotoUrl = initialSchoolProfile.principalPhotoUrl;
+  if (
+    profile.principalPhotoUrl &&
+    (profile.principalPhotoUrl.includes('unsplash.com') ||
+      profile.principalPhotoUrl.includes('1786556385385') ||
+      profile.principalPhotoUrl.includes('1786555771027') ||
+      profile.principalPhotoUrl.includes('guru_besar_norhafiza') ||
+      profile.principalPhotoUrl.includes('1786808669012'))
+  ) {
+    profile.principalPhotoUrl = "";
   }
   if (!profile.principalName || profile.principalName === 'Puan Norhafiza binti Mohamad') {
     profile.principalName = initialSchoolProfile.principalName;
@@ -90,12 +97,20 @@ export function loadStaff(): Staff[] {
         s.position.toLowerCase().includes('guru besar') ||
         s.name.toLowerCase().includes('norhafiza')
       ) {
+        const isOldAsset =
+          s.photoUrl &&
+          (s.photoUrl.includes('unsplash.com') ||
+            s.photoUrl.includes('1786556385385') ||
+            s.photoUrl.includes('1786555771027') ||
+            s.photoUrl.includes('guru_besar_norhafiza') ||
+            s.photoUrl.includes('1786808669012'));
+
         return {
           ...s,
           name: initialSchoolProfile.principalName,
           grade: 'DG48',
           position: 'Guru Besar (DG48)',
-          photoUrl: s.photoUrl && !s.photoUrl.includes('unsplash.com') ? s.photoUrl : initialSchoolProfile.principalPhotoUrl
+          photoUrl: isOldAsset ? "" : (s.photoUrl || "")
         };
       }
       return s;
@@ -208,10 +223,18 @@ export function loadPibgCommittee(): PibgCommittee[] {
   if (Array.isArray(comm) && comm.length > 0) {
     const updated = comm.map((c) => {
       if (c.position.toLowerCase().includes('guru besar') || c.name.toLowerCase().includes('norhafiza')) {
+        const isOldAsset =
+          c.photoUrl &&
+          (c.photoUrl.includes('unsplash.com') ||
+            c.photoUrl.includes('1786556385385') ||
+            c.photoUrl.includes('1786555771027') ||
+            c.photoUrl.includes('guru_besar_norhafiza') ||
+            c.photoUrl.includes('1786808669012'));
+
         return {
           ...c,
           name: initialSchoolProfile.principalName,
-          photoUrl: initialSchoolProfile.principalPhotoUrl
+          photoUrl: isOldAsset ? "" : (c.photoUrl || "")
         };
       }
       return c;

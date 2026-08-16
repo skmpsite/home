@@ -50,8 +50,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   );
 
   const displayName = profile.principalName || (guruBesarFromStaff ? guruBesarFromStaff.name : 'Puan Norhafiza Binti Dolah');
-  const displayPhoto =
-    profile.principalPhotoUrl || guruBesarFromStaff?.photoUrl || initialSchoolProfile.principalPhotoUrl;
+  const displayPhoto = profile.principalPhotoUrl || guruBesarFromStaff?.photoUrl || '';
   const displayTitle = profile.principalTitle || (guruBesarFromStaff ? guruBesarFromStaff.position : 'Guru Besar (DG48)');
   const pinnedNews = latestNews.filter((n) => n.isPinned)[0] || latestNews[0];
 
@@ -121,15 +120,21 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             <div className="bg-slate-900/60 backdrop-blur-xl rounded-2xl p-6 border border-white/10 shadow-2xl relative">
               <Quote className="w-8 h-8 text-yellow-400/30 absolute top-4 right-4" />
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-yellow-400 p-1 shadow-lg overflow-hidden flex-shrink-0 border-2 border-yellow-300/60">
-                  <img
-                    src={displayPhoto}
-                    alt={displayName}
-                    onError={(e) => {
-                      e.currentTarget.src = initialSchoolProfile.principalPhotoUrl || '';
-                    }}
-                    className="w-full h-full object-cover rounded-xl"
-                  />
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-yellow-400 p-1 shadow-lg overflow-hidden flex-shrink-0 border-2 border-yellow-300/60 flex items-center justify-center">
+                  {displayPhoto && displayPhoto.trim() !== '' ? (
+                    <img
+                      src={displayPhoto}
+                      alt={displayName}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                      className="w-full h-full object-cover rounded-xl"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-slate-900 rounded-xl flex flex-col items-center justify-center text-yellow-400">
+                      <UserCheck className="w-9 h-9 opacity-80" />
+                    </div>
+                  )}
                 </div>
                 <div>
                   <h4 className="font-black text-sm sm:text-base text-yellow-300">{displayName}</h4>

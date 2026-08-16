@@ -13,7 +13,6 @@ import {
   CoCurriculumUnit,
   FacebookPost
 } from '../types';
-import guruBesarPhoto from '../assets/images/guru_besar_norhafiza_1786808669012.jpg';
 
 export const initialSchoolProfile: SchoolProfile = {
   name: "Sekolah Kebangsaan Merbau Pulas",
@@ -27,7 +26,7 @@ export const initialSchoolProfile: SchoolProfile = {
   email: "KBA5012@moe.edu.my",
   principalName: "Puan Norhafiza Binti Dolah",
   principalTitle: "Guru Besar (DG48)",
-  principalPhotoUrl: guruBesarPhoto,
+  principalPhotoUrl: "",
   principalSpeech: "Selamat datang ke laman web rasmi SK Merbau Pulas. Semoga platform ini menjadi jambatan perhubungan yang mantap antara warga sekolah, ibu bapa, dan komuniti dalam mencapai kecemerlangan modal insan.",
   motto: "Berilmu, Beramal, Berbakti",
   vision: "Pendidikan Berkualiti Insan Terdidik Negara Sejahtera.",
@@ -78,7 +77,7 @@ export const initialStaffList: Staff[] = [
     subject: "Pengurusan & Pentadbiran",
     email: "norhafiza.skmp@moe-dl.edu.my",
     phone: "019-456 7890",
-    photoUrl: guruBesarPhoto,
+    photoUrl: "",
     order: 1
   },
   {
@@ -490,7 +489,7 @@ export const initialPibgCommittee: PibgCommittee[] = [
     name: "Puan Norhafiza Binti Dolah",
     position: "Penasihat (Guru Besar)",
     category: "guru",
-    photoUrl: guruBesarPhoto
+    photoUrl: ""
   },
   {
     id: "pibg-c-3",
