@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Staff, SchoolProfile } from '../../types';
 import { initialSchoolProfile } from '../../data/initialData';
 import { formatGoogleDriveUrl } from '../../utils/imageHelpers';
+import { sortStaffBySeniority } from '../../utils/staffHelpers';
 import { Users, Mail, Phone, BookOpen, ShieldCheck, X, Search, UserCheck } from 'lucide-react';
 
 interface OrganizationSectionProps {
@@ -13,6 +14,11 @@ export const OrganizationSection: React.FC<OrganizationSectionProps> = ({ staffL
   const [selectedCategory, setSelectedCategory] = useState<'semua' | 'pentadbir' | 'guru' | 'staf'>('semua');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStaffModal, setSelectedStaffModal] = useState<Staff | null>(null);
+
+  // Susun semua staf mengikut hierarki kekananan
+  const sortedStaffList = useMemo(() => {
+    return sortStaffBySeniority(staffList, profile);
+  }, [staffList, profile]);
 
   const getStaffName = (staff: Staff): string => {
     const isGuruBesar =
@@ -68,16 +74,21 @@ export const OrganizationSection: React.FC<OrganizationSectionProps> = ({ staffL
     return formatGoogleDriveUrl(staff.photoUrl);
   };
 
-  const administrators = staffList.filter((s) => s.category === 'pentadbir');
+  const administrators = useMemo(() => {
+    return sortedStaffList.filter((s) => s.category === 'pentadbir');
+  }, [sortedStaffList]);
   
-  const filteredStaff = staffList.filter((s) => {
-    const matchesCategory = selectedCategory === 'semua' || s.category === selectedCategory;
-    const matchesSearch =
-      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.position.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (s.subject && s.subject.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesCategory && matchesSearch;
-  });
+  const filteredStaff = useMemo(() => {
+    return sortedStaffList.filter((s) => {
+      const matchesCategory = selectedCategory === 'semua' || s.category === selectedCategory;
+      const matchesSearch =
+        s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.position.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (s.grade && s.grade.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (s.subject && s.subject.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchesCategory && matchesSearch;
+    });
+  }, [sortedStaffList, selectedCategory, searchQuery]);
 
   return (
     <div className="space-y-8 animate-fadeIn">

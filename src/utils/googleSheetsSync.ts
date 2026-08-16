@@ -10,6 +10,7 @@ import {
 } from '../types';
 import { DEFAULT_GAS_URL } from '../config';
 import { getSafeNewsImageUrl, formatGoogleDriveUrl } from './imageHelpers';
+import { sortStaffBySeniority } from './staffHelpers';
 
 const GAS_URL_KEY = 'skmp_gas_url_v1';
 
@@ -331,7 +332,7 @@ export function parseSchoolDataFromSheets(rawData: any): {
     }
 
     if (validStaff.length > 0) {
-      parsed.staffList = validStaff;
+      parsed.staffList = sortStaffBySeniority(validStaff, localProfile || undefined);
     }
   }
 

@@ -27,6 +27,7 @@ import {
   initialCoCurriculumUnits
 } from '../data/initialData';
 import { getSafeNewsImageUrl } from './imageHelpers';
+import { sortStaffBySeniority } from './staffHelpers';
 
 const KEYS = {
   PROFILE: 'skmp_profile_v1',
@@ -115,13 +116,14 @@ export function loadStaff(): Staff[] {
       }
       return s;
     });
-    return updated;
+    return sortStaffBySeniority(updated);
   }
-  return initialStaffList;
+  return sortStaffBySeniority(initialStaffList);
 }
 
 export function saveStaff(staffList: Staff[]): void {
-  setStored(KEYS.STAFF, staffList);
+  const sorted = sortStaffBySeniority(staffList);
+  setStored(KEYS.STAFF, sorted);
 }
 
 export function loadNews(): NewsItem[] {

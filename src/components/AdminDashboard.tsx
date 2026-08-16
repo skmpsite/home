@@ -42,6 +42,7 @@ import { initialSchoolProfile } from '../data/initialData';
 import { GasScriptSection } from './sections/GasScriptSection';
 import { syncBulkDataToGoogleSheets } from '../utils/googleSheetsSync';
 import { getSafeNewsImageUrl, compressAndResizeImage, compressStaffPhoto, OFFICIAL_NEWS_PHOTOS, SECONDARY_FALLBACK_PHOTOS } from '../utils/imageHelpers';
+import { sortStaffBySeniority } from '../utils/staffHelpers';
 
 interface AdminDashboardProps {
   profile: SchoolProfile;
@@ -306,7 +307,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       };
       updatedStaff = [gbStaff, ...staffList];
     }
-    onSaveStaff(updatedStaff);
+    onSaveStaff(sortStaffBySeniority(updatedStaff, editProfileData));
 
     if (pibgCommittee.length > 0) {
       const updatedPibg = pibgCommittee.map((c) => {
@@ -434,7 +435,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       updatedStaff = [...staffList, staff];
     }
 
-    onSaveStaff(updatedStaff);
+    onSaveStaff(sortStaffBySeniority(updatedStaff, profile));
     setNewStaff({
       name: '',
       position: '',
@@ -453,7 +454,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
     try {
       const updatedStaff = staffList.map((s) => (s.id === editingStaff.id ? editingStaff : s));
-      onSaveStaff(updatedStaff);
+      onSaveStaff(sortStaffBySeniority(updatedStaff, profile));
 
       // If updating Guru Besar staff, sync profile and PIBG committee
       const pos = (editingStaff.position || '').toLowerCase();
@@ -491,7 +492,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const handleDeleteStaff = (id: string) => {
-    onSaveStaff(staffList.filter((s) => s.id !== id));
+    onSaveStaff(sortStaffBySeniority(staffList.filter((s) => s.id !== id), profile));
     showToast('Rekod Warga Berjaya Dipadam!');
   };
 
@@ -1305,7 +1306,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10 text-slate-200">
-                  {staffList.map((s) => {
+                  {sortStaffBySeniority(staffList, profile).map((s) => {
                     const photo = getStaffPhoto(s);
                     return (
                       <tr key={s.id} className="hover:bg-white/5">
