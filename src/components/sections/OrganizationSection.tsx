@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Staff, SchoolProfile } from '../../types';
 import { initialSchoolProfile } from '../../data/initialData';
 import { formatGoogleDriveUrl } from '../../utils/imageHelpers';
-import { sortStaffBySeniority } from '../../utils/staffHelpers';
+import { sortStaffBySeniority, isAdministrator, getSeniorityScore } from '../../utils/staffHelpers';
 import { Users, Mail, Phone, BookOpen, ShieldCheck, X, Search, UserCheck } from 'lucide-react';
 
 interface OrganizationSectionProps {
@@ -75,20 +75,31 @@ export const OrganizationSection: React.FC<OrganizationSectionProps> = ({ staffL
   };
 
   const administrators = useMemo(() => {
-    return sortedStaffList.filter((s) => s.category === 'pentadbir');
-  }, [sortedStaffList]);
+    const admins = sortedStaffList.filter((s) => isAdministrator(s, profile));
+    return sortStaffBySeniority(admins, profile);
+  }, [sortedStaffList, profile]);
   
   const filteredStaff = useMemo(() => {
     return sortedStaffList.filter((s) => {
-      const matchesCategory = selectedCategory === 'semua' || s.category === selectedCategory;
+      let matchesCategory = true;
+      if (selectedCategory === 'pentadbir') {
+        matchesCategory = isAdministrator(s, profile);
+      } else if (selectedCategory === 'guru') {
+        matchesCategory = !isAdministrator(s, profile) && (s.category === 'guru' || (s.grade && s.grade.toUpperCase().includes('DG')));
+      } else if (selectedCategory === 'staf') {
+        matchesCategory = s.category === 'staf' || s.category === 'akp' || (!isAdministrator(s, profile) && !(s.grade && s.grade.toUpperCase().includes('DG')));
+      }
+
+      const q = searchQuery.toLowerCase().trim();
       const matchesSearch =
-        s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.position.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (s.grade && s.grade.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (s.subject && s.subject.toLowerCase().includes(searchQuery.toLowerCase()));
+        q === '' ||
+        s.name.toLowerCase().includes(q) ||
+        s.position.toLowerCase().includes(q) ||
+        (s.grade && s.grade.toLowerCase().includes(q)) ||
+        (s.subject && s.subject.toLowerCase().includes(q));
       return matchesCategory && matchesSearch;
     });
-  }, [sortedStaffList, selectedCategory, searchQuery]);
+  }, [sortedStaffList, selectedCategory, searchQuery, profile]);
 
   return (
     <div className="space-y-8 animate-fadeIn">
