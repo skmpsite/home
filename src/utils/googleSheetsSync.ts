@@ -169,17 +169,41 @@ export function parseSchoolDataFromSheets(rawData: any): {
   // 1. Takwim Sekolah
   if (Array.isArray(rawData.Takwim_Sekolah) && rawData.Takwim_Sekolah.length > 0) {
     const validEvents: CalendarEvent[] = rawData.Takwim_Sekolah
-      .filter((row: any) => row.Tajuk && (row.Tarikh_Mula || row.Date))
-      .map((row: any, idx: number) => ({
-        id: row.ID || `evt-sheet-${idx + 1}`,
-        title: row.Tajuk || row.Title || '',
-        date: row.Tarikh_Mula || row.Date || '',
-        endDate: row.Tarikh_Tamat || row.EndDate || undefined,
-        category: (row.Kategori || 'acara').toLowerCase() as any,
-        description: row.Penerangan || row.Description || '',
-        location: row.Lokasi || row.Location || '',
-        targetGroup: row.Kumpulan_Sasaran || row.TargetGroup || ''
-      }));
+      .filter((row: any) => {
+        const title = row['Tajuk Acara'] || row.Tajuk || row.Title;
+        const date = row.Mula || row.Tarikh_Mula || row.Date || row.StartDate;
+        return title && date;
+      })
+      .map((row: any, idx: number) => {
+        const title = row['Tajuk Acara'] || row.Tajuk || row.Title || '';
+        let date = row.Mula || row.Tarikh_Mula || row.Date || row.StartDate || '';
+        let endDate = row.Tamat || row.Tarikh_Tamat || row.EndDate || undefined;
+
+        // Bersihkan format tarikh jika ISO string
+        if (typeof date === 'string' && date.includes('T')) {
+          date = date.split('T')[0];
+        }
+        if (typeof endDate === 'string' && endDate.includes('T')) {
+          endDate = endDate.split('T')[0];
+        }
+
+        const category = (
+          row['Kategori (akademik/kokurikulum/hemal/rasmi)'] ||
+          row.Kategori ||
+          'acara'
+        ).toLowerCase();
+
+        return {
+          id: row.ID || `evt-sheet-${idx + 1}`,
+          title,
+          date,
+          endDate: endDate || undefined,
+          category: category as any,
+          description: row.Catatan || row.Penerangan || row.Description || '',
+          location: row.Lokasi || row.Location || '',
+          targetGroup: row.Sasaran || row.Kumpulan_Sasaran || row.TargetGroup || ''
+        };
+      });
 
     if (validEvents.length > 0) {
       parsed.events = validEvents;
@@ -200,12 +224,26 @@ export function parseSchoolDataFromSheets(rawData: any): {
     }
 
     const validStaff: Staff[] = rawData.Warga_Sekolah
-      .filter((row: any) => row.Nama)
+      .filter((row: any) => row.Nama || row.Name)
       .map((row: any, idx: number) => {
-        const name = (row.Nama || '').trim();
-        const position = (row.Jawatan || 'Guru').trim();
+        const name = (row.Nama || row.Name || '').trim();
+        const position = (row.Jawatan || row.Position || 'Guru').trim();
         const isGuruBesar = position.toLowerCase().includes('guru besar') || name.toLowerCase().includes('norhafiza');
-        const rawPhoto = (row.Foto_URL || row.PhotoUrl || '').trim();
+        
+        // Baca foto dari pelbagai nama kolum yang mungkin wujud dalam Google Sheets
+        const rawPhoto = (
+          row['Gambar URL'] ||
+          row['Foto URL / Link Google Drive'] ||
+          row['Foto_URL'] ||
+          row['Foto URL'] ||
+          row.Foto_URL ||
+          row.Gambar_URL ||
+          row.PhotoUrl ||
+          row.photoUrl ||
+          row.Gambar ||
+          row.Foto ||
+          ''
+        ).trim();
         
         let photoUrl = rawPhoto;
         if (isGuruBesar) {
@@ -223,18 +261,31 @@ export function parseSchoolDataFromSheets(rawData: any): {
             }
           }
         }
+
+        const categoryRaw = (row['Kategori (pentadbiran/guru/akp)'] || row.Kategori || (isGuruBesar ? 'pentadbir' : 'guru')).toLowerCase();
+        let normalizedCategory: 'pentadbir' | 'guru' | 'akp' = 'guru';
+        if (categoryRaw.includes('pentadbir') || categoryRaw.includes('admin')) {
+          normalizedCategory = 'pentadbir';
+        } else if (categoryRaw.includes('akp') || categoryRaw.includes('staf sokongan')) {
+          normalizedCategory = 'akp';
+        }
+
+        const grade = isGuruBesar ? 'DG48' : (row.Gred || row['Sub Kategori'] || row.Grade || 'DG41');
+        const subject = row['Subjek/Tugas'] || row['Subjek'] || row.Subject || row['Tugas'] || '';
+        const email = row['E-mel DELIMa'] || row['E-mel'] || row.Email || row['Emel'] || '';
+        const phone = row.Telefon || row.Phone || '';
         
         return {
           id: row.ID || `staf-sheet-${idx + 1}`,
           name: isGuruBesar ? (name || 'Puan Norhafiza Binti Dolah') : name,
           position: isGuruBesar ? 'Guru Besar (DG48)' : position,
-          category: (row.Kategori || (isGuruBesar ? 'pentadbir' : 'guru')).toLowerCase() as any,
-          grade: isGuruBesar ? 'DG48' : (row.Gred || 'DG41'),
-          subject: row['Subjek/Tugas'] || row.Subject || '',
-          email: row['E-mel'] || row.Email || '',
-          phone: row.Telefon || row.Phone || '',
+          category: normalizedCategory,
+          grade,
+          subject,
+          email,
+          phone,
           photoUrl: formatGoogleDriveUrl(photoUrl),
-          order: Number(row.Susunan) || idx + 1
+          order: Number(row.Susunan || row.Order) || idx + 1
         };
       });
 
@@ -246,22 +297,55 @@ export function parseSchoolDataFromSheets(rawData: any): {
   // 3. Berita & Pengumuman
   if (Array.isArray(rawData.Berita_Pengumuman) && rawData.Berita_Pengumuman.length > 0) {
     const validNews: NewsItem[] = rawData.Berita_Pengumuman
-      .filter((row: any) => row.Tajuk)
-      .map((row: any, idx: number) => ({
-        id: row.ID || `news-sheet-${idx + 1}`,
-        title: row.Tajuk || '',
-        date: row.Tarikh || new Date().toLocaleDateString('ms-MY'),
-        category: (row.Kategori || 'pengumuman').toLowerCase() as any,
-        summary: row.Ringkasan || '',
-        content: row.Kandungan || '',
-        imageUrl: getSafeNewsImageUrl(row.Gambar_URL, row.Kategori),
-        author: row.Penulis || 'Pentadbiran SKMP',
-        isPinned: String(row.Sematkan).toLowerCase() === 'true' || String(row.Sematkan) === '1',
-        views: 100
-      }));
+      .filter((row: any) => row.Tajuk || row.Title)
+      .map((row: any, idx: number) => {
+        const isPinned = row['Diutamakan (TRUE/FALSE)'] !== undefined
+          ? String(row['Diutamakan (TRUE/FALSE)']).toLowerCase() === 'true'
+          : String(row.Sematkan).toLowerCase() === 'true' || String(row.Sematkan) === '1';
+
+        const rawImg = row['Gambar URL'] || row.Gambar_URL || row.ImageUrl || row.photoUrl || '';
+
+        return {
+          id: row.ID || `news-sheet-${idx + 1}`,
+          title: row.Tajuk || row.Title || '',
+          date: row.Tarikh || row.Date || new Date().toLocaleDateString('ms-MY'),
+          category: (row.Kategori || row.Category || 'pengumuman').toLowerCase() as any,
+          summary: row.Ringkasan || row.Summary || '',
+          content: row.Kandungan || row.Content || '',
+          imageUrl: getSafeNewsImageUrl(rawImg, row.Kategori),
+          author: row.Penulis || row.Author || 'Pentadbiran SKMP',
+          isPinned,
+          views: 100
+        };
+      });
 
     if (validNews.length > 0) {
       parsed.newsList = validNews;
+    }
+  }
+
+  // 4. Profil Sekolah (Key-Value format dari Sheet)
+  if (Array.isArray(rawData.Profil_Sekolah) && rawData.Profil_Sekolah.length > 0) {
+    const profileUpdates: Partial<SchoolProfile> = {};
+    rawData.Profil_Sekolah.forEach((row: any) => {
+      const key = (row['Kod Sekolah'] || row.Key || row.Kunci || row.key || '').trim().toLowerCase();
+      const val = (row['Nama Sekolah'] || row.Value || row.Nilai || row.value || '').trim();
+
+      if (!key || !val) return;
+
+      if (key === 'nama_sekolah' || key === 'nama') profileUpdates.name = val;
+      else if (key === 'kod_sekolah' || key === 'kod') profileUpdates.code = val;
+      else if (key === 'alamat') profileUpdates.address = val;
+      else if (key === 'telefon' || key === 'tel') profileUpdates.phone = val;
+      else if (key === 'email' || key === 'e-mel') profileUpdates.email = val;
+      else if (key === 'guru_besar') profileUpdates.principalName = val;
+      else if (key === 'motto') profileUpdates.motto = val;
+      else if (key === 'visi') profileUpdates.vision = val;
+      else if (key === 'misi') profileUpdates.mission = val;
+    });
+
+    if (Object.keys(profileUpdates).length > 0) {
+      parsed.profileUpdates = profileUpdates;
     }
   }
 
