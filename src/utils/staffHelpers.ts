@@ -55,65 +55,12 @@ export const getSeniorityScore = (staff: Staff, profile?: SchoolProfile): number
     return 1000000;
   }
 
-  // 2. PENOLONG KANAN PENTADBIRAN / KURIKULUM / AKADEMIK / GPK 1 / PK 1
-  const isPK1 =
-    pos.includes('kurikulum') ||
-    pos.includes('pentadbiran') ||
-    pos.includes('akademik') ||
-    pos.includes('penolong kanan 1') ||
-    pos.includes('penolong kanan satu') ||
-    pos.includes('pk 1') ||
-    pos.includes('pk1') ||
-    pos.includes('gpk 1') ||
-    pos.includes('gpk1') ||
-    pos.includes('pk kurikulum') ||
-    pos.includes('pk pentadbiran') ||
-    pos.includes('gpk kurikulum') ||
-    pos.includes('gpk pentadbiran') ||
-    pos.includes('gpk akademik');
-
-  if (
-    isPK1 &&
-    (pos.includes('penolong kanan') ||
-      pos.includes('pk') ||
-      pos.includes('gpk') ||
-      cat.includes('pentadbir') ||
-      staff.id === 'staf-2')
-  ) {
-    return 900000 + gradeNum;
-  }
-
-  // 3. PENOLONG KANAN HAL EHWAL MURID / GPK HEM / PK HEM / PK 2
-  const isPKHEM =
-    pos.includes('hal ehwal murid') ||
-    pos.includes('hem') ||
-    pos.includes('penolong kanan 2') ||
-    pos.includes('penolong kanan dua') ||
-    pos.includes('pk 2') ||
-    pos.includes('pk2') ||
-    pos.includes('gpk 2') ||
-    pos.includes('gpk2') ||
-    pos.includes('pk hem') ||
-    pos.includes('pkhem') ||
-    pos.includes('gpk hem') ||
-    pos.includes('gpkhem');
-
-  if (
-    isPKHEM &&
-    (pos.includes('penolong kanan') ||
-      pos.includes('pk') ||
-      pos.includes('gpk') ||
-      cat.includes('pentadbir') ||
-      staff.id === 'staf-3')
-  ) {
-    return 800000 + gradeNum;
-  }
-
-  // 4. PENOLONG KANAN KOKURIKULUM / GPK KOKO / PK KOKO / PK 3
-  const isPKKoko =
+  // Pengesanan Teguh Peranan Pentadbiran (Elakkan pertindihan 'kurikulum' dalam 'kokurikulum')
+  const isKokoKeyword =
     pos.includes('kokurikulum') ||
     pos.includes('koko') ||
     pos.includes('ko kurikulum') ||
+    pos.includes('ko-kurikulum') ||
     pos.includes('penolong kanan 3') ||
     pos.includes('penolong kanan tiga') ||
     pos.includes('pk 3') ||
@@ -127,14 +74,58 @@ export const getSeniorityScore = (staff: Staff, profile?: SchoolProfile): number
     pos.includes('pk ko') ||
     pos.includes('gpk ko');
 
-  if (
-    isPKKoko &&
-    (pos.includes('penolong kanan') ||
-      pos.includes('pk') ||
-      pos.includes('gpk') ||
-      cat.includes('pentadbir') ||
-      staff.id === 'staf-4')
-  ) {
+  const isHEMKeyword =
+    pos.includes('hal ehwal murid') ||
+    pos.includes('hem') ||
+    pos.includes('penolong kanan 2') ||
+    pos.includes('penolong kanan dua') ||
+    pos.includes('pk 2') ||
+    pos.includes('pk2') ||
+    pos.includes('gpk 2') ||
+    pos.includes('gpk2') ||
+    pos.includes('pk hem') ||
+    pos.includes('pkhem') ||
+    pos.includes('gpk hem') ||
+    pos.includes('gpkhem');
+
+  // 2. PENOLONG KANAN PENTADBIRAN / KURIKULUM / AKADEMIK / GPK 1 / PK 1
+  const isPK1 =
+    !isKokoKeyword &&
+    !isHEMKeyword &&
+    (pos.includes('kurikulum') ||
+      pos.includes('pentadbiran') ||
+      pos.includes('akademik') ||
+      pos.includes('penolong kanan 1') ||
+      pos.includes('penolong kanan satu') ||
+      pos.includes('pk 1') ||
+      pos.includes('pk1') ||
+      pos.includes('gpk 1') ||
+      pos.includes('gpk1') ||
+      pos.includes('pk kurikulum') ||
+      pos.includes('pk pentadbiran') ||
+      pos.includes('gpk kurikulum') ||
+      pos.includes('gpk pentadbiran') ||
+      pos.includes('gpk akademik') ||
+      (cat.includes('pentadbir') && staff.id === 'staf-2'));
+
+  if (isPK1) {
+    return 900000 + gradeNum;
+  }
+
+  // 3. PENOLONG KANAN HAL EHWAL MURID / GPK HEM / PK HEM / PK 2
+  const isPKHEM =
+    !isKokoKeyword &&
+    (isHEMKeyword || (cat.includes('pentadbir') && staff.id === 'staf-3'));
+
+  if (isPKHEM) {
+    return 800000 + gradeNum;
+  }
+
+  // 4. PENOLONG KANAN KOKURIKULUM / GPK KOKO / PK KOKO / PK 3
+  const isPKKoko =
+    isKokoKeyword || (cat.includes('pentadbir') && staff.id === 'staf-4');
+
+  if (isPKKoko) {
     return 700000 + gradeNum;
   }
 
