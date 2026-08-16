@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Lock } from 'lucide-react';
 import {
   SchoolProfile,
@@ -87,8 +87,13 @@ export default function App() {
   const [selectedNewsReader, setSelectedNewsReader] = useState<NewsItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Auto-sync data dari Google Sheets Web App pada permulaan & setiap 15 saat (untuk semua peranti & telefon)
+  // Ref to prevent overlapping in-flight fetch requests
+  const isSyncingRef = useRef(false);
+
+  // Auto-sync data dari Google Sheets Web App secara pantas & responsif
   const refreshFromGoogleSheets = async () => {
+    if (isSyncingRef.current) return;
+    isSyncingRef.current = true;
     try {
       const raw = await fetchSchoolDataFromGoogleSheets();
       if (raw) {
@@ -108,6 +113,9 @@ export default function App() {
         if (parsed.profileUpdates) {
           setProfile(prev => {
             const updated = { ...prev, ...parsed.profileUpdates };
+            if (!parsed.profileUpdates?.principalPhotoUrl && prev.principalPhotoUrl) {
+              updated.principalPhotoUrl = prev.principalPhotoUrl;
+            }
             saveProfile(updated);
             return updated;
           });
@@ -115,6 +123,8 @@ export default function App() {
       }
     } catch (err) {
       console.warn('Gagal memuat turun data langsung Google Sheets:', err);
+    } finally {
+      isSyncingRef.current = false;
     }
   };
 
@@ -122,20 +132,35 @@ export default function App() {
     // 1. Muat turun serta-merta semasa aplikasi mula dibuka
     refreshFromGoogleSheets();
 
-    // 2. Semak data baru setiap 15 saat secara latar belakang
-    const interval = setInterval(refreshFromGoogleSheets, 15000);
+    // 2. Semak data baru secara pantas (setiap 4 saat)
+    const interval = setInterval(refreshFromGoogleSheets, 4000);
 
-    // 3. Semak data serta-merta apabila pengguna membuka atau kembali ke tab pelayar / telefon
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        refreshFromGoogleSheets();
-      }
+    // 3. Semak data serta-merta apabila pengguna membuka tab, fokus pelayar, atau peranti kembali aktif
+    const handleImmediateSync = () => {
+      refreshFromGoogleSheets();
     };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // 4. Penyelarasan antara tab/tetingkap secara 0ms (segera)
+    const handleStorageEvent = (e: StorageEvent) => {
+      if (e.key === 'skmp_staff_v1') setStaffList(loadStaff());
+      if (e.key === 'skmp_profile_v1') setProfile(loadProfile());
+      if (e.key === 'skmp_news_v1') setNewsList(loadNews());
+      if (e.key === 'skmp_events_v1') setEvents(loadCalendarEvents());
+      if (e.key === 'skmp_gallery_v1') setGallery(loadGallery());
+      if (e.key === 'skmp_awards_v1') setAwards(loadAwards());
+    };
+
+    window.addEventListener('visibilitychange', handleImmediateSync);
+    window.addEventListener('focus', handleImmediateSync);
+    window.addEventListener('online', handleImmediateSync);
+    window.addEventListener('storage', handleStorageEvent);
 
     return () => {
       clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('visibilitychange', handleImmediateSync);
+      window.removeEventListener('focus', handleImmediateSync);
+      window.removeEventListener('online', handleImmediateSync);
+      window.removeEventListener('storage', handleStorageEvent);
     };
   }, []);
 

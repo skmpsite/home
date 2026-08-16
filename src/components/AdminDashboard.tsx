@@ -268,46 +268,63 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     onSaveProfile(editProfileData);
 
     // Sync principal name & photo with staffList and pibgCommittee
-    if (editProfileData.principalName || editProfileData.principalPhotoUrl) {
-      if (staffList.length > 0) {
-        const updatedStaff = staffList.map((s) => {
-          if (
-            s.id === 'staf-1' ||
-            s.position.toLowerCase().includes('guru besar') ||
-            s.name.toLowerCase().includes('norhafiza')
-          ) {
-            return {
-              ...s,
-              name: editProfileData.principalName || s.name,
-              position: editProfileData.principalTitle || s.position || 'Guru Besar (DG48)',
-              grade: 'DG48',
-              category: 'pentadbir' as const,
-              photoUrl: editProfileData.principalPhotoUrl || s.photoUrl
-            };
-          }
-          return s;
-        });
-        onSaveStaff(updatedStaff);
-      }
+    const hasGbInStaff = staffList.some(
+      (s) => s.id === 'staf-1' || s.position.toLowerCase().includes('guru besar') || s.name.toLowerCase().includes('norhafiza')
+    );
 
-      if (pibgCommittee.length > 0) {
-        const updatedPibg = pibgCommittee.map((c) => {
-          if (
-            c.id === 'pibg-c-2' ||
-            c.position.toLowerCase().includes('penasihat') ||
-            c.position.toLowerCase().includes('guru besar') ||
-            c.name.toLowerCase().includes('norhafiza')
-          ) {
-            return {
-              ...c,
-              name: editProfileData.principalName || c.name,
-              photoUrl: editProfileData.principalPhotoUrl || c.photoUrl
-            };
-          }
-          return c;
-        });
-        onSavePibgCommittee(updatedPibg);
-      }
+    let updatedStaff: Staff[] = [];
+    if (hasGbInStaff) {
+      updatedStaff = staffList.map((s) => {
+        if (
+          s.id === 'staf-1' ||
+          s.position.toLowerCase().includes('guru besar') ||
+          s.name.toLowerCase().includes('norhafiza')
+        ) {
+          return {
+            ...s,
+            name: editProfileData.principalName || s.name,
+            position: editProfileData.principalTitle || s.position || 'Guru Besar (DG48)',
+            grade: 'DG48',
+            category: 'pentadbir' as const,
+            photoUrl: editProfileData.principalPhotoUrl !== undefined ? editProfileData.principalPhotoUrl : s.photoUrl
+          };
+        }
+        return s;
+      });
+    } else {
+      const gbStaff: Staff = {
+        id: 'staf-1',
+        name: editProfileData.principalName || 'Puan Norhafiza Binti Dolah',
+        position: editProfileData.principalTitle || 'Guru Besar (DG48)',
+        category: 'pentadbir',
+        grade: 'DG48',
+        subject: 'Pengurusan & Pentadbiran',
+        email: 'norhafiza.skmp@moe-dl.edu.my',
+        phone: '019-456 7890',
+        photoUrl: editProfileData.principalPhotoUrl || '',
+        order: 1
+      };
+      updatedStaff = [gbStaff, ...staffList];
+    }
+    onSaveStaff(updatedStaff);
+
+    if (pibgCommittee.length > 0) {
+      const updatedPibg = pibgCommittee.map((c) => {
+        if (
+          c.id === 'pibg-c-2' ||
+          c.position.toLowerCase().includes('penasihat') ||
+          c.position.toLowerCase().includes('guru besar') ||
+          c.name.toLowerCase().includes('norhafiza')
+        ) {
+          return {
+            ...c,
+            name: editProfileData.principalName || c.name,
+            photoUrl: editProfileData.principalPhotoUrl !== undefined ? editProfileData.principalPhotoUrl : c.photoUrl
+          };
+        }
+        return c;
+      });
+      onSavePibgCommittee(updatedPibg);
     }
 
     showToast('Profil Sekolah & Maklumat Guru Besar Berjaya Dikemas Kini!');
@@ -366,18 +383,58 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleAddStaffSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newStaff.name || !newStaff.position) return;
+    const isGb =
+      newStaff.position.toLowerCase().includes('guru besar') ||
+      (newStaff.category === 'pentadbir' && newStaff.position.toLowerCase().includes('besar'));
+
     const staff: Staff = {
-      id: 'staf-' + Date.now(),
+      id: isGb ? 'staf-1' : 'staf-' + Date.now(),
       name: newStaff.name.trim(),
       position: newStaff.position.trim(),
-      category: newStaff.category,
-      grade: newStaff.grade || 'DG41',
-      subject: newStaff.subject || '',
+      category: isGb ? 'pentadbir' : newStaff.category,
+      grade: isGb ? 'DG48' : (newStaff.grade || 'DG41'),
+      subject: newStaff.subject || (isGb ? 'Pengurusan & Pentadbiran' : ''),
       email: newStaff.email || `${newStaff.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@moe-dl.edu.my`,
       photoUrl: newStaff.photoUrl || '',
-      order: staffList.length + 1
+      order: isGb ? 1 : staffList.length + 1
     };
-    onSaveStaff([...staffList, staff]);
+
+    // If adding Guru Besar, ensure they are placed at index 0 and update profile
+    let updatedStaff: Staff[] = [];
+    if (isGb) {
+      const filtered = staffList.filter(
+        (s) => s.id !== 'staf-1' && !s.position.toLowerCase().includes('guru besar') && !s.name.toLowerCase().includes('norhafiza')
+      );
+      updatedStaff = [staff, ...filtered];
+
+      if (typeof onSaveProfile === 'function') {
+        onSaveProfile({
+          ...profile,
+          principalName: staff.name,
+          principalPhotoUrl: staff.photoUrl,
+          principalTitle: staff.position
+        });
+      }
+
+      if (pibgCommittee && pibgCommittee.length > 0 && typeof onSavePibgCommittee === 'function') {
+        const updatedPibg = pibgCommittee.map((c) => {
+          const cPos = (c.position || '').toLowerCase();
+          if (c.id === 'pibg-c-2' || cPos.includes('penasihat') || cPos.includes('guru besar')) {
+            return {
+              ...c,
+              name: staff.name,
+              photoUrl: staff.photoUrl
+            };
+          }
+          return c;
+        });
+        onSavePibgCommittee(updatedPibg);
+      }
+    } else {
+      updatedStaff = [...staffList, staff];
+    }
+
+    onSaveStaff(updatedStaff);
     setNewStaff({
       name: '',
       position: '',

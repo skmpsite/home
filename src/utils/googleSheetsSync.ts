@@ -128,9 +128,11 @@ export async function fetchSchoolDataFromGoogleSheets(): Promise<any | null> {
   if (!url) return null;
 
   try {
-    const fetchUrl = url.includes('?') ? `${url}&action=getData` : `${url}?action=getData`;
+    const separator = url.includes('?') ? '&' : '?';
+    const fetchUrl = `${url}${separator}action=getData&_t=${Date.now()}`;
     const response = await fetch(fetchUrl, {
       method: 'GET',
+      cache: 'no-store',
       headers: {
         'Accept': 'application/json'
       }
@@ -212,12 +214,17 @@ export function parseSchoolDataFromSheets(rawData: any): {
 
   // 2. Warga Sekolah
   if (Array.isArray(rawData.Warga_Sekolah) && rawData.Warga_Sekolah.length > 0) {
-    // Dapatkan data staf setempat sedia ada untuk mengekalkan foto tempatan jika sheet belum ada foto
+    // Dapatkan data staf dan profil setempat sedia ada untuk mengekalkan maklumat tempatan
     let localStaffList: Staff[] = [];
+    let localProfile: SchoolProfile | null = null;
     try {
       const rawStored = localStorage.getItem('skmp_staff_v1');
       if (rawStored) {
         localStaffList = JSON.parse(rawStored);
+      }
+      const rawProfile = localStorage.getItem('skmp_profile_v1');
+      if (rawProfile) {
+        localProfile = JSON.parse(rawProfile);
       }
     } catch {
       // ignore
@@ -228,7 +235,10 @@ export function parseSchoolDataFromSheets(rawData: any): {
       .map((row: any, idx: number) => {
         const name = (row.Nama || row.Name || '').trim();
         const position = (row.Jawatan || row.Position || 'Guru').trim();
-        const isGuruBesar = position.toLowerCase().includes('guru besar') || name.toLowerCase().includes('norhafiza');
+        const isGuruBesar =
+          position.toLowerCase().includes('guru besar') ||
+          name.toLowerCase().includes('norhafiza') ||
+          (row.ID && row.ID === 'staf-1');
         
         // Baca foto dari pelbagai nama kolum yang mungkin wujud dalam Google Sheets
         const rawPhoto = (
@@ -246,13 +256,19 @@ export function parseSchoolDataFromSheets(rawData: any): {
         ).trim();
         
         let photoUrl = rawPhoto;
-        if (isGuruBesar) {
-          if (!rawPhoto || rawPhoto.includes('unsplash.com') || rawPhoto.includes('1786556385385') || rawPhoto.includes('1786555771027')) {
-            photoUrl = ''; // will fallback to official principal photo in component
-          }
-        } else {
-          // Jika Google Sheets tiada foto (atau kosong), semak jika staf setempat ada foto yang telah dimuat naik
-          if (!photoUrl || photoUrl === '' || photoUrl === 'null' || photoUrl === 'undefined') {
+
+        // Semak sekiranya foto kosong dari sheet, ambil daripada simpanan tempatan jika ada
+        if (!photoUrl || photoUrl === '' || photoUrl === 'null' || photoUrl === 'undefined') {
+          if (isGuruBesar) {
+            const localGb = localStaffList.find(
+              (ls) => ls.id === 'staf-1' || ls.position.toLowerCase().includes('guru besar') || ls.name.toLowerCase().includes('norhafiza')
+            );
+            if (localGb && localGb.photoUrl && !localGb.photoUrl.includes('ui-avatars.com')) {
+              photoUrl = localGb.photoUrl;
+            } else if (localProfile && localProfile.principalPhotoUrl) {
+              photoUrl = localProfile.principalPhotoUrl;
+            }
+          } else {
             const localMatch = localStaffList.find(
               (ls) => (row.ID && ls.id === row.ID) || (name && ls.name.toLowerCase() === name.toLowerCase())
             );
@@ -264,30 +280,55 @@ export function parseSchoolDataFromSheets(rawData: any): {
 
         const categoryRaw = (row['Kategori (pentadbiran/guru/akp)'] || row.Kategori || (isGuruBesar ? 'pentadbir' : 'guru')).toLowerCase();
         let normalizedCategory: 'pentadbir' | 'guru' | 'akp' = 'guru';
-        if (categoryRaw.includes('pentadbir') || categoryRaw.includes('admin')) {
+        if (categoryRaw.includes('pentadbir') || categoryRaw.includes('admin') || isGuruBesar) {
           normalizedCategory = 'pentadbir';
         } else if (categoryRaw.includes('akp') || categoryRaw.includes('staf sokongan')) {
           normalizedCategory = 'akp';
         }
 
         const grade = isGuruBesar ? 'DG48' : (row.Gred || row['Sub Kategori'] || row.Grade || 'DG41');
-        const subject = row['Subjek/Tugas'] || row['Subjek'] || row.Subject || row['Tugas'] || '';
+        const subject = row['Subjek/Tugas'] || row['Subjek'] || row.Subject || row['Tugas'] || (isGuruBesar ? 'Pengurusan & Pentadbiran' : '');
         const email = row['E-mel DELIMa'] || row['E-mel'] || row.Email || row['Emel'] || '';
         const phone = row.Telefon || row.Phone || '';
         
         return {
-          id: row.ID || `staf-sheet-${idx + 1}`,
-          name: isGuruBesar ? (name || 'Puan Norhafiza Binti Dolah') : name,
-          position: isGuruBesar ? 'Guru Besar (DG48)' : position,
+          id: row.ID || (isGuruBesar ? 'staf-1' : `staf-sheet-${idx + 1}`),
+          name: isGuruBesar ? (name || (localProfile?.principalName) || 'Puan Norhafiza Binti Dolah') : name,
+          position: isGuruBesar ? (position || 'Guru Besar (DG48)') : position,
           category: normalizedCategory,
           grade,
           subject,
           email,
           phone,
           photoUrl: formatGoogleDriveUrl(photoUrl),
-          order: Number(row.Susunan || row.Order) || idx + 1
+          order: isGuruBesar ? 1 : (Number(row.Susunan || row.Order) || idx + 2)
         };
       });
+
+    // Pastikan Guru Besar sentiasa dikekalkan sekiranya tiada baris Guru Besar dalam helaian Google Sheet
+    const hasGuruBesarInValidStaff = validStaff.some(
+      (s) => s.position.toLowerCase().includes('guru besar') || s.id === 'staf-1' || s.name.toLowerCase().includes('norhafiza')
+    );
+
+    if (!hasGuruBesarInValidStaff) {
+      const localGb = localStaffList.find(
+        (ls) => ls.id === 'staf-1' || ls.position.toLowerCase().includes('guru besar') || ls.name.toLowerCase().includes('norhafiza')
+      );
+
+      const gbEntry: Staff = {
+        id: 'staf-1',
+        name: localGb?.name || localProfile?.principalName || 'Puan Norhafiza Binti Dolah',
+        position: localGb?.position || localProfile?.principalTitle || 'Guru Besar (DG48)',
+        category: 'pentadbir',
+        grade: 'DG48',
+        subject: localGb?.subject || 'Pengurusan & Pentadbiran',
+        email: localGb?.email || 'norhafiza.skmp@moe-dl.edu.my',
+        phone: localGb?.phone || '019-456 7890',
+        photoUrl: localGb?.photoUrl || localProfile?.principalPhotoUrl || '',
+        order: 1
+      };
+      validStaff.unshift(gbEntry);
+    }
 
     if (validStaff.length > 0) {
       parsed.staffList = validStaff;
@@ -339,6 +380,9 @@ export function parseSchoolDataFromSheets(rawData: any): {
       else if (key === 'telefon' || key === 'tel') profileUpdates.phone = val;
       else if (key === 'email' || key === 'e-mel') profileUpdates.email = val;
       else if (key === 'guru_besar') profileUpdates.principalName = val;
+      else if (key === 'jawatan_guru_besar' || key === 'jawatan') profileUpdates.principalTitle = val;
+      else if (key === 'foto_guru_besar' || key === 'gambar_guru_besar') profileUpdates.principalPhotoUrl = formatGoogleDriveUrl(val);
+      else if (key === 'perutusan_guru_besar' || key === 'perutusan') profileUpdates.principalSpeech = val;
       else if (key === 'motto') profileUpdates.motto = val;
       else if (key === 'visi') profileUpdates.vision = val;
       else if (key === 'misi') profileUpdates.mission = val;
