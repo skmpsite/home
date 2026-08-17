@@ -369,27 +369,28 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
     }
   }, [isMuted, currentMediaType]);
 
-  // Progress Bar & Auto-Advance Timer (For Images & fallback for YouTube if events not sent)
+  // Progress Bar & Auto-Advance Timer (Fail-safe for Images, Video, and YouTube)
   useEffect(() => {
-    // For direct video elements using video duration, progress is driven by video `onTimeUpdate` and `onEnded`
-    if (currentMediaType === 'video' && currentSlide?.useVideoDuration !== false) {
-      return;
-    }
-
     if (!isPlaying || activeSlides.length <= 1) {
       setProgress(0);
       return;
     }
 
     startTimeRef.current = Date.now();
-    const updateFrequency = 50; // ms
+    const updateFrequency = 100; // ms
 
     timerRef.current = window.setInterval(() => {
       const elapsed = Date.now() - startTimeRef.current;
-      const pct = Math.min((elapsed / slideDurationMs) * 100, 100);
-      setProgress(pct);
+      const targetDurationMs = slideDurationMs > 0 ? slideDurationMs : (config.defaultDuration || 8) * 1000;
+      
+      // Update timer-driven progress if not actively driven by HTML5 video timeUpdate
+      if (currentMediaType !== 'video' || currentSlide?.useVideoDuration === false || !videoDuration) {
+        const pct = Math.min((elapsed / targetDurationMs) * 100, 100);
+        setProgress(pct);
+      }
 
-      if (elapsed >= slideDurationMs) {
+      // Safety advance when duration elapsed
+      if (elapsed >= targetDurationMs) {
         handleNextSlide();
       }
     }, updateFrequency);
@@ -404,7 +405,9 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
     activeSlides.length,
     handleNextSlide,
     currentMediaType,
-    currentSlide?.useVideoDuration
+    currentSlide?.useVideoDuration,
+    videoDuration,
+    config.defaultDuration
   ]);
 
   // Fullscreen Management
@@ -543,12 +546,8 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
           : 'rounded-3xl border border-white/20 shadow-2xl min-h-[640px] md:min-h-[720px] aspect-[16/9]'
       }`}
     >
-      {/* TOP HEADER BAR (Logo, School Name, Clock, Weather, Audio Status) */}
-      <div
-        className={`relative z-30 flex items-center justify-between p-4 sm:p-6 bg-gradient-to-b from-slate-950/90 via-slate-950/60 to-transparent backdrop-blur-md transition-opacity duration-300 ${
-          showControls || !isFullscreen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
-      >
+      {/* TOP HEADER BAR (Logo, School Name, Clock, Weather, Audio Status) - PERMANENTLY DISPLAYED */}
+      <div className="relative z-30 flex items-center justify-between p-4 sm:p-6 bg-gradient-to-b from-slate-950/90 via-slate-950/60 to-transparent backdrop-blur-md">
         {/* Left: School Identity & Status */}
         <div className="flex items-center gap-3.5">
           <img
@@ -586,42 +585,49 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
               isMuted
                 ? 'bg-slate-900/80 border-white/20 text-slate-300 hover:text-white'
                 : 'bg-yellow-400 text-blue-950 border-yellow-300 font-black shadow-yellow-400/20'
-            }`}
+            } ${showControls || !isFullscreen ? 'opacity-100' : 'opacity-0 pointer-events-none sm:opacity-100 sm:pointer-events-auto'}`}
             title="Ketik 'M' untuk Audio On/Off"
           >
             {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             <span className="hidden sm:inline">{isMuted ? 'Bisu' : 'Audio On'}</span>
           </button>
 
-          {/* Clock Widget */}
+          {/* Clock, Day and Date Widget - PERMANENTLY VISIBLE */}
           {config.showClock && (
-            <div className="bg-slate-900/80 backdrop-blur-xl border border-white/20 px-3.5 py-2 rounded-2xl shadow-xl text-right hidden sm:block">
-              <div className="text-sm sm:text-base font-black text-yellow-400 font-mono tracking-wider">
+            <div className="bg-slate-950/85 backdrop-blur-xl border border-white/20 px-3.5 sm:px-4 py-2 rounded-2xl shadow-2xl text-right flex flex-col justify-center">
+              <div className="text-sm sm:text-base md:text-lg font-black text-yellow-400 font-mono tracking-wider leading-none">
                 {formattedTime}
               </div>
-              <div className="text-[10px] sm:text-xs font-bold text-slate-300 uppercase tracking-tight">
+              <div className="text-[10px] sm:text-xs font-bold text-slate-200 uppercase tracking-tight mt-1">
                 {formattedDate}
               </div>
             </div>
           )}
 
-          {/* Remote Guide Button */}
-          <button
-            onClick={() => setShowShortcutsModal(true)}
-            className="p-2.5 rounded-xl bg-white/10 hover:bg-yellow-400 hover:text-blue-950 text-white font-bold transition focus:ring-2 focus:ring-yellow-400 focus:outline-none"
-            title="Panduan Alat Kawalan Jauh TV (D-Pad / Keyboard)"
+          {/* Action Buttons (Remote Guide & Fullscreen) */}
+          <div
+            className={`flex items-center gap-2 transition-opacity duration-300 ${
+              showControls || !isFullscreen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
           >
-            <Tv className="w-4 h-4" />
-          </button>
+            {/* Remote Guide Button */}
+            <button
+              onClick={() => setShowShortcutsModal(true)}
+              className="p-2.5 rounded-xl bg-white/10 hover:bg-yellow-400 hover:text-blue-950 text-white font-bold transition focus:ring-2 focus:ring-yellow-400 focus:outline-none"
+              title="Panduan Alat Kawalan Jauh TV (D-Pad / Keyboard)"
+            >
+              <Tv className="w-4 h-4" />
+            </button>
 
-          {/* Fullscreen Toggle */}
-          <button
-            onClick={toggleFullscreen}
-            className="p-2.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-blue-950 font-black transition shadow-lg shadow-yellow-400/20 focus:ring-2 focus:ring-yellow-400 focus:outline-none"
-            title={isFullscreen ? 'Keluar Skrin Penuh (F / Enter)' : 'Skrin Penuh (F / Enter)'}
-          >
-            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-          </button>
+            {/* Fullscreen Toggle */}
+            <button
+              onClick={toggleFullscreen}
+              className="p-2.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-blue-950 font-black transition shadow-lg shadow-yellow-400/20 focus:ring-2 focus:ring-yellow-400 focus:outline-none"
+              title={isFullscreen ? 'Keluar Skrin Penuh (F / Enter)' : 'Skrin Penuh (F / Enter)'}
+            >
+              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -696,6 +702,7 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
                 <div className="w-full h-full relative flex items-center justify-center z-10">
                   <video
                     ref={videoRef}
+                    key={currentSlide.id + (currentSlide.videoUrl || '')}
                     src={currentSlide.videoUrl || currentSlide.imageUrl}
                     poster={formatGoogleDriveUrl(currentSlide.imageUrl)}
                     autoPlay={isPlaying}
@@ -718,6 +725,12 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
                       if (isPlaying) {
                         handleNextSlide();
                       }
+                    }}
+                    onError={(e) => {
+                      console.warn('Video failed to play or load, auto-advancing to next slide:', e);
+                      setTimeout(() => {
+                        if (isPlaying) handleNextSlide();
+                      }, 2000);
                     }}
                   />
                 </div>
@@ -824,17 +837,17 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
         </AnimatePresence>
       </div>
 
-      {/* BOTTOM RUNNING MARQUEE TICKER */}
+      {/* BOTTOM RUNNING MARQUEE TICKER (INFO SEMASA) */}
       {config.showMarquee && (
-        <div className="relative z-30 bg-gradient-to-r from-blue-950 via-slate-900 to-blue-950 border-t border-yellow-400/40 text-yellow-300 font-bold text-xs sm:text-sm py-2.5 px-4 flex items-center gap-4 shadow-2xl">
-          <div className="flex items-center gap-1.5 px-3 py-1 bg-yellow-400 text-blue-950 font-black rounded-xl text-xs uppercase tracking-wider flex-shrink-0 shadow-md">
-            <Megaphone className="w-4 h-4" />
+        <div className="relative z-30 bg-gradient-to-r from-blue-950 via-slate-900 to-blue-950 border-t border-yellow-400/40 text-yellow-300 font-bold text-xs sm:text-sm py-2.5 px-4 flex items-center gap-4 shadow-2xl overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-400 text-blue-950 font-black rounded-xl text-xs uppercase tracking-wider flex-shrink-0 shadow-md z-10 select-none">
+            <Megaphone className="w-4 h-4 text-blue-950" />
             <span>Info Semasa</span>
           </div>
-          <div className="overflow-hidden whitespace-nowrap flex-grow">
-            <div className="inline-block animate-marquee font-bold text-white tracking-wide">
+          <div className="overflow-hidden whitespace-nowrap flex-grow relative flex items-center">
+            <div className="inline-block animate-marquee font-bold text-white tracking-wide text-xs sm:text-sm">
               {config.marqueeText ||
-                'SELAMAT DATANG KE SK MERBAU PULAS • BERILMU, BERAMAL, BERBAKTI • PENDAFTARAN TAHUN 1 SESI 2027 KINI DIBUKA DI PORTAL idMe KPM • PASTIKAN KEHADIRAN MURID MELEBIHI 95%'}
+                'SELAMAT DATANG KE SK MERBAU PULAS • BERILMU, BERAMAL, BERBAKTI • PENDAFTARAN TAHUN 1 SESI 2027 KINI DIBUKA DI PORTAL idMe KPM • PASTIKAN KEHADIRAN MURID MELEBIHI 95% SETIAP BULAN • TINGKATKAN AMALAN KEBERSIHAN DAN SAHSIAH TERPUJI'}
             </div>
           </div>
         </div>
