@@ -73,7 +73,14 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
+  
+  // Initialize Audio as Auto ON by default (isMuted = false) unless explicitly disabled
+  const [isMuted, setIsMuted] = useState<boolean>(() => {
+    if (initialConfig?.autoEnableAudio === false) return true;
+    const firstActive = (initialSlides || loadSignageSlides()).find((s) => s.isActive);
+    if (firstActive?.isMuted !== undefined) return firstActive.isMuted;
+    return false; // Auto ON by default
+  });
   const [videoDuration, setVideoDuration] = useState<number | null>(null);
 
   // Time States
@@ -109,6 +116,16 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
       : currentSlide?.durationSeconds || config.defaultDuration || 8;
 
   const slideDurationMs = currentDurationSeconds * 1000;
+
+  // Auto-synchronize slide-level audio state when changing slide
+  useEffect(() => {
+    if (!currentSlide) return;
+    if (currentSlide.isMuted !== undefined) {
+      setIsMuted(currentSlide.isMuted);
+    } else if (config.autoEnableAudio !== false) {
+      setIsMuted(false);
+    }
+  }, [currentIndex, currentSlide, config.autoEnableAudio]);
 
   // Real-time Sync from localStorage and custom events
   useEffect(() => {
@@ -191,16 +208,47 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
     startTimeRef.current = Date.now();
   }, [activeSlides.length]);
 
-  // Video Element Play/Pause Controller
+  // Video Element Play/Pause Controller with robust Audio Unlocking
   useEffect(() => {
     if (videoRef.current) {
+      videoRef.current.muted = isMuted;
+      videoRef.current.volume = 1.0;
       if (isPlaying) {
-        videoRef.current.play().catch(() => {});
+        const playPromise = videoRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((err) => {
+            console.warn('Autoplay with audio blocked by browser policy, attempting muted play as temporary fallback:', err);
+            if (videoRef.current) {
+              videoRef.current.muted = true;
+              videoRef.current.play().catch(() => {});
+            }
+          });
+        }
       } else {
         videoRef.current.pause();
       }
     }
-  }, [isPlaying, currentIndex, currentMediaType]);
+  }, [isPlaying, currentIndex, currentMediaType, isMuted]);
+
+  // Audio Context & Gesture Unlocker for Smart TV & Web Browsers
+  useEffect(() => {
+    const handleGestureAudioUnlock = () => {
+      if (videoRef.current && !isMuted) {
+        videoRef.current.muted = false;
+        videoRef.current.play().catch(() => {});
+      }
+    };
+
+    window.addEventListener('click', handleGestureAudioUnlock, { passive: true });
+    window.addEventListener('keydown', handleGestureAudioUnlock, { passive: true });
+    window.addEventListener('touchstart', handleGestureAudioUnlock, { passive: true });
+
+    return () => {
+      window.removeEventListener('click', handleGestureAudioUnlock);
+      window.removeEventListener('keydown', handleGestureAudioUnlock);
+      window.removeEventListener('touchstart', handleGestureAudioUnlock);
+    };
+  }, [isMuted]);
 
   // Progress Bar & Auto-Advance Timer (For Images & YouTube)
   useEffect(() => {
@@ -571,6 +619,29 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
                       <Clock className="w-2.5 h-2.5 inline mr-1" />
                       {formatMediaDuration(currentDurationSeconds)}
                     </span>
+
+                    {/* Audio Status Indicator for Video/YouTube */}
+                    {(currentMediaType === 'video' || currentMediaType === 'youtube') && (
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border flex items-center gap-1 ${
+                          !isMuted
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm'
+                            : 'bg-yellow-400/20 text-yellow-300 border-yellow-400/30'
+                        }`}
+                      >
+                        {!isMuted ? (
+                          <>
+                            <Volume2 className="w-2.5 h-2.5 text-emerald-400" />
+                            <span>Audio On (Auto)</span>
+                          </>
+                        ) : (
+                          <>
+                            <VolumeX className="w-2.5 h-2.5 text-yellow-400" />
+                            <span>Bisu</span>
+                          </>
+                        )}
+                      </span>
+                    )}
                   </div>
 
                   <h2 className="text-lg sm:text-2xl font-black text-white drop-shadow-md leading-tight">

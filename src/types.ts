@@ -195,6 +195,7 @@ export interface SignageSlide {
 export interface SignageConfig {
   defaultDuration: number;
   autoPlay: boolean;
+  autoEnableAudio?: boolean;
   showClock: boolean;
   showMarquee: boolean;
   marqueeText: string;

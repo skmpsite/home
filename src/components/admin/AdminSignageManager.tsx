@@ -82,7 +82,7 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
     youtubeUrl: '',
     durationSeconds: config.defaultDuration || 8,
     useVideoDuration: true,
-    isMuted: true,
+    isMuted: false,
     category: 'pengumuman',
     isActive: true
   });
@@ -186,7 +186,7 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
       youtubeUrl: '',
       durationSeconds: config.defaultDuration || 8,
       useVideoDuration: true,
-      isMuted: true,
+      isMuted: false,
       category: 'pengumuman',
       isActive: true
     });
@@ -314,7 +314,7 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
         </div>
 
         <form onSubmit={handleSaveConfig} className="space-y-4">
-          <div className="grid sm:grid-cols-3 gap-4">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label className="block text-xs font-bold text-slate-200 mb-1">
                 Masa Pertukaran Slaid Lalai (Saat)
@@ -356,6 +356,20 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
                   className="w-4 h-4 rounded text-yellow-400 focus:ring-0 cursor-pointer"
                 />
                 <span>Papar Teks Berita Marquee</span>
+              </label>
+            </div>
+
+            <div className="flex items-center gap-3 pt-6">
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-200 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editConfig.autoEnableAudio !== false}
+                  onChange={(e) => setEditConfig({ ...editConfig, autoEnableAudio: e.target.checked })}
+                  className="w-4 h-4 rounded text-yellow-400 focus:ring-0 cursor-pointer"
+                />
+                <span className="text-yellow-300 font-bold flex items-center gap-1">
+                  <Volume2 className="w-3.5 h-3.5" /> Audio Video Auto-On
+                </span>
               </label>
             </div>
           </div>
@@ -681,6 +695,25 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* Audio Auto-On Option for Video */}
+              <div className="pt-2 border-t border-white/10 flex items-center justify-between">
+                <label className="flex items-center gap-2 text-xs font-bold text-yellow-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!newSlide.isMuted}
+                    onChange={(e) => setNewSlide({ ...newSlide, isMuted: !e.target.checked })}
+                    className="w-4 h-4 rounded text-yellow-400 focus:ring-0 cursor-pointer"
+                  />
+                  <span className="flex items-center gap-1.5">
+                    <Volume2 className="w-4 h-4 text-emerald-400" />
+                    Pasang Audio Video Secara Automatik (Audio Auto-On)
+                  </span>
+                </label>
+                <span className="text-[10px] text-slate-400">
+                  {!newSlide.isMuted ? '🔊 Suara Aktif' : '🔇 Bisu'}
+                </span>
+              </div>
             </div>
           )}
 
@@ -775,6 +808,25 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
                     </span>
                   )}
                 </div>
+              </div>
+
+              {/* Audio Auto-On Option for YouTube */}
+              <div className="pt-2 border-t border-white/10 flex items-center justify-between">
+                <label className="flex items-center gap-2 text-xs font-bold text-yellow-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!newSlide.isMuted}
+                    onChange={(e) => setNewSlide({ ...newSlide, isMuted: !e.target.checked })}
+                    className="w-4 h-4 rounded text-yellow-400 focus:ring-0 cursor-pointer"
+                  />
+                  <span className="flex items-center gap-1.5">
+                    <Volume2 className="w-4 h-4 text-rose-400" />
+                    Pasang Audio YouTube Secara Automatik (Audio Auto-On)
+                  </span>
+                </label>
+                <span className="text-[10px] text-slate-400">
+                  {!newSlide.isMuted ? '🔊 Suara Aktif' : '🔇 Bisu'}
+                </span>
               </div>
             </div>
           )}
@@ -910,6 +962,29 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
                             ? `Durasi Video (${slide.durationSeconds || 15}s)`
                             : `${slide.durationSeconds || config.defaultDuration || 8}s`}
                         </span>
+
+                        {/* Audio Status Badge for Video/YouTube */}
+                        {(isVid || isYt) && (
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold border flex items-center gap-1 ${
+                              !slide.isMuted
+                                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                                : 'bg-white/10 text-slate-400 border-white/10'
+                            }`}
+                          >
+                            {!slide.isMuted ? (
+                              <>
+                                <Volume2 className="w-3 h-3 text-emerald-400" />
+                                <span>Audio On</span>
+                              </>
+                            ) : (
+                              <>
+                                <VolumeX className="w-3 h-3" />
+                                <span>Bisu</span>
+                              </>
+                            )}
+                          </span>
+                        )}
 
                         {slide.isActive ? (
                           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
@@ -1154,6 +1229,23 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
                     className="w-4 h-4 rounded text-yellow-400 focus:ring-0 cursor-pointer"
                   />
                   <span>Tukar automatik apabila video tamat</span>
+                </label>
+              )}
+
+              {(editingSlide.mediaType === 'video' || editingSlide.mediaType === 'youtube') && (
+                <label className="flex items-center gap-2 text-xs font-bold text-yellow-300 cursor-pointer pt-1">
+                  <input
+                    type="checkbox"
+                    checked={!editingSlide.isMuted}
+                    onChange={(e) =>
+                      setEditingSlide({ ...editingSlide, isMuted: !e.target.checked })
+                    }
+                    className="w-4 h-4 rounded text-yellow-400 focus:ring-0 cursor-pointer"
+                  />
+                  <span className="flex items-center gap-1.5">
+                    <Volume2 className="w-4 h-4 text-emerald-400" />
+                    Pasang Audio Secara Automatik (Audio Auto-On)
+                  </span>
                 </label>
               )}
 

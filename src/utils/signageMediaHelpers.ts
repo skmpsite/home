@@ -91,7 +91,7 @@ export function buildYouTubeEmbedUrl(
     controls?: boolean;
   } = {}
 ): string {
-  const { autoplay = true, muted = true, loop = false, controls = false } = options;
+  const { autoplay = true, muted = false, loop = false, controls = false } = options;
 
   const params = new URLSearchParams({
     enablejsapi: '1',
