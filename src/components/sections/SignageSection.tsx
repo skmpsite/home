@@ -73,6 +73,7 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+  const [isVideoInfoVisible, setIsVideoInfoVisible] = useState(true);
   
   // Initialize Audio as Auto ON by default (isMuted = false) unless explicitly disabled
   const [isMuted, setIsMuted] = useState<boolean>(() => {
@@ -89,7 +90,9 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const controlsTimeoutRef = useRef<number | null>(null);
+  const videoInfoTimeoutRef = useRef<number | null>(null);
   const timerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(Date.now());
 
@@ -109,11 +112,13 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
     ? currentSlide.youtubeId || extractYouTubeId(currentSlide.youtubeUrl || currentSlide.imageUrl)
     : null;
 
-  // Calculate slide duration in milliseconds
+  const isVideoMedia = currentMediaType === 'video' || currentMediaType === 'youtube';
+
+  // Calculate slide duration in milliseconds - automatically prioritize actual video length
   const currentDurationSeconds =
-    currentMediaType === 'video' && currentSlide?.useVideoDuration !== false && videoDuration
+    isVideoMedia && currentSlide?.useVideoDuration !== false && videoDuration
       ? videoDuration
-      : currentSlide?.durationSeconds || config.defaultDuration || 8;
+      : currentSlide?.durationSeconds || config.defaultDuration || (currentMediaType === 'youtube' ? 30 : 8);
 
   const slideDurationMs = currentDurationSeconds * 1000;
 
@@ -126,6 +131,32 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
       setIsMuted(false);
     }
   }, [currentIndex, currentSlide, config.autoEnableAudio]);
+
+  // Auto-hide title & info banner after 5 seconds for video / YouTube slides to focus on video content
+  useEffect(() => {
+    if (videoInfoTimeoutRef.current) {
+      window.clearTimeout(videoInfoTimeoutRef.current);
+      videoInfoTimeoutRef.current = null;
+    }
+
+    const isVideoMedia = currentMediaType === 'video' || currentMediaType === 'youtube';
+    if (isVideoMedia) {
+      setIsVideoInfoVisible(true);
+      // Appear for 5 seconds then slide down and fade out
+      videoInfoTimeoutRef.current = window.setTimeout(() => {
+        setIsVideoInfoVisible(false);
+      }, 5000);
+    } else {
+      // Always keep title and info permanently visible for image/poster slides
+      setIsVideoInfoVisible(true);
+    }
+
+    return () => {
+      if (videoInfoTimeoutRef.current) {
+        window.clearTimeout(videoInfoTimeoutRef.current);
+      }
+    };
+  }, [currentIndex, currentMediaType, currentSlide?.id]);
 
   // Real-time Sync from localStorage and custom events
   useEffect(() => {
@@ -250,9 +281,97 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
     };
   }, [isMuted]);
 
-  // Progress Bar & Auto-Advance Timer (For Images & YouTube)
+  // YouTube Iframe PostMessage, Duration Detection & Auto-Advance on Finish
   useEffect(() => {
-    // For direct video elements using video duration, progress is driven by video `onTimeUpdate`
+    if (currentMediaType !== 'youtube' || !youtubeId) return;
+
+    const handleYouTubeMessage = (event: MessageEvent) => {
+      try {
+        let data = event.data;
+        if (typeof data === 'string') {
+          try {
+            data = JSON.parse(data);
+          } catch {
+            return;
+          }
+        }
+        if (!data || typeof data !== 'object') return;
+
+        // 1. Handshake response / Delivery Info (duration, currentTime, playerState)
+        if (data.event === 'infoDelivery' && data.info) {
+          const info = data.info;
+          // Capture real duration from YouTube player
+          if (typeof info.duration === 'number' && info.duration > 0 && currentSlide?.useVideoDuration !== false) {
+            setVideoDuration(Math.round(info.duration));
+          }
+          // Progress bar sync with real-time video playback
+          if (
+            typeof info.currentTime === 'number' &&
+            typeof info.duration === 'number' &&
+            info.duration > 0 &&
+            currentSlide?.useVideoDuration !== false
+          ) {
+            const pct = Math.min((info.currentTime / info.duration) * 100, 100);
+            setProgress(pct);
+          }
+          // Player state 0 = YT.PlayerState.ENDED -> Auto advance slide immediately!
+          if (info.playerState === 0 && isPlaying && currentSlide?.useVideoDuration !== false) {
+            handleNextSlide();
+          }
+        }
+
+        // 2. Direct onStateChange event from YouTube
+        if (data.event === 'onStateChange' && data.info === 0 && isPlaying && currentSlide?.useVideoDuration !== false) {
+          handleNextSlide();
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    window.addEventListener('message', handleYouTubeMessage);
+    return () => window.removeEventListener('message', handleYouTubeMessage);
+  }, [currentMediaType, youtubeId, isPlaying, handleNextSlide, currentSlide?.useVideoDuration]);
+
+  // Sync Play / Pause to YouTube IFrame Player
+  useEffect(() => {
+    if (currentMediaType === 'youtube' && iframeRef.current?.contentWindow) {
+      try {
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({
+            event: 'command',
+            func: isPlaying ? 'playVideo' : 'pauseVideo',
+            args: []
+          }),
+          '*'
+        );
+      } catch {
+        // ignore
+      }
+    }
+  }, [isPlaying, currentMediaType]);
+
+  // Sync Mute State to YouTube IFrame Player
+  useEffect(() => {
+    if (currentMediaType === 'youtube' && iframeRef.current?.contentWindow) {
+      try {
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({
+            event: 'command',
+            func: isMuted ? 'mute' : 'unMute',
+            args: []
+          }),
+          '*'
+        );
+      } catch {
+        // ignore
+      }
+    }
+  }, [isMuted, currentMediaType]);
+
+  // Progress Bar & Auto-Advance Timer (For Images & fallback for YouTube if events not sent)
+  useEffect(() => {
+    // For direct video elements using video duration, progress is driven by video `onTimeUpdate` and `onEnded`
     if (currentMediaType === 'video' && currentSlide?.useVideoDuration !== false) {
       return;
     }
@@ -374,9 +493,20 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleNextSlide, handlePrevSlide]);
 
-  // Auto-hide controls after 4s idle in fullscreen/kiosk
+  // Auto-hide controls and video info after 4s idle in fullscreen/kiosk
   const handleUserActivity = () => {
     setShowControls(true);
+    const isVideoMedia = currentMediaType === 'video' || currentMediaType === 'youtube';
+    if (isVideoMedia) {
+      setIsVideoInfoVisible(true);
+      if (videoInfoTimeoutRef.current) {
+        window.clearTimeout(videoInfoTimeoutRef.current);
+      }
+      videoInfoTimeoutRef.current = window.setTimeout(() => {
+        setIsVideoInfoVisible(false);
+      }, 4000);
+    }
+
     if (controlsTimeoutRef.current) {
       window.clearTimeout(controlsTimeoutRef.current);
     }
@@ -531,6 +661,7 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
               {currentMediaType === 'youtube' && youtubeId ? (
                 <div className="w-full h-full relative flex items-center justify-center z-10">
                   <iframe
+                    ref={iframeRef}
                     src={buildYouTubeEmbedUrl(youtubeId, {
                       autoplay: isPlaying,
                       muted: isMuted,
@@ -540,6 +671,24 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                     className="w-full h-full object-cover border-0 pointer-events-auto shadow-2xl"
+                    onLoad={() => {
+                      try {
+                        iframeRef.current?.contentWindow?.postMessage(
+                          JSON.stringify({ event: 'listening' }),
+                          '*'
+                        );
+                        iframeRef.current?.contentWindow?.postMessage(
+                          JSON.stringify({
+                            event: 'command',
+                            func: 'addEventListener',
+                            args: ['onStateChange']
+                          }),
+                          '*'
+                        );
+                      } catch {
+                        // ignore
+                      }
+                    }}
                   />
                 </div>
               ) : currentMediaType === 'video' ? (
@@ -590,9 +739,19 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
               {(currentSlide.title || currentSlide.subtitle) && (
                 <motion.div
                   initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2, duration: 0.6 }}
-                  className="absolute bottom-20 left-6 sm:left-10 max-w-2xl z-20 bg-slate-950/85 backdrop-blur-xl border border-white/20 p-4 sm:p-6 rounded-3xl shadow-2xl text-left pointer-events-none"
+                  animate={{
+                    opacity: currentMediaType === 'image' || isVideoInfoVisible ? 1 : 0,
+                    y: currentMediaType === 'image' || isVideoInfoVisible ? 0 : 35
+                  }}
+                  transition={{
+                    duration: 0.6,
+                    ease: [0.22, 1, 0.36, 1]
+                  }}
+                  className={`absolute bottom-20 left-6 sm:left-10 max-w-2xl z-20 bg-slate-950/85 backdrop-blur-xl border border-white/20 p-4 sm:p-6 rounded-3xl shadow-2xl text-left ${
+                    currentMediaType === 'image' || isVideoInfoVisible
+                      ? 'pointer-events-auto'
+                      : 'pointer-events-none'
+                  }`}
                 >
                   <div className="flex items-center gap-2 mb-2">
                     {/* Media Type Tag */}

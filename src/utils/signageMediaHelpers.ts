@@ -106,6 +106,10 @@ export function buildYouTubeEmbedUrl(
     playsinline: '1'
   });
 
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    params.set('origin', window.location.origin);
+  }
+
   if (loop) {
     params.set('loop', '1');
     params.set('playlist', videoId);

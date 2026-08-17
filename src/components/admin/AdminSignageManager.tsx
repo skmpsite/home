@@ -742,7 +742,7 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-200 mb-1">
-                    Tempoh Paparan Video YouTube (Saat) *
+                    Tempoh Paparan / Had Siling (Saat) *
                   </label>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
@@ -810,23 +810,37 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
                 </div>
               </div>
 
-              {/* Audio Auto-On Option for YouTube */}
-              <div className="pt-2 border-t border-white/10 flex items-center justify-between">
+              {/* Auto Duration and Audio Options for YouTube */}
+              <div className="pt-2 border-t border-white/10 space-y-2">
                 <label className="flex items-center gap-2 text-xs font-bold text-yellow-300 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={!newSlide.isMuted}
-                    onChange={(e) => setNewSlide({ ...newSlide, isMuted: !e.target.checked })}
+                    checked={newSlide.useVideoDuration !== false}
+                    onChange={(e) =>
+                      setNewSlide({ ...newSlide, useVideoDuration: e.target.checked })
+                    }
                     className="w-4 h-4 rounded text-yellow-400 focus:ring-0 cursor-pointer"
                   />
-                  <span className="flex items-center gap-1.5">
-                    <Volume2 className="w-4 h-4 text-rose-400" />
-                    Pasang Audio YouTube Secara Automatik (Audio Auto-On)
-                  </span>
+                  <span>Autokan pertukaran slaid mengikut durasi sebenar video YouTube</span>
                 </label>
-                <span className="text-[10px] text-slate-400">
-                  {!newSlide.isMuted ? '🔊 Suara Aktif' : '🔇 Bisu'}
-                </span>
+
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 text-xs font-bold text-yellow-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!newSlide.isMuted}
+                      onChange={(e) => setNewSlide({ ...newSlide, isMuted: !e.target.checked })}
+                      className="w-4 h-4 rounded text-yellow-400 focus:ring-0 cursor-pointer"
+                    />
+                    <span className="flex items-center gap-1.5">
+                      <Volume2 className="w-4 h-4 text-rose-400" />
+                      Pasang Audio YouTube Secara Automatik (Audio Auto-On)
+                    </span>
+                  </label>
+                  <span className="text-[10px] text-slate-400">
+                    {!newSlide.isMuted ? '🔊 Suara Aktif' : '🔇 Bisu'}
+                  </span>
+                </div>
               </div>
             </div>
           )}
@@ -1218,7 +1232,7 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
                 </div>
               </div>
 
-              {editingSlide.mediaType === 'video' && (
+              {(editingSlide.mediaType === 'video' || editingSlide.mediaType === 'youtube') && (
                 <label className="flex items-center gap-2 text-xs font-bold text-yellow-300 cursor-pointer pt-1">
                   <input
                     type="checkbox"
@@ -1228,7 +1242,7 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
                     }
                     className="w-4 h-4 rounded text-yellow-400 focus:ring-0 cursor-pointer"
                   />
-                  <span>Tukar automatik apabila video tamat</span>
+                  <span>Tukar automatik mengikut durasi sebenar video (Auto-Advance)</span>
                 </label>
               )}
 
