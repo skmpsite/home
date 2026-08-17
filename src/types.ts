@@ -173,3 +173,26 @@ export interface SearchResultItem {
   linkTab: string;
   id: string;
 }
+
+export interface SignageSlide {
+  id: string;
+  title: string;
+  subtitle?: string;
+  imageUrl: string;
+  durationSeconds: number;
+  isActive: boolean;
+  order: number;
+  category?: 'pengumuman' | 'aktiviti' | 'kejayaan' | 'info' | 'poster';
+  createdAt?: string;
+}
+
+export interface SignageConfig {
+  defaultDuration: number;
+  autoPlay: boolean;
+  showClock: boolean;
+  showMarquee: boolean;
+  marqueeText: string;
+  showWeatherBadge: boolean;
+  theme: 'dark' | 'glass' | 'corporate';
+}
+

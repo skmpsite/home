@@ -11,7 +11,9 @@ import {
   PibgActivity,
   PibgCommittee,
   CoCurriculumUnit,
-  FacebookPost
+  FacebookPost,
+  SignageSlide,
+  SignageConfig
 } from '../types';
 
 export const initialSchoolProfile: SchoolProfile = {
@@ -665,3 +667,72 @@ export const initialFacebookPosts: FacebookPost[] = [
     source: "ppdkbb"
   }
 ];
+
+export const initialSignageConfig: SignageConfig = {
+  defaultDuration: 8,
+  autoPlay: true,
+  showClock: true,
+  showMarquee: true,
+  marqueeText: "SELAMAT DATANG KE SK MERBAU PULAS • BERILMU, BERAMAL, BERBAKTI • PENDAFTARAN TAHUN 1 SESI 2027 KINI DIBUKA DI PORTAL idMe KPM • PASTIKAN KEHADIRAN MURID MELEBIHI 95% SETIAP BULAN • TINGKATKAN AMALAN KEBERSIHAN DAN SAHSIAH TERPUJI",
+  showWeatherBadge: true,
+  theme: 'dark'
+};
+
+export const initialSignageSlides: SignageSlide[] = [
+  {
+    id: "signage-slide-1",
+    title: "Selamat Datang ke SK Merbau Pulas",
+    subtitle: "Pendidikan Berkualiti Insan Terdidik Negara Sejahtera • Berilmu, Beramal, Berbakti",
+    imageUrl: "https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&q=80&w=1920",
+    durationSeconds: 10,
+    isActive: true,
+    order: 1,
+    category: "poster",
+    createdAt: "2026-08-16"
+  },
+  {
+    id: "signage-slide-2",
+    title: "Pendaftaran Tahun 1 Sesi 2027 KPM Melalui Portal idMe",
+    subtitle: "Ibu bapa dan penjaga dipohon melengkapkan permohonan kemasukan sebelum 30 September 2026",
+    imageUrl: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&q=80&w=1920",
+    durationSeconds: 8,
+    isActive: true,
+    order: 2,
+    category: "pengumuman",
+    createdAt: "2026-08-16"
+  },
+  {
+    id: "signage-slide-3",
+    title: "Karnival STEM & Robotik Peringkat Negeri Kedah 2026",
+    subtitle: "Tahniah kepada Pasukan Inovasi SK Merbau Pulas merangkul Pingat Emas Kategori Rekacipta",
+    imageUrl: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&q=80&w=1920",
+    durationSeconds: 8,
+    isActive: true,
+    order: 3,
+    category: "kejayaan",
+    createdAt: "2026-08-16"
+  },
+  {
+    id: "signage-slide-4",
+    title: "Kejohanan Sukan Tahunan & Larian Merentas Desa SKMP",
+    subtitle: "Memupuk semangat kesukanan, perpaduan dan kecergasan fizikal seluruh warga sekolah",
+    imageUrl: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&q=80&w=1920",
+    durationSeconds: 8,
+    isActive: true,
+    order: 4,
+    category: "aktiviti",
+    createdAt: "2026-08-16"
+  },
+  {
+    id: "signage-slide-5",
+    title: "Program Nilam Digital & Budaya Membaca Sepanjang Hayat",
+    subtitle: "Pusat Sumber Digital Al-Ghazali SKMP • 'Membaca Jambatan Ilmu'",
+    imageUrl: "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&q=80&w=1920",
+    durationSeconds: 8,
+    isActive: true,
+    order: 5,
+    category: "info",
+    createdAt: "2026-08-16"
+  }
+];
+

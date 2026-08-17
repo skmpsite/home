@@ -5,6 +5,7 @@ import {
   Network,
   GraduationCap,
   Trophy,
+  Tv,
   Newspaper,
   Image as ImageIcon,
   Download,
@@ -23,6 +24,7 @@ export type TabType =
   | 'organisasi'
   | 'akademik'
   | 'kokurikulum'
+  | 'signage'
   | 'berita'
   | 'galeri'
   | 'anugerah'
@@ -79,6 +81,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'galeri' as TabType, label: 'Galeri Media', icon: ImageIcon },
     { id: 'anugerah' as TabType, label: 'Ruang Anugerah', icon: Award },
     { id: 'portal' as TabType, label: 'Portal & Muat Turun', icon: Download },
+    { id: 'signage' as TabType, label: 'Signage', icon: Tv },
     { id: 'hubungi' as TabType, label: 'Hubungi Kami', icon: PhoneCall },
     ...(isAdmin ? [{ id: 'gas_code' as TabType, label: 'Kod Apps Script', icon: Code2, badge: 'Admin' }] : [])
   ];

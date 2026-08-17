@@ -10,7 +10,9 @@ import {
   FeedbackEntry,
   PibgActivity,
   PibgCommittee,
-  CoCurriculumUnit
+  CoCurriculumUnit,
+  SignageSlide,
+  SignageConfig
 } from '../types';
 import {
   LayoutDashboard,
@@ -23,6 +25,7 @@ import {
   Image as ImageIcon,
   MessageSquare,
   Code2,
+  Tv,
   Plus,
   Trash2,
   Edit3,
@@ -40,6 +43,7 @@ import {
 } from 'lucide-react';
 import { initialSchoolProfile } from '../data/initialData';
 import { GasScriptSection } from './sections/GasScriptSection';
+import { AdminSignageManager } from './admin/AdminSignageManager';
 import { syncBulkDataToGoogleSheets } from '../utils/googleSheetsSync';
 import { getSafeNewsImageUrl, compressAndResizeImage, compressStaffPhoto, OFFICIAL_NEWS_PHOTOS, SECONDARY_FALLBACK_PHOTOS } from '../utils/imageHelpers';
 import { sortStaffBySeniority } from '../utils/staffHelpers';
@@ -67,6 +71,10 @@ interface AdminDashboardProps {
   onSavePibgCommittee: (comm: PibgCommittee[]) => void;
   coCurriculumUnits: CoCurriculumUnit[];
   onSaveCoCurriculum: (units: CoCurriculumUnit[]) => void;
+  signageSlides: SignageSlide[];
+  onSaveSignageSlides: (slides: SignageSlide[]) => void;
+  signageConfig: SignageConfig;
+  onSaveSignageConfig: (config: SignageConfig) => void;
   onResetAll: () => void;
 }
 
@@ -93,6 +101,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onSavePibgCommittee,
   coCurriculumUnits,
   onSaveCoCurriculum,
+  signageSlides,
+  onSaveSignageSlides,
+  signageConfig,
+  onSaveSignageConfig,
   onResetAll
 }) => {
   const [activeTab, setActiveTab] = useState<
@@ -103,6 +115,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     | 'gallery'
     | 'awards'
     | 'cocurriculum'
+    | 'signage'
     | 'profile'
     | 'feedback'
     | 'gas_code'
@@ -794,6 +807,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           { id: 'gallery', label: 'Galeri Media', icon: ImageIcon },
           { id: 'awards', label: 'Ruang Anugerah', icon: Award },
           { id: 'cocurriculum', label: 'Kokurikulum & PIBG', icon: Trophy },
+          { id: 'signage', label: 'Urus Signage TV', icon: Tv },
           { id: 'profile', label: 'Profil Sekolah', icon: School },
           { id: 'feedback', label: 'Peti Maklum Balas', icon: MessageSquare, badge: feedbackList.filter((f) => f.status === 'baru').length },
           { id: 'gas_code', label: 'Kod Google Apps Script', icon: Code2 }
@@ -2590,6 +2604,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             ))}
           </div>
         </div>
+      )}
+
+      {/* ==================== MODULE: DIGITAL SIGNAGE SMART TV ==================== */}
+      {activeTab === 'signage' && (
+        <AdminSignageManager
+          profile={profile}
+          slides={signageSlides}
+          onSaveSlides={onSaveSignageSlides}
+          config={signageConfig}
+          onSaveConfig={onSaveSignageConfig}
+          showToast={showToast}
+        />
       )}
 
       {/* ==================== MODULE 10: GOOGLE APPS SCRIPT CODE ==================== */}

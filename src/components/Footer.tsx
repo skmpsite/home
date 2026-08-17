@@ -83,6 +83,11 @@ export const Footer: React.FC<FooterProps> = ({ profile, onNavigate, onOpenAdmin
                 Papan Kenyataan Berita
               </button>
             </li>
+            <li>
+              <button onClick={() => onNavigate('signage')} className="hover:text-yellow-300 transition">
+                Digital Signage & Smart TV
+              </button>
+            </li>
           </ul>
         </div>
 

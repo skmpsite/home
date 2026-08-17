@@ -13,7 +13,9 @@ import {
   PibgActivity,
   PibgCommittee,
   CoCurriculumUnit,
-  SearchResultItem
+  SearchResultItem,
+  SignageSlide,
+  SignageConfig
 } from './types';
 import {
   loadProfile,
@@ -39,6 +41,10 @@ import {
   savePibgCommittee,
   loadCoCurriculum,
   saveCoCurriculum,
+  loadSignageSlides,
+  saveSignageSlides,
+  loadSignageConfig,
+  saveSignageConfig,
   resetAllToDefault
 } from './utils/storage';
 import {
@@ -54,6 +60,7 @@ import { ProfileSection } from './components/sections/ProfileSection';
 import { OrganizationSection } from './components/sections/OrganizationSection';
 import { AcademicSection } from './components/sections/AcademicSection';
 import { CokurriculumSection } from './components/sections/CokurriculumSection';
+import { SignageSection } from './components/sections/SignageSection';
 import { NewsSection } from './components/sections/NewsSection';
 import { GallerySection } from './components/sections/GallerySection';
 import { AwardsSection } from './components/sections/AwardsSection';
@@ -78,6 +85,8 @@ export default function App() {
   const [pibgActivities, setPibgActivities] = useState<PibgActivity[]>(loadPibgActivities);
   const [pibgCommittee, setPibgCommittee] = useState<PibgCommittee[]>(loadPibgCommittee);
   const [coCurriculumUnits, setCoCurriculumUnits] = useState<CoCurriculumUnit[]>(loadCoCurriculum);
+  const [signageSlides, setSignageSlides] = useState<SignageSlide[]>(loadSignageSlides);
+  const [signageConfig, setSignageConfig] = useState<SignageConfig>(loadSignageConfig);
 
   // UI States
   const [activeTab, setActiveTab] = useState<TabType>('utama');
@@ -148,6 +157,8 @@ export default function App() {
       if (e.key === 'skmp_events_v1') setEvents(loadCalendarEvents());
       if (e.key === 'skmp_gallery_v1') setGallery(loadGallery());
       if (e.key === 'skmp_awards_v1') setAwards(loadAwards());
+      if (e.key === 'skmp_signage_slides_v1') setSignageSlides(loadSignageSlides());
+      if (e.key === 'skmp_signage_config_v1') setSignageConfig(loadSignageConfig());
     };
 
     window.addEventListener('visibilitychange', handleImmediateSync);
@@ -246,6 +257,16 @@ export default function App() {
   const handleUpdateCoCurriculum = (units: CoCurriculumUnit[]) => {
     setCoCurriculumUnits(units);
     saveCoCurriculum(units);
+  };
+
+  const handleUpdateSignageSlides = (slides: SignageSlide[]) => {
+    setSignageSlides(slides);
+    saveSignageSlides(slides);
+  };
+
+  const handleUpdateSignageConfig = (cfg: SignageConfig) => {
+    setSignageConfig(cfg);
+    saveSignageConfig(cfg);
   };
 
   const handleAddFeedback = (data: Omit<FeedbackEntry, 'id' | 'createdAt' | 'status'>) => {
@@ -416,6 +437,14 @@ export default function App() {
           <CokurriculumSection units={coCurriculumUnits} />
         )}
 
+        {activeTab === 'signage' && (
+          <SignageSection
+            profile={profile}
+            slides={signageSlides}
+            config={signageConfig}
+          />
+        )}
+
         {activeTab === 'berita' && (
           <NewsSection
             newsList={newsList}
@@ -487,6 +516,10 @@ export default function App() {
             onSavePibgCommittee={handleUpdatePibgCommittee}
             coCurriculumUnits={coCurriculumUnits}
             onSaveCoCurriculum={handleUpdateCoCurriculum}
+            signageSlides={signageSlides}
+            onSaveSignageSlides={handleUpdateSignageSlides}
+            signageConfig={signageConfig}
+            onSaveSignageConfig={handleUpdateSignageConfig}
             onResetAll={handleResetAllData}
           />
         )}

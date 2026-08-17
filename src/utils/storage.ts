@@ -10,7 +10,9 @@ import {
   FeedbackEntry,
   PibgActivity,
   PibgCommittee,
-  CoCurriculumUnit
+  CoCurriculumUnit,
+  SignageSlide,
+  SignageConfig
 } from '../types';
 import {
   initialSchoolProfile,
@@ -24,7 +26,9 @@ import {
   initialFeedbackList,
   initialPibgActivities,
   initialPibgCommittee,
-  initialCoCurriculumUnits
+  initialCoCurriculumUnits,
+  initialSignageSlides,
+  initialSignageConfig
 } from '../data/initialData';
 import { getSafeNewsImageUrl } from './imageHelpers';
 import { sortStaffBySeniority } from './staffHelpers';
@@ -41,7 +45,9 @@ const KEYS = {
   FEEDBACK: 'skmp_feedback_v1',
   PIBG_ACT: 'skmp_pibg_act_v1',
   PIBG_COMM: 'skmp_pibg_comm_v1',
-  COCURRICULUM: 'skmp_cocurriculum_v1'
+  COCURRICULUM: 'skmp_cocurriculum_v1',
+  SIGNAGE_SLIDES: 'skmp_signage_slides_v1',
+  SIGNAGE_CONFIG: 'skmp_signage_config_v1'
 };
 
 function getStored<T>(key: string, fallback: T): T {
@@ -258,6 +264,36 @@ export function saveCoCurriculum(list: CoCurriculumUnit[]): void {
   setStored(KEYS.COCURRICULUM, list);
 }
 
+export function loadSignageSlides(): SignageSlide[] {
+  const slides = getStored<SignageSlide[]>(KEYS.SIGNAGE_SLIDES, initialSignageSlides);
+  if (Array.isArray(slides) && slides.length > 0) {
+    return slides.sort((a, b) => (a.order || 0) - (b.order || 0));
+  }
+  return initialSignageSlides;
+}
+
+export function saveSignageSlides(slides: SignageSlide[]): void {
+  setStored(KEYS.SIGNAGE_SLIDES, slides);
+  try {
+    window.dispatchEvent(new CustomEvent('skmp_signage_updated', { detail: { slides } }));
+  } catch {
+    // Ignore in non-browser env
+  }
+}
+
+export function loadSignageConfig(): SignageConfig {
+  return getStored<SignageConfig>(KEYS.SIGNAGE_CONFIG, initialSignageConfig);
+}
+
+export function saveSignageConfig(config: SignageConfig): void {
+  setStored(KEYS.SIGNAGE_CONFIG, config);
+  try {
+    window.dispatchEvent(new CustomEvent('skmp_signage_config_updated', { detail: { config } }));
+  } catch {
+    // Ignore in non-browser env
+  }
+}
+
 export function resetAllToDefault(): void {
   localStorage.removeItem(KEYS.PROFILE);
   localStorage.removeItem(KEYS.STAFF);
@@ -271,4 +307,6 @@ export function resetAllToDefault(): void {
   localStorage.removeItem(KEYS.PIBG_ACT);
   localStorage.removeItem(KEYS.PIBG_COMM);
   localStorage.removeItem(KEYS.COCURRICULUM);
+  localStorage.removeItem(KEYS.SIGNAGE_SLIDES);
+  localStorage.removeItem(KEYS.SIGNAGE_CONFIG);
 }
