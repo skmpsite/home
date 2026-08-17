@@ -33,9 +33,21 @@ import {
   Layers,
   Flame,
   Award,
-  BookOpen
+  BookOpen,
+  Film,
+  Image as ImageIcon,
+  Youtube
 } from 'lucide-react';
 import { formatGoogleDriveUrl } from '../../utils/imageHelpers';
+import {
+  extractYouTubeId,
+  isYouTubeUrl,
+  isVideoUrl,
+  detectMediaType,
+  getYouTubeThumbnail,
+  buildYouTubeEmbedUrl,
+  formatMediaDuration
+} from '../../utils/signageMediaHelpers';
 
 interface SignageSectionProps {
   profile: SchoolProfile;
@@ -61,12 +73,15 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const [videoDuration, setVideoDuration] = useState<number | null>(null);
 
   // Time States
   const [currentTime, setCurrentTime] = useState(new Date());
 
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const controlsTimeoutRef = useRef<number | null>(null);
   const timerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(Date.now());
@@ -74,7 +89,26 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
   // Active slides only
   const activeSlides = slides.filter((s) => s.isActive);
   const currentSlide = activeSlides[currentIndex] || activeSlides[0] || null;
-  const slideDuration = (currentSlide?.durationSeconds || config.defaultDuration || 8) * 1000;
+
+  // Media Detection for Current Slide
+  const currentMediaType = currentSlide
+    ? detectMediaType(
+        currentSlide.videoUrl || currentSlide.youtubeUrl || currentSlide.imageUrl,
+        currentSlide.mediaType
+      )
+    : 'image';
+
+  const youtubeId = currentSlide
+    ? currentSlide.youtubeId || extractYouTubeId(currentSlide.youtubeUrl || currentSlide.imageUrl)
+    : null;
+
+  // Calculate slide duration in milliseconds
+  const currentDurationSeconds =
+    currentMediaType === 'video' && currentSlide?.useVideoDuration !== false && videoDuration
+      ? videoDuration
+      : currentSlide?.durationSeconds || config.defaultDuration || 8;
+
+  const slideDurationMs = currentDurationSeconds * 1000;
 
   // Real-time Sync from localStorage and custom events
   useEffect(() => {
@@ -145,6 +179,7 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
     if (activeSlides.length === 0) return;
     setCurrentIndex((prev) => (prev + 1) % activeSlides.length);
     setProgress(0);
+    setVideoDuration(null);
     startTimeRef.current = Date.now();
   }, [activeSlides.length]);
 
@@ -152,11 +187,28 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
     if (activeSlides.length === 0) return;
     setCurrentIndex((prev) => (prev - 1 + activeSlides.length) % activeSlides.length);
     setProgress(0);
+    setVideoDuration(null);
     startTimeRef.current = Date.now();
   }, [activeSlides.length]);
 
-  // Slide Animation Loop & Progress Bar
+  // Video Element Play/Pause Controller
   useEffect(() => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.play().catch(() => {});
+      } else {
+        videoRef.current.pause();
+      }
+    }
+  }, [isPlaying, currentIndex, currentMediaType]);
+
+  // Progress Bar & Auto-Advance Timer (For Images & YouTube)
+  useEffect(() => {
+    // For direct video elements using video duration, progress is driven by video `onTimeUpdate`
+    if (currentMediaType === 'video' && currentSlide?.useVideoDuration !== false) {
+      return;
+    }
+
     if (!isPlaying || activeSlides.length <= 1) {
       setProgress(0);
       return;
@@ -167,10 +219,10 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
 
     timerRef.current = window.setInterval(() => {
       const elapsed = Date.now() - startTimeRef.current;
-      const pct = Math.min((elapsed / slideDuration) * 100, 100);
+      const pct = Math.min((elapsed / slideDurationMs) * 100, 100);
       setProgress(pct);
 
-      if (elapsed >= slideDuration) {
+      if (elapsed >= slideDurationMs) {
         handleNextSlide();
       }
     }, updateFrequency);
@@ -178,7 +230,15 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
     return () => {
       if (timerRef.current) window.clearInterval(timerRef.current);
     };
-  }, [isPlaying, currentIndex, slideDuration, activeSlides.length, handleNextSlide]);
+  }, [
+    isPlaying,
+    currentIndex,
+    slideDurationMs,
+    activeSlides.length,
+    handleNextSlide,
+    currentMediaType,
+    currentSlide?.useVideoDuration
+  ]);
 
   // Fullscreen Management
   const toggleFullscreen = () => {
@@ -204,10 +264,10 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
 
-  // D-Pad / Remote Control & Keyboard Shortcut Handlers
+  // TV Remote (D-Pad) & Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't intercept typing in inputs
+      // Ignore if typing in an input
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement)?.tagName)) {
         return;
       }
@@ -215,35 +275,49 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
       switch (e.key) {
         case 'ArrowRight':
         case 'PageDown':
+        case 'n':
+        case 'N':
           e.preventDefault();
           handleNextSlide();
-          resetControlsTimeout();
           break;
+
         case 'ArrowLeft':
         case 'PageUp':
+        case 'p':
+        case 'P':
           e.preventDefault();
           handlePrevSlide();
-          resetControlsTimeout();
           break;
+
         case ' ':
         case 'k':
-        case 'p':
+        case 'K':
           e.preventDefault();
           setIsPlaying((prev) => !prev);
-          resetControlsTimeout();
           break;
+
         case 'f':
         case 'F':
         case 'Enter':
           e.preventDefault();
           toggleFullscreen();
           break;
+
+        case 'm':
+        case 'M':
+          e.preventDefault();
+          setIsMuted((prev) => !prev);
+          break;
+
         case '?':
         case 'h':
+        case 'H':
           e.preventDefault();
           setShowShortcutsModal((prev) => !prev);
           break;
-        default:
+
+        case 'Escape':
+          setShowShortcutsModal(false);
           break;
       }
     };
@@ -252,151 +326,130 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleNextSlide, handlePrevSlide]);
 
-  // Mouse move control bar auto-hide (for Clean Kiosk display)
-  const resetControlsTimeout = () => {
+  // Auto-hide controls after 4s idle in fullscreen/kiosk
+  const handleUserActivity = () => {
     setShowControls(true);
     if (controlsTimeoutRef.current) {
       window.clearTimeout(controlsTimeoutRef.current);
     }
     controlsTimeoutRef.current = window.setTimeout(() => {
-      if (isFullscreen) {
+      if (isFullscreen || standalone) {
         setShowControls(false);
       }
     }, 4000);
   };
 
-  const handleMouseMove = () => {
-    resetControlsTimeout();
-  };
+  // Date & Time Formatting
+  const formattedTime = currentTime.toLocaleTimeString('ms-MY', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true
+  });
 
-  // Date Formatting for Malaysia TV
-  const formattedDay = new Intl.DateTimeFormat('ms-MY', { weekday: 'long' }).format(currentTime);
-  const formattedDate = new Intl.DateTimeFormat('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' }).format(currentTime);
-  const formattedTime = currentTime.toLocaleTimeString('ms-MY', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const formattedDate = currentTime.toLocaleDateString('ms-MY', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
 
   return (
-    <div className="space-y-6 animate-fadeIn">
-      {/* Top Section Info & Action Header (when not standalone) */}
-      {!standalone && (
-        <div className="bg-gradient-to-r from-blue-900/90 via-slate-900/90 to-amber-950/80 backdrop-blur-xl border border-white/15 rounded-3xl p-6 shadow-2xl text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-yellow-400 text-blue-950 flex items-center justify-center shadow-lg shadow-yellow-400/20 flex-shrink-0">
-              <Tv className="w-7 h-7 animate-pulse" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase bg-rose-500/20 text-rose-300 border border-rose-400/30 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping" />
-                  Smart TV Digital Signage
-                </span>
-                <span className="text-xs text-yellow-300 font-bold">1080p / 4K UHD</span>
-              </div>
-              <h2 className="text-2xl font-black text-white mt-1">
-                Paparan Siaran Digital Smart TV SKMP
-              </h2>
-              <p className="text-xs text-slate-300">
-                Sistem paparan slaid digital automatik untuk televisyen pintar lobi, dewan, dan ruang legar sekolah.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
-            {/* Go Fullscreen TV Button */}
-            <button
-              onClick={toggleFullscreen}
-              className="px-5 py-3 rounded-2xl bg-yellow-400 text-blue-950 font-black text-xs flex items-center gap-2 hover:bg-yellow-300 transition shadow-lg shadow-yellow-400/20 hover:scale-105 active:scale-95 flex-1 md:flex-initial justify-center focus:ring-4 focus:ring-yellow-300 focus:outline-none"
-              title="Masuk Mod Skrin Penuh (Tekan 'F' atau Enter pada Remote TV)"
-            >
-              <Maximize2 className="w-4 h-4" />
-              <span>Buka Skrin Penuh (Go Fullscreen)</span>
-            </button>
-
-            {/* Standalone tv.html direct open link */}
-            <a
-              href="/tv.html"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs flex items-center gap-2 transition hover:scale-105 active:scale-95 flex-1 md:flex-initial justify-center"
-              title="Buka fail tv.html dalam tetingkap baharu khas untuk pelayar Smart TV"
-            >
-              <ExternalLink className="w-4 h-4 text-yellow-400" />
-              <span>Buka 'tv.html' Khas TV</span>
-            </a>
-
-            {/* Keyboard / Remote Guide button */}
-            <button
-              onClick={() => setShowShortcutsModal(true)}
-              className="p-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-slate-300 hover:text-white transition"
-              title="Panduan Alat Kawalan Jauh (Remote TV / D-Pad)"
-            >
-              <Info className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Main Smart TV Kiosk Stage Container */}
+    <div
+      ref={containerRef}
+      onMouseMove={handleUserActivity}
+      onClick={handleUserActivity}
+      className={`relative w-full overflow-hidden bg-slate-950 font-sans select-none flex flex-col justify-between ${
+        standalone || isFullscreen
+          ? 'fixed inset-0 z-[9999] h-screen w-screen'
+          : 'rounded-3xl border border-white/20 shadow-2xl min-h-[640px] md:min-h-[720px] aspect-[16/9]'
+      }`}
+    >
+      {/* TOP HEADER BAR (Logo, School Name, Clock, Weather, Audio Status) */}
       <div
-        ref={containerRef}
-        onMouseMove={handleMouseMove}
-        className={`relative overflow-hidden bg-slate-950 text-white transition-all select-none ${
-          isFullscreen
-            ? 'w-screen h-screen fixed inset-0 z-[9999] rounded-0'
-            : 'w-full aspect-[16/9] min-h-[460px] md:min-h-[620px] rounded-3xl border border-white/20 shadow-2xl'
+        className={`relative z-30 flex items-center justify-between p-4 sm:p-6 bg-gradient-to-b from-slate-950/90 via-slate-950/60 to-transparent backdrop-blur-md transition-opacity duration-300 ${
+          showControls || !isFullscreen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
       >
-        {/* TOP STATUS BAR (School Branding + Live Clock) */}
-        <div
-          className={`absolute top-0 inset-x-0 z-30 transition-opacity duration-300 bg-gradient-to-b from-slate-950/95 via-slate-950/70 to-transparent p-4 sm:p-6 flex items-center justify-between pointer-events-none ${
-            showControls || !isFullscreen ? 'opacity-100' : 'opacity-0'
-          }`}
-        >
-          {/* School Brand */}
-          <div className="flex items-center gap-3.5 pointer-events-auto">
-            {profile.logoUrl && (
-              <img
-                src={formatGoogleDriveUrl(profile.logoUrl)}
-                alt="Logo SK Merbau Pulas"
-                className="w-12 h-12 sm:w-14 sm:h-14 object-contain drop-shadow-md"
-                referrerPolicy="no-referrer"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-            )}
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-yellow-400 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
-                  {profile.code || 'KBA5012'} • SIARAN DIGITAL
-                </span>
-              </div>
-              <h1 className="text-base sm:text-xl font-black text-white drop-shadow tracking-tight">
-                {profile.name || 'Sekolah Kebangsaan Merbau Pulas'}
-              </h1>
-              <p className="text-[11px] font-medium text-slate-300 hidden sm:block">
-                {profile.motto || 'Berilmu, Beramal, Berbakti'}
-              </p>
+        {/* Left: School Identity & Status */}
+        <div className="flex items-center gap-3.5">
+          <img
+            src={profile.logoUrl}
+            alt={profile.schoolName}
+            className="w-12 h-12 sm:w-14 sm:h-14 object-contain drop-shadow-[0_0_12px_rgba(250,204,21,0.5)] flex-shrink-0"
+            referrerPolicy="no-referrer"
+            onError={(e) => {
+              e.currentTarget.src =
+                'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgYVyl_qKknZ3_eiUbvgojY6Y3OiP28frcG3qy92a9yH5jt776tl5293zJX7Adg6-hvQYW5gLILFL-BXnte2ZkXw3Hdtl3MYQqWTV4_L6UbCsBIVVWieiyipL4Dbp33EIrrcXgxX-qLLFKZ/s1600/logo+skmp+warna+stroke.png';
+            }}
+          />
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-yellow-400 text-blue-950 shadow-sm flex items-center gap-1">
+                <Radio className="w-3 h-3 animate-pulse text-red-600" />
+                <span>SIARAN DIGITAL SMART TV</span>
+              </span>
+              <span className="text-[11px] font-bold text-yellow-300/90 hidden sm:inline-block">
+                {profile.schoolCode}
+              </span>
             </div>
+            <h1 className="text-base sm:text-xl font-black text-white tracking-tight drop-shadow-md leading-tight mt-0.5">
+              {profile.schoolName}
+            </h1>
           </div>
+        </div>
 
-          {/* Real-time Clock & Date Widget */}
+        {/* Right: Live Digital Clock & Controls */}
+        <div className="flex items-center gap-3">
+          {/* Audio Indicator / Toggle */}
+          <button
+            onClick={() => setIsMuted((prev) => !prev)}
+            className={`px-3 py-1.5 rounded-xl border flex items-center gap-1.5 text-xs font-bold transition shadow-lg ${
+              isMuted
+                ? 'bg-slate-900/80 border-white/20 text-slate-300 hover:text-white'
+                : 'bg-yellow-400 text-blue-950 border-yellow-300 font-black shadow-yellow-400/20'
+            }`}
+            title="Ketik 'M' untuk Audio On/Off"
+          >
+            {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            <span className="hidden sm:inline">{isMuted ? 'Bisu' : 'Audio On'}</span>
+          </button>
+
+          {/* Clock Widget */}
           {config.showClock && (
-            <div className="pointer-events-auto flex items-center gap-3 bg-slate-900/80 backdrop-blur-md border border-white/20 rounded-2xl px-4 py-2.5 shadow-xl">
-              <Clock className="w-5 h-5 text-yellow-400 animate-pulse hidden sm:block" />
-              <div className="text-right">
-                <div className="text-lg sm:text-2xl font-black tracking-widest text-yellow-400 font-mono leading-none">
-                  {formattedTime}
-                </div>
-                <div className="text-[10px] sm:text-xs font-bold text-slate-300 mt-0.5">
-                  {formattedDay}, {formattedDate}
-                </div>
+            <div className="bg-slate-900/80 backdrop-blur-xl border border-white/20 px-3.5 py-2 rounded-2xl shadow-xl text-right hidden sm:block">
+              <div className="text-sm sm:text-base font-black text-yellow-400 font-mono tracking-wider">
+                {formattedTime}
+              </div>
+              <div className="text-[10px] sm:text-xs font-bold text-slate-300 uppercase tracking-tight">
+                {formattedDate}
               </div>
             </div>
           )}
-        </div>
 
-        {/* PROGRESS BAR AT TOP */}
+          {/* Remote Guide Button */}
+          <button
+            onClick={() => setShowShortcutsModal(true)}
+            className="p-2.5 rounded-xl bg-white/10 hover:bg-yellow-400 hover:text-blue-950 text-white font-bold transition focus:ring-2 focus:ring-yellow-400 focus:outline-none"
+            title="Panduan Alat Kawalan Jauh TV (D-Pad / Keyboard)"
+          >
+            <Tv className="w-4 h-4" />
+          </button>
+
+          {/* Fullscreen Toggle */}
+          <button
+            onClick={toggleFullscreen}
+            className="p-2.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-blue-950 font-black transition shadow-lg shadow-yellow-400/20 focus:ring-2 focus:ring-yellow-400 focus:outline-none"
+            title={isFullscreen ? 'Keluar Skrin Penuh (F / Enter)' : 'Skrin Penuh (F / Enter)'}
+          >
+            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
+        </div>
+      </div>
+
+      {/* CENTER MEDIA DISPLAY ENGINE (IMAGES / VIDEOS / YOUTUBE) */}
+      <div className="relative flex-grow flex items-center justify-center overflow-hidden w-full h-full bg-slate-950">
+        {/* TOP SLIDE PROGRESS BAR */}
         <div className="absolute top-0 inset-x-0 h-1.5 bg-white/10 z-40">
           <div
             className="h-full bg-gradient-to-r from-yellow-500 via-amber-400 to-yellow-300 transition-all duration-75 ease-linear shadow-[0_0_8px_rgba(250,204,21,0.8)]"
@@ -404,27 +457,75 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
           />
         </div>
 
-        {/* SLIDE IMAGE & DISPLAY ENGINE */}
-        <div className="w-full h-full relative flex items-center justify-center bg-slate-950 overflow-hidden">
-          <AnimatePresence mode="wait">
-            {currentSlide ? (
-              <motion.div
-                key={currentSlide.id}
-                initial={{ opacity: 0, scale: 1.04 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
-                className="w-full h-full absolute inset-0 flex items-center justify-center"
-              >
-                {/* Background Ambient Blur Glow */}
-                <div
-                  className="absolute inset-0 bg-cover bg-center filter blur-3xl opacity-30 scale-110"
-                  style={{
-                    backgroundImage: `url(${formatGoogleDriveUrl(currentSlide.imageUrl)})`
-                  }}
-                />
+        <AnimatePresence mode="wait">
+          {currentSlide ? (
+            <motion.div
+              key={currentSlide.id}
+              initial={{ opacity: 0, scale: 1.03 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full h-full absolute inset-0 flex items-center justify-center overflow-hidden"
+            >
+              {/* Background Ambient Blur Glow */}
+              <div
+                className="absolute inset-0 bg-cover bg-center filter blur-3xl opacity-30 scale-110"
+                style={{
+                  backgroundImage: `url(${
+                    youtubeId
+                      ? getYouTubeThumbnail(youtubeId)
+                      : formatGoogleDriveUrl(currentSlide.imageUrl)
+                  })`
+                }}
+              />
 
-                {/* Primary Crisp 1080p/4K Slide */}
+              {/* 1. YOUTUBE VIDEO PLAYER */}
+              {currentMediaType === 'youtube' && youtubeId ? (
+                <div className="w-full h-full relative flex items-center justify-center z-10">
+                  <iframe
+                    src={buildYouTubeEmbedUrl(youtubeId, {
+                      autoplay: isPlaying,
+                      muted: isMuted,
+                      controls: false
+                    })}
+                    title={currentSlide.title}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="w-full h-full object-cover border-0 pointer-events-auto shadow-2xl"
+                  />
+                </div>
+              ) : currentMediaType === 'video' ? (
+                /* 2. DIRECT HTML5 VIDEO PLAYER (MP4/WebM) */
+                <div className="w-full h-full relative flex items-center justify-center z-10">
+                  <video
+                    ref={videoRef}
+                    src={currentSlide.videoUrl || currentSlide.imageUrl}
+                    poster={formatGoogleDriveUrl(currentSlide.imageUrl)}
+                    autoPlay={isPlaying}
+                    playsInline
+                    muted={isMuted}
+                    className="w-full h-full object-contain object-center drop-shadow-2xl"
+                    onLoadedMetadata={(e) => {
+                      const dur = Math.round(e.currentTarget.duration);
+                      if (dur > 0 && currentSlide.useVideoDuration !== false) {
+                        setVideoDuration(dur);
+                      }
+                    }}
+                    onTimeUpdate={(e) => {
+                      const el = e.currentTarget;
+                      if (el.duration > 0 && currentSlide.useVideoDuration !== false) {
+                        setProgress((el.currentTime / el.duration) * 100);
+                      }
+                    }}
+                    onEnded={() => {
+                      if (isPlaying) {
+                        handleNextSlide();
+                      }
+                    }}
+                  />
+                </div>
+              ) : (
+                /* 3. CRISP IMAGE / POSTER SLIDE */
                 <img
                   src={formatGoogleDriveUrl(currentSlide.imageUrl)}
                   alt={currentSlide.title}
@@ -435,135 +536,173 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
                       'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&q=80&w=1920';
                   }}
                 />
+              )}
 
-                {/* Glassmorphic Slide Caption Card (Bottom-Left) */}
-                {(currentSlide.title || currentSlide.subtitle) && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2, duration: 0.6 }}
-                    className="absolute bottom-20 left-6 sm:left-10 max-w-2xl z-20 bg-slate-950/85 backdrop-blur-xl border border-white/20 p-4 sm:p-6 rounded-3xl shadow-2xl text-left pointer-events-none"
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-yellow-400 text-blue-950 shadow-sm">
-                        {currentSlide.category || 'Pengumuman'}
+              {/* Glassmorphic Slide Caption Card (Bottom-Left) */}
+              {(currentSlide.title || currentSlide.subtitle) && (
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2, duration: 0.6 }}
+                  className="absolute bottom-20 left-6 sm:left-10 max-w-2xl z-20 bg-slate-950/85 backdrop-blur-xl border border-white/20 p-4 sm:p-6 rounded-3xl shadow-2xl text-left pointer-events-none"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    {/* Media Type Tag */}
+                    {currentMediaType === 'youtube' ? (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-600 text-white shadow-sm flex items-center gap-1">
+                        <Youtube className="w-3 h-3" /> YouTube Video
                       </span>
-                      <span className="text-[11px] font-bold text-slate-400">
-                        {currentIndex + 1} / {activeSlides.length}
+                    ) : currentMediaType === 'video' ? (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-600 text-white shadow-sm flex items-center gap-1">
+                        <Film className="w-3 h-3" /> Video Klip
                       </span>
-                    </div>
-                    <h2 className="text-lg sm:text-2xl font-black text-white drop-shadow-md leading-tight">
-                      {currentSlide.title}
-                    </h2>
-                    {currentSlide.subtitle && (
-                      <p className="text-xs sm:text-sm text-slate-300 mt-1 line-clamp-2 leading-relaxed">
-                        {currentSlide.subtitle}
-                      </p>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-yellow-400 text-blue-950 shadow-sm flex items-center gap-1">
+                        <ImageIcon className="w-3 h-3" /> {currentSlide.category || 'Pengumuman'}
+                      </span>
                     )}
-                  </motion.div>
-                )}
-              </motion.div>
-            ) : (
-              <div className="text-center p-8 text-slate-400 z-10">
-                <Tv className="w-16 h-16 mx-auto mb-4 text-yellow-400 opacity-60" />
-                <h3 className="text-xl font-bold text-white">Tiada Slaid Aktif</h3>
-                <p className="text-xs mt-1">Sila tambah slaid atau aktifkan slaid di Halaman Admin.</p>
-              </div>
-            )}
-          </AnimatePresence>
-        </div>
 
-        {/* BOTTOM RUNNING MARQUEE TICKER */}
-        {config.showMarquee && (
-          <div className="absolute bottom-0 inset-x-0 z-30 bg-gradient-to-r from-blue-950 via-slate-900 to-blue-950 border-t border-yellow-400/40 text-yellow-300 font-bold text-xs sm:text-sm py-2.5 px-4 flex items-center gap-4 shadow-2xl">
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-yellow-400 text-blue-950 font-black rounded-xl text-xs uppercase tracking-wider flex-shrink-0 shadow-md">
-              <Megaphone className="w-4 h-4" />
-              <span>Info Semasa</span>
+                    <span className="text-[11px] font-bold text-slate-400 font-mono">
+                      {currentIndex + 1} / {activeSlides.length}
+                    </span>
+
+                    {/* Media Duration Badge */}
+                    <span className="text-[10px] font-mono font-bold text-yellow-300 bg-white/10 px-2 py-0.5 rounded-lg border border-white/10">
+                      <Clock className="w-2.5 h-2.5 inline mr-1" />
+                      {formatMediaDuration(currentDurationSeconds)}
+                    </span>
+                  </div>
+
+                  <h2 className="text-lg sm:text-2xl font-black text-white drop-shadow-md leading-tight">
+                    {currentSlide.title}
+                  </h2>
+                  {currentSlide.subtitle && (
+                    <p className="text-xs sm:text-sm text-slate-300 mt-1 line-clamp-2 leading-relaxed">
+                      {currentSlide.subtitle}
+                    </p>
+                  )}
+                </motion.div>
+              )}
+            </motion.div>
+          ) : (
+            <div className="text-center p-8 text-slate-400 z-10">
+              <Tv className="w-16 h-16 mx-auto mb-4 text-yellow-400 opacity-60" />
+              <h3 className="text-xl font-bold text-white">Tiada Slaid / Video Aktif</h3>
+              <p className="text-xs mt-1">Sila tambah slaid atau video di Halaman Admin.</p>
             </div>
-            <div className="overflow-hidden whitespace-nowrap flex-grow">
-              <div className="inline-block animate-marquee font-bold text-white tracking-wide">
-                {config.marqueeText ||
-                  'SELAMAT DATANG KE SK MERBAU PULAS • BERILMU, BERAMAL, BERBAKTI • PENDAFTARAN TAHUN 1 SESI 2027 KINI DIBUKA • PASTIKAN KEHADIRAN MURID MELEBIHI 95%'}
-              </div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* BOTTOM RUNNING MARQUEE TICKER */}
+      {config.showMarquee && (
+        <div className="relative z-30 bg-gradient-to-r from-blue-950 via-slate-900 to-blue-950 border-t border-yellow-400/40 text-yellow-300 font-bold text-xs sm:text-sm py-2.5 px-4 flex items-center gap-4 shadow-2xl">
+          <div className="flex items-center gap-1.5 px-3 py-1 bg-yellow-400 text-blue-950 font-black rounded-xl text-xs uppercase tracking-wider flex-shrink-0 shadow-md">
+            <Megaphone className="w-4 h-4" />
+            <span>Info Semasa</span>
+          </div>
+          <div className="overflow-hidden whitespace-nowrap flex-grow">
+            <div className="inline-block animate-marquee font-bold text-white tracking-wide">
+              {config.marqueeText ||
+                'SELAMAT DATANG KE SK MERBAU PULAS • BERILMU, BERAMAL, BERBAKTI • PENDAFTARAN TAHUN 1 SESI 2027 KINI DIBUKA DI PORTAL idMe KPM • PASTIKAN KEHADIRAN MURID MELEBIHI 95%'}
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* REMOTE & INTERACTIVE CONTROL OVERLAY (Hover / Focus) */}
-        <div
-          className={`absolute bottom-12 right-6 z-40 transition-all duration-300 flex items-center gap-2 bg-slate-950/85 backdrop-blur-xl border border-white/20 p-2 rounded-2xl shadow-2xl ${
-            showControls || !isFullscreen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
+      {/* REMOTE & INTERACTIVE CONTROL OVERLAY (Hover / Focus) */}
+      <div
+        className={`absolute bottom-12 right-6 z-40 transition-all duration-300 flex items-center gap-2 bg-slate-950/85 backdrop-blur-xl border border-white/20 p-2 rounded-2xl shadow-2xl ${
+          showControls || !isFullscreen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
+        }`}
+      >
+        {/* Audio Mute/Unmute */}
+        <button
+          onClick={() => setIsMuted((prev) => !prev)}
+          className={`p-2.5 rounded-xl font-bold transition focus:ring-2 focus:ring-yellow-400 focus:outline-none ${
+            isMuted ? 'bg-white/10 text-slate-300 hover:text-white' : 'bg-yellow-400 text-blue-950 font-black'
           }`}
+          title={isMuted ? 'Buka Suara (M)' : 'Bisu (M)'}
         >
-          {/* Prev Slide */}
-          <button
-            onClick={handlePrevSlide}
-            className="p-2.5 rounded-xl bg-white/10 hover:bg-yellow-400 hover:text-blue-950 text-white font-bold transition focus:ring-2 focus:ring-yellow-400 focus:outline-none"
-            title="Slaid Sebelumnya (D-Pad Kiri)"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
+          {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+        </button>
 
-          {/* Play / Pause */}
-          <button
-            onClick={() => setIsPlaying((prev) => !prev)}
-            className="p-2.5 rounded-xl bg-yellow-400 text-blue-950 font-black transition hover:bg-yellow-300 focus:ring-2 focus:ring-yellow-400 focus:outline-none shadow-md shadow-yellow-400/20"
-            title={isPlaying ? 'Jeda Siaran (Space/P)' : 'Mainkan Siaran (Space/P)'}
-          >
-            {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-          </button>
+        {/* Prev Slide */}
+        <button
+          onClick={handlePrevSlide}
+          className="p-2.5 rounded-xl bg-white/10 hover:bg-yellow-400 hover:text-blue-950 text-white font-bold transition focus:ring-2 focus:ring-yellow-400 focus:outline-none"
+          title="Slaid Sebelumnya (D-Pad Kiri)"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
 
-          {/* Next Slide */}
-          <button
-            onClick={handleNextSlide}
-            className="p-2.5 rounded-xl bg-white/10 hover:bg-yellow-400 hover:text-blue-950 text-white font-bold transition focus:ring-2 focus:ring-yellow-400 focus:outline-none"
-            title="Slaid Seterusnya (D-Pad Kanan)"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
+        {/* Play / Pause */}
+        <button
+          onClick={() => setIsPlaying((prev) => !prev)}
+          className="p-2.5 rounded-xl bg-yellow-400 text-blue-950 font-black transition hover:bg-yellow-300 focus:ring-2 focus:ring-yellow-400 focus:outline-none shadow-md shadow-yellow-400/20"
+          title={isPlaying ? 'Jeda Siaran (Space/P)' : 'Mainkan Siaran (Space/P)'}
+        >
+          {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+        </button>
 
-          {/* Slide Indicator Dropdown / Count */}
-          <div className="px-2.5 text-xs font-mono font-bold text-yellow-300">
-            {currentIndex + 1} / {activeSlides.length}
-          </div>
+        {/* Next Slide */}
+        <button
+          onClick={handleNextSlide}
+          className="p-2.5 rounded-xl bg-white/10 hover:bg-yellow-400 hover:text-blue-950 text-white font-bold transition focus:ring-2 focus:ring-yellow-400 focus:outline-none"
+          title="Slaid Seterusnya (D-Pad Kanan)"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
 
-          {/* Fullscreen Toggle */}
-          <button
-            onClick={toggleFullscreen}
-            className="p-2.5 rounded-xl bg-white/10 hover:bg-yellow-400 hover:text-blue-950 text-white font-bold transition focus:ring-2 focus:ring-yellow-400 focus:outline-none"
-            title="Mod Skrin Penuh (F / Enter)"
-          >
-            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-          </button>
+        {/* Slide Indicator Count */}
+        <div className="px-2.5 text-xs font-mono font-bold text-yellow-300">
+          {currentIndex + 1} / {activeSlides.length}
         </div>
 
-        {/* THUMBNAIL QUICK NAVIGATOR BAR */}
-        <div
-          className={`absolute bottom-12 left-6 z-30 hidden md:flex items-center gap-1.5 transition-all duration-300 ${
-            showControls || !isFullscreen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-          }`}
+        {/* Fullscreen Toggle */}
+        <button
+          onClick={toggleFullscreen}
+          className="p-2.5 rounded-xl bg-white/10 hover:bg-yellow-400 hover:text-blue-950 text-white font-bold transition focus:ring-2 focus:ring-yellow-400 focus:outline-none"
+          title="Mod Skrin Penuh (F / Enter)"
         >
-          {activeSlides.map((slide, idx) => (
+          {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+        </button>
+      </div>
+
+      {/* THUMBNAIL QUICK NAVIGATOR BAR */}
+      <div
+        className={`absolute bottom-12 left-6 z-30 hidden md:flex items-center gap-2 transition-all duration-300 ${
+          showControls || !isFullscreen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+      >
+        {activeSlides.map((slide, idx) => {
+          const type = detectMediaType(slide.videoUrl || slide.youtubeUrl || slide.imageUrl, slide.mediaType);
+          return (
             <button
               key={slide.id}
               onClick={() => {
                 setCurrentIndex(idx);
                 setProgress(0);
+                setVideoDuration(null);
               }}
-              className={`group relative h-2.5 rounded-full transition-all duration-300 focus:outline-none ${
+              className={`group relative h-3 rounded-full transition-all duration-300 focus:outline-none flex items-center justify-center ${
                 currentIndex === idx
-                  ? 'w-8 bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.8)]'
-                  : 'w-2.5 bg-white/30 hover:bg-white/60'
+                  ? type === 'youtube'
+                    ? 'w-10 bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.8)]'
+                    : type === 'video'
+                    ? 'w-10 bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.8)]'
+                    : 'w-10 bg-yellow-400 shadow-[0_0_12px_rgba(250,204,21,0.8)]'
+                  : 'w-3 bg-white/30 hover:bg-white/60'
               }`}
               title={`Pergi ke slaid ${idx + 1}: ${slide.title}`}
             >
               {/* Tooltip on hover */}
-              <span className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition pointer-events-none border border-white/10 shadow-lg">
-                {slide.title}
+              <span className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] px-2.5 py-1 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition pointer-events-none border border-white/10 shadow-xl flex items-center gap-1">
+                {type === 'youtube' ? '▶️' : type === 'video' ? '🎬' : '📷'} {slide.title}
               </span>
             </button>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
       {/* REMOTE SHORTCUTS MODAL */}
@@ -587,7 +726,7 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
             </div>
 
             <p className="text-slate-300 leading-relaxed">
-              Sistem Smart TV ini direka khas untuk memudahkan navigasi menggunakan alat kawalan jauh televisyen (TV Remote / D-Pad), papan kekunci wayarles, atau tetikus:
+              Sistem Smart TV ini menyokong pelbagai format video (MP4, YouTube, Poster) dan direka khas untuk kawalan mudah melalui alat kawalan televisyen (TV Remote / D-Pad):
             </p>
 
             <div className="grid grid-cols-2 gap-2 text-[11px]">
@@ -598,21 +737,27 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
                 </kbd>
               </div>
               <div className="p-2.5 bg-white/5 border border-white/10 rounded-xl flex items-center justify-between">
-                <span className="font-bold text-slate-300">Main / Jeda (Play/Pause)</span>
+                <span className="font-bold text-slate-300">Main / Jeda Video</span>
                 <kbd className="px-2 py-0.5 bg-yellow-400/20 text-yellow-300 font-mono font-bold rounded border border-yellow-400/30">
-                  Space / P
+                  Space / P / K
+                </kbd>
+              </div>
+              <div className="p-2.5 bg-white/5 border border-white/10 rounded-xl flex items-center justify-between">
+                <span className="font-bold text-slate-300">Bisu / Suara Audio</span>
+                <kbd className="px-2 py-0.5 bg-yellow-400/20 text-yellow-300 font-mono font-bold rounded border border-yellow-400/30">
+                  M
                 </kbd>
               </div>
               <div className="p-2.5 bg-white/5 border border-white/10 rounded-xl flex items-center justify-between">
                 <span className="font-bold text-slate-300">Slaid Seterusnya</span>
                 <kbd className="px-2 py-0.5 bg-yellow-400/20 text-yellow-300 font-mono font-bold rounded border border-yellow-400/30">
-                  &rarr; / D-Pad Right
+                  &rarr; / D-Pad Kanan
                 </kbd>
               </div>
-              <div className="p-2.5 bg-white/5 border border-white/10 rounded-xl flex items-center justify-between">
+              <div className="p-2.5 bg-white/5 border border-white/10 rounded-xl flex items-center justify-between col-span-2">
                 <span className="font-bold text-slate-300">Slaid Sebelumnya</span>
                 <kbd className="px-2 py-0.5 bg-yellow-400/20 text-yellow-300 font-mono font-bold rounded border border-yellow-400/30">
-                  &larr; / D-Pad Left
+                  &larr; / D-Pad Kiri
                 </kbd>
               </div>
             </div>

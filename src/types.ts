@@ -178,11 +178,17 @@ export interface SignageSlide {
   id: string;
   title: string;
   subtitle?: string;
+  mediaType?: 'image' | 'video' | 'youtube';
   imageUrl: string;
+  videoUrl?: string;
+  youtubeUrl?: string;
+  youtubeId?: string;
   durationSeconds: number;
+  useVideoDuration?: boolean;
+  isMuted?: boolean;
   isActive: boolean;
   order: number;
-  category?: 'pengumuman' | 'aktiviti' | 'kejayaan' | 'info' | 'poster';
+  category?: 'pengumuman' | 'aktiviti' | 'kejayaan' | 'info' | 'poster' | 'video' | 'khas';
   createdAt?: string;
 }
 
