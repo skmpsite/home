@@ -267,7 +267,25 @@ export function saveCoCurriculum(list: CoCurriculumUnit[]): void {
 export function loadSignageSlides(): SignageSlide[] {
   const slides = getStored<SignageSlide[]>(KEYS.SIGNAGE_SLIDES, initialSignageSlides);
   if (Array.isArray(slides) && slides.length > 0) {
-    return slides.sort((a, b) => (a.order || 0) - (b.order || 0));
+    // Check if any old placeholder youtube ID exists and upgrade to official video
+    let needsUpdate = false;
+    const mapped = slides.map(s => {
+      if (s.youtubeId === 'kXYiU_JCYtU' || (s.youtubeUrl && s.youtubeUrl.includes('kXYiU_JCYtU'))) {
+        needsUpdate = true;
+        return {
+          ...s,
+          youtubeUrl: 'https://www.youtube.com/watch?v=i8HoTEU3h_I',
+          youtubeId: 'i8HoTEU3h_I',
+          imageUrl: 'https://img.youtube.com/vi/i8HoTEU3h_I/maxresdefault.jpg'
+        };
+      }
+      return s;
+    });
+
+    if (needsUpdate) {
+      setStored(KEYS.SIGNAGE_SLIDES, mapped);
+    }
+    return mapped.sort((a, b) => (a.order || 0) - (b.order || 0));
   }
   return initialSignageSlides;
 }

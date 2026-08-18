@@ -102,11 +102,11 @@ export function buildYouTubeEmbedUrl(
     rel: '0',
     showinfo: '0',
     iv_load_policy: '3',
-    fs: '0',
+    fs: '1',
     playsinline: '1'
   });
 
-  if (typeof window !== 'undefined' && window.location?.origin) {
+  if (typeof window !== 'undefined' && window.location?.origin && !window.location.origin.includes('localhost') && window.location.origin.startsWith('http')) {
     params.set('origin', window.location.origin);
   }
 
@@ -115,7 +115,7 @@ export function buildYouTubeEmbedUrl(
     params.set('playlist', videoId);
   }
 
-  return `https://www.youtube-nocookie.com/embed/${videoId}?${params.toString()}`;
+  return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
 }
 
 /**
