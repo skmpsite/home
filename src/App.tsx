@@ -119,6 +119,17 @@ export default function App() {
           setNewsList(parsed.newsList);
           saveNews(parsed.newsList);
         }
+        if (parsed.signageSlides && parsed.signageSlides.length > 0) {
+          setSignageSlides(parsed.signageSlides);
+          saveSignageSlides(parsed.signageSlides);
+        }
+        if (parsed.signageConfig && Object.keys(parsed.signageConfig).length > 0) {
+          setSignageConfig(prev => {
+            const updated = { ...prev, ...parsed.signageConfig };
+            saveSignageConfig(updated);
+            return updated;
+          });
+        }
         if (parsed.profileUpdates) {
           setProfile(prev => {
             const updated = { ...prev, ...parsed.profileUpdates };
@@ -184,6 +195,8 @@ export default function App() {
     gallery?: GalleryItem[];
     awards?: AwardItem[];
     documents?: DownloadDocument[];
+    signageSlides?: SignageSlide[];
+    signageConfig?: SignageConfig;
   }) => {
     syncBulkDataToGoogleSheets({
       profile: partialUpdate.profile || profile,
@@ -192,7 +205,9 @@ export default function App() {
       events: partialUpdate.events || events,
       gallery: partialUpdate.gallery || gallery,
       awards: partialUpdate.awards || awards,
-      documents: partialUpdate.documents || documents
+      documents: partialUpdate.documents || documents,
+      signageSlides: partialUpdate.signageSlides || signageSlides,
+      signageConfig: partialUpdate.signageConfig || signageConfig
     }).catch(err => console.warn('Auto cloud sync failed:', err));
   };
 
@@ -262,11 +277,13 @@ export default function App() {
   const handleUpdateSignageSlides = (slides: SignageSlide[]) => {
     setSignageSlides(slides);
     saveSignageSlides(slides);
+    autoPushToCloud({ signageSlides: slides });
   };
 
   const handleUpdateSignageConfig = (cfg: SignageConfig) => {
     setSignageConfig(cfg);
     saveSignageConfig(cfg);
+    autoPushToCloud({ signageConfig: cfg });
   };
 
   const handleAddFeedback = (data: Omit<FeedbackEntry, 'id' | 'createdAt' | 'status'>) => {

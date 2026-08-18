@@ -6,7 +6,9 @@ import {
   GalleryItem,
   AwardItem,
   DownloadDocument,
-  FeedbackEntry
+  FeedbackEntry,
+  SignageSlide,
+  SignageConfig
 } from '../types';
 import { DEFAULT_GAS_URL } from '../config';
 import { getSafeNewsImageUrl, formatGoogleDriveUrl } from './imageHelpers';
@@ -87,6 +89,8 @@ export async function syncBulkDataToGoogleSheets(payload: {
   awards?: AwardItem[];
   documents?: DownloadDocument[];
   feedbackList?: FeedbackEntry[];
+  signageSlides?: SignageSlide[];
+  signageConfig?: SignageConfig;
 }): Promise<{ success: boolean; message: string }> {
   const url = getGasWebAppUrl();
   if (!url) {
@@ -159,6 +163,8 @@ export function parseSchoolDataFromSheets(rawData: any): {
   staffList?: Staff[];
   newsList?: NewsItem[];
   profileUpdates?: Partial<SchoolProfile>;
+  signageSlides?: SignageSlide[];
+  signageConfig?: Partial<SignageConfig>;
 } {
   if (!rawData || typeof rawData !== 'object') return {};
 
@@ -167,6 +173,8 @@ export function parseSchoolDataFromSheets(rawData: any): {
     staffList?: Staff[];
     newsList?: NewsItem[];
     profileUpdates?: Partial<SchoolProfile>;
+    signageSlides?: SignageSlide[];
+    signageConfig?: Partial<SignageConfig>;
   } = {};
 
   // 1. Takwim Sekolah
@@ -391,6 +399,77 @@ export function parseSchoolDataFromSheets(rawData: any): {
 
     if (Object.keys(profileUpdates).length > 0) {
       parsed.profileUpdates = profileUpdates;
+    }
+  }
+
+  // 5. Slaid Digital Signage (Smart TV)
+  if (Array.isArray(rawData.Signage_Digital) && rawData.Signage_Digital.length > 0) {
+    const validSlides: SignageSlide[] = rawData.Signage_Digital
+      .filter((row: any) => row.Tajuk || row.Title || row['URL_Media'] || row['URL_YouTube'] || row['URL_Video'])
+      .map((row: any, idx: number) => {
+        const mediaTypeRaw = (row['Jenis_Media'] || row.MediaType || row.mediaType || 'image').toLowerCase();
+        const mediaType: 'image' | 'video' | 'youtube' =
+          mediaTypeRaw.includes('youtube') ? 'youtube' : mediaTypeRaw.includes('video') ? 'video' : 'image';
+
+        const youtubeUrl = row['URL_YouTube'] || row.YoutubeUrl || row.youtubeUrl || '';
+        const youtubeId = row['YouTube_ID'] || row.YoutubeId || row.youtubeId || '';
+        const videoUrl = row['URL_Video'] || row.VideoUrl || row.videoUrl || '';
+        const imageUrl = row['URL_Media'] || row.ImageUrl || row.imageUrl || '';
+
+        const isMutedStr = String(row['Status_Mute'] || row.isMuted || 'false').toLowerCase();
+        const isMuted = isMutedStr === 'true' || isMutedStr === '1';
+
+        const useVidDurStr = String(row['Guna_Durasi_Video'] || row.useVideoDuration || 'true').toLowerCase();
+        const useVideoDuration = useVidDurStr !== 'false' && useVidDurStr !== '0';
+
+        const isActiveStr = String(row['Aktif'] || row.isActive || 'true').toLowerCase();
+        const isActive = isActiveStr !== 'false' && isActiveStr !== '0';
+
+        return {
+          id: row.ID || `signage-slide-${idx + 1}`,
+          title: row.Tajuk || row.Title || 'Slaid Sekolah',
+          subtitle: row.Subtajuk || row.Subtitle || '',
+          mediaType,
+          imageUrl: formatGoogleDriveUrl(imageUrl),
+          videoUrl: formatGoogleDriveUrl(videoUrl),
+          youtubeUrl: youtubeUrl || undefined,
+          youtubeId: youtubeId || undefined,
+          durationSeconds: Number(row['Durasi_Saat'] || row.durationSeconds) || 8,
+          useVideoDuration,
+          isMuted,
+          isActive,
+          category: (row.Kategori || row.category || 'pengumuman') as any,
+          order: Number(row.Susunan || row.order) || (idx + 1),
+          createdAt: row['Tarikh_Cipta'] || row.createdAt || new Date().toISOString().split('T')[0]
+        };
+      });
+
+    if (validSlides.length > 0) {
+      parsed.signageSlides = validSlides.sort((a, b) => (a.order || 0) - (b.order || 0));
+    }
+  }
+
+  // 6. Konfigurasi Signage
+  if (Array.isArray(rawData.Konfigurasi_Signage) && rawData.Konfigurasi_Signage.length > 0) {
+    const configUpdates: Partial<SignageConfig> = {};
+    rawData.Konfigurasi_Signage.forEach((row: any) => {
+      const key = (row.Kunci || row.Key || row.key || '').trim().toLowerCase();
+      const val = (row.Nilai || row.Value || row.value || '').trim();
+
+      if (!key || !val) return;
+
+      if (key === 'default_duration') configUpdates.defaultDuration = Number(val) || 8;
+      else if (key === 'auto_play') configUpdates.autoPlay = val.toLowerCase() === 'true';
+      else if (key === 'auto_enable_audio') configUpdates.autoEnableAudio = val.toLowerCase() === 'true';
+      else if (key === 'show_clock') configUpdates.showClock = val.toLowerCase() === 'true';
+      else if (key === 'show_marquee') configUpdates.showMarquee = val.toLowerCase() === 'true';
+      else if (key === 'marquee_text') configUpdates.marqueeText = val;
+      else if (key === 'show_weather_badge') configUpdates.showWeatherBadge = val.toLowerCase() === 'true';
+      else if (key === 'theme') configUpdates.theme = val as any;
+    });
+
+    if (Object.keys(configUpdates).length > 0) {
+      parsed.signageConfig = configUpdates;
     }
   }
 

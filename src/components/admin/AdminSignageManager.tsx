@@ -27,9 +27,13 @@ import {
   Volume2,
   VolumeX,
   Film,
-  Info
+  Info,
+  UploadCloud,
+  RefreshCw,
+  Cloud
 } from 'lucide-react';
 import { compressAndResizeImage, formatGoogleDriveUrl } from '../../utils/imageHelpers';
+import { syncBulkDataToGoogleSheets } from '../../utils/googleSheetsSync';
 import {
   extractYouTubeId,
   isYouTubeUrl,
@@ -92,6 +96,30 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
 
   // Config Form State
   const [editConfig, setEditConfig] = useState<SignageConfig>({ ...config });
+
+  // Cloud Sync State
+  const [isSyncingCloud, setIsSyncingCloud] = useState(false);
+
+  // Manual Push to Google Sheets
+  const handleManualCloudSync = async () => {
+    setIsSyncingCloud(true);
+    try {
+      const res = await syncBulkDataToGoogleSheets({
+        profile,
+        signageSlides: slides,
+        signageConfig: config
+      });
+      if (res.success) {
+        showToast('☁️ Data Slaid & Video Berjaya Disegerakkan ke Google Sheets Awan!');
+      } else {
+        showToast(`⚠️ ${res.message}`);
+      }
+    } catch (err: any) {
+      showToast(`❌ Gagal segerak: ${err?.message || 'Ralat'}`);
+    } finally {
+      setIsSyncingCloud(false);
+    }
+  };
 
   // Handle YouTube URL change and auto-extract info
   const handleNewYouTubeChange = (val: string) => {
@@ -292,6 +320,21 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={handleManualCloudSync}
+            disabled={isSyncingCloud}
+            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 active:scale-95 disabled:opacity-50 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition border border-blue-400 shadow-xl shadow-blue-600/30"
+            title="Segerakkan semua slaid & video ke Google Sheets (Cloud Backend) untuk paparan Smart TV dan peranti lain"
+          >
+            {isSyncingCloud ? (
+              <RefreshCw className="w-4 h-4 animate-spin text-white" />
+            ) : (
+              <UploadCloud className="w-4 h-4 text-white" />
+            )}
+            <span>{isSyncingCloud ? 'Menyegerak ke Awan...' : 'Segerak ke Storan Awan (TV)'}</span>
+          </button>
+
           <a
             href="/tv.html"
             target="_blank"

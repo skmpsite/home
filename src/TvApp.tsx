@@ -1,15 +1,64 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SchoolProfile, SignageSlide, SignageConfig } from './types';
-import { loadProfile, loadSignageSlides, loadSignageConfig } from './utils/storage';
+import {
+  loadProfile,
+  loadSignageSlides,
+  loadSignageConfig,
+  saveProfile,
+  saveSignageSlides,
+  saveSignageConfig
+} from './utils/storage';
+import { fetchSchoolDataFromGoogleSheets, parseSchoolDataFromSheets } from './utils/googleSheetsSync';
 import { SignageSection } from './components/sections/SignageSection';
 
 export default function TvApp() {
   const [profile, setProfile] = useState<SchoolProfile>(loadProfile);
   const [slides, setSlides] = useState<SignageSlide[]>(loadSignageSlides);
   const [config, setConfig] = useState<SignageConfig>(loadSignageConfig);
+  const isSyncingRef = useRef(false);
+
+  // Fungsi muat turun data Signage terkini secara langsung dari Google Sheets (Cloud Backend)
+  const refreshFromCloud = async () => {
+    if (isSyncingRef.current) return;
+    isSyncingRef.current = true;
+    try {
+      const raw = await fetchSchoolDataFromGoogleSheets();
+      if (raw) {
+        const parsed = parseSchoolDataFromSheets(raw);
+        if (parsed.signageSlides && parsed.signageSlides.length > 0) {
+          setSlides(parsed.signageSlides);
+          saveSignageSlides(parsed.signageSlides);
+        }
+        if (parsed.signageConfig && Object.keys(parsed.signageConfig).length > 0) {
+          setConfig(prev => {
+            const updated = { ...prev, ...parsed.signageConfig };
+            saveSignageConfig(updated);
+            return updated;
+          });
+        }
+        if (parsed.profileUpdates) {
+          setProfile(prev => {
+            const updated = { ...prev, ...parsed.profileUpdates };
+            saveProfile(updated);
+            return updated;
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Gagal memuat turun data Signage dari storan awan Google Sheets:', err);
+    } finally {
+      isSyncingRef.current = false;
+    }
+  };
 
   useEffect(() => {
-    // Real-time synchronization
+    // 1. Muat turun data cloud serta merta semasa TV dihidupkan
+    refreshFromCloud();
+
+    // 2. Semak kemas kini awan secara automatik setiap 4 saat
+    const cloudPoll = window.setInterval(refreshFromCloud, 4000);
+
+    // 3. Penyelarasan setempat (antar tab & broadcast event)
     const onStorageChange = () => {
       setProfile(loadProfile());
       setSlides(loadSignageSlides());
@@ -30,17 +79,11 @@ export default function TvApp() {
     window.addEventListener('skmp_signage_updated', onSignageUpdated);
     window.addEventListener('skmp_signage_config_updated', onConfigUpdated);
 
-    const poll = window.setInterval(() => {
-      setProfile(loadProfile());
-      setSlides(loadSignageSlides());
-      setConfig(loadSignageConfig());
-    }, 3000);
-
     return () => {
       window.removeEventListener('storage', onStorageChange);
       window.removeEventListener('skmp_signage_updated', onSignageUpdated);
       window.removeEventListener('skmp_signage_config_updated', onConfigUpdated);
-      window.clearInterval(poll);
+      window.clearInterval(cloudPoll);
     };
   }, []);
 

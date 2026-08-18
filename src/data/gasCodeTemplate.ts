@@ -45,6 +45,14 @@ var SHEETS_CONFIG = {
   PIBG: {
     name: "Info_PIBG",
     headers: ["ID", "Jenis", "Tajuk", "Tarikh/Nama", "Jawatan/Penerangan", "Nombor_Telefon", "Catatan"]
+  },
+  SIGNAGE: {
+    name: "Signage_Digital",
+    headers: ["ID", "Tajuk", "Subtajuk", "Jenis_Media", "URL_Media", "URL_Video", "URL_YouTube", "YouTube_ID", "Durasi_Saat", "Guna_Durasi_Video", "Status_Mute", "Kategori", "Aktif", "Susunan", "Tarikh_Cipta"]
+  },
+  SIGNAGE_CONFIG: {
+    name: "Konfigurasi_Signage",
+    headers: ["Kunci", "Nilai"]
   }
 };
 
@@ -210,7 +218,58 @@ function handleBulkSync(payload) {
     }
   }
 
-  return { success: true, message: "Semua data portal berjaya diselaraskan ke Google Sheets!" };
+  // 5. Kemas kini Slaid Digital Signage (Smart TV)
+  if (payload.signageSlides && Array.isArray(payload.signageSlides)) {
+    var sheetSignage = ss.getSheetByName(SHEETS_CONFIG.SIGNAGE.name);
+    if (sheetSignage) {
+      if (sheetSignage.getLastRow() > 1) {
+        sheetSignage.getRange(2, 1, sheetSignage.getLastRow() - 1, sheetSignage.getLastColumn()).clearContent();
+      }
+      var rowsSignage = payload.signageSlides.map(function(s, idx) {
+        return [
+          s.id || ("signage-slide-" + (idx + 1)),
+          s.title || "",
+          s.subtitle || "",
+          s.mediaType || "image",
+          s.imageUrl || "",
+          s.videoUrl || "",
+          s.youtubeUrl || "",
+          s.youtubeId || "",
+          s.durationSeconds || 8,
+          s.useVideoDuration !== false ? "TRUE" : "FALSE",
+          s.isMuted !== false ? "TRUE" : "FALSE",
+          s.category || "pengumuman",
+          s.isActive !== false ? "TRUE" : "FALSE",
+          s.order || (idx + 1),
+          s.createdAt || new Date().toISOString().split("T")[0]
+        ];
+      });
+      if (rowsSignage.length > 0) {
+        sheetSignage.getRange(2, 1, rowsSignage.length, SHEETS_CONFIG.SIGNAGE.headers.length).setValues(rowsSignage);
+      }
+    }
+  }
+
+  // 6. Kemas kini Konfigurasi Signage
+  if (payload.signageConfig) {
+    var sheetCfg = ss.getSheetByName(SHEETS_CONFIG.SIGNAGE_CONFIG.name);
+    if (sheetCfg) {
+      var cfg = payload.signageConfig;
+      var cfgRows = [
+        ["Default_Duration", cfg.defaultDuration || 8],
+        ["Auto_Play", cfg.autoPlay !== false ? "TRUE" : "FALSE"],
+        ["Auto_Enable_Audio", cfg.autoEnableAudio ? "TRUE" : "FALSE"],
+        ["Show_Clock", cfg.showClock !== false ? "TRUE" : "FALSE"],
+        ["Show_Marquee", cfg.showMarquee !== false ? "TRUE" : "FALSE"],
+        ["Marquee_Text", cfg.marqueeText || ""],
+        ["Show_Weather_Badge", cfg.showWeatherBadge !== false ? "TRUE" : "FALSE"],
+        ["Theme", cfg.theme || "dark"]
+      ];
+      sheetCfg.getRange(2, 1, cfgRows.length, 2).setValues(cfgRows);
+    }
+  }
+
+  return { success: true, message: "Semua data portal & Digital Signage berjaya diselaraskan ke Google Sheets!" };
 }
 
 /**
