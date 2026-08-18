@@ -101,16 +101,23 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
   const currentSlide = activeSlides[currentIndex] || activeSlides[0] || null;
 
   // Media Detection for Current Slide
+  const detectedYouTubeId = currentSlide
+    ? currentSlide.youtubeId ||
+      extractYouTubeId(currentSlide.youtubeUrl) ||
+      extractYouTubeId(currentSlide.videoUrl) ||
+      extractYouTubeId(currentSlide.imageUrl)
+    : null;
+
   const currentMediaType = currentSlide
-    ? detectMediaType(
-        currentSlide.videoUrl || currentSlide.youtubeUrl || currentSlide.imageUrl,
-        currentSlide.mediaType
-      )
+    ? detectedYouTubeId
+      ? 'youtube'
+      : detectMediaType(
+          currentSlide.videoUrl || currentSlide.youtubeUrl || currentSlide.imageUrl,
+          currentSlide.mediaType
+        )
     : 'image';
 
-  const youtubeId = currentSlide
-    ? currentSlide.youtubeId || extractYouTubeId(currentSlide.youtubeUrl || currentSlide.imageUrl)
-    : null;
+  const youtubeId = detectedYouTubeId;
 
   const isVideoMedia = currentMediaType === 'video' || currentMediaType === 'youtube';
 

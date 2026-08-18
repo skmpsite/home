@@ -157,7 +157,19 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
     let finalYoutubeUrl = newSlide.youtubeUrl;
     let finalYoutubeId: string | undefined;
 
-    if (mediaType === 'youtube') {
+    // Auto-detect if input is actually a YouTube link regardless of selected tab
+    const detectedYid =
+      extractYouTubeId(newSlide.youtubeUrl) ||
+      extractYouTubeId(newSlide.videoUrl) ||
+      extractYouTubeId(newSlide.imageUrl);
+
+    let effectiveMediaType = mediaType;
+    if (detectedYid) {
+      effectiveMediaType = 'youtube';
+      finalYoutubeId = detectedYid;
+      finalYoutubeUrl = newSlide.youtubeUrl || newSlide.videoUrl || `https://www.youtube.com/watch?v=${detectedYid}`;
+      finalImageUrl = getYouTubeThumbnail(detectedYid);
+    } else if (effectiveMediaType === 'youtube') {
       const yid = extractYouTubeId(newSlide.youtubeUrl);
       if (!yid) {
         showToast('Pautan video YouTube tidak sah. Sila masukkan pautan YouTube yang lengkap.');
@@ -168,7 +180,7 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
       if (!finalImageUrl) {
         finalImageUrl = getYouTubeThumbnail(yid);
       }
-    } else if (mediaType === 'video') {
+    } else if (effectiveMediaType === 'video') {
       if (!finalVideoUrl) {
         showToast('Sila masukkan URL video atau muat naik fail video.');
         return;
@@ -188,13 +200,13 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
       id: 'signage-slide-' + Date.now(),
       title: newSlide.title,
       subtitle: newSlide.subtitle,
-      mediaType: mediaType,
+      mediaType: effectiveMediaType,
       imageUrl: finalImageUrl,
-      videoUrl: finalVideoUrl,
+      videoUrl: effectiveMediaType === 'video' ? finalVideoUrl : '',
       youtubeUrl: finalYoutubeUrl,
       youtubeId: finalYoutubeId,
-      durationSeconds: Number(newSlide.durationSeconds) || config.defaultDuration || 8,
-      useVideoDuration: mediaType !== 'image' ? newSlide.useVideoDuration : false,
+      durationSeconds: Number(newSlide.durationSeconds) || config.defaultDuration || (effectiveMediaType === 'youtube' ? 30 : 8),
+      useVideoDuration: effectiveMediaType !== 'image' ? newSlide.useVideoDuration : false,
       isMuted: newSlide.isMuted,
       category: newSlide.category,
       isActive: newSlide.isActive,
@@ -220,7 +232,7 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
     });
     setMediaType('image');
 
-    showToast('✨ Slaid Signage Baharu Berjaya Ditambah!');
+    showToast(effectiveMediaType === 'youtube' ? '🎬 Slaid Video YouTube Berjaya Ditambah & Disegerak!' : '✨ Slaid Signage Baharu Berjaya Ditambah!');
   };
 
   // Update Slide Handler
@@ -229,7 +241,17 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
     if (!editingSlide) return;
 
     let finalSlide = { ...editingSlide };
-    if (finalSlide.mediaType === 'youtube' && finalSlide.youtubeUrl) {
+    const detectedYid =
+      extractYouTubeId(finalSlide.youtubeUrl) ||
+      extractYouTubeId(finalSlide.videoUrl) ||
+      extractYouTubeId(finalSlide.imageUrl);
+
+    if (detectedYid) {
+      finalSlide.mediaType = 'youtube';
+      finalSlide.youtubeId = detectedYid;
+      finalSlide.youtubeUrl = finalSlide.youtubeUrl || finalSlide.videoUrl || `https://www.youtube.com/watch?v=${detectedYid}`;
+      finalSlide.imageUrl = getYouTubeThumbnail(detectedYid);
+    } else if (finalSlide.mediaType === 'youtube' && finalSlide.youtubeUrl) {
       const yid = extractYouTubeId(finalSlide.youtubeUrl);
       if (yid) {
         finalSlide.youtubeId = yid;
@@ -242,7 +264,7 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
     const updated = slides.map((s) => (s.id === finalSlide.id ? finalSlide : s));
     onSaveSlides(updated);
     setEditingSlide(null);
-    showToast('✅ Maklumat Slaid Berjaya Dikemas Kini!');
+    showToast('✅ Maklumat Slaid Berjaya Dikemas Kini & Disegerakkan!');
   };
 
   // Delete Slide Handler
@@ -663,7 +685,7 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
 
                 <div>
                   <label className="block text-xs font-bold text-slate-200 mb-1">
-                    Atau Muat Naik Fail Video (MP4 / WebM)
+                    Atau Muat Naik Fail Video (Komputer Tempatan)
                   </label>
                   <input
                     type="file"
@@ -691,6 +713,9 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
                     }}
                     className="block w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-yellow-400 file:text-blue-950 cursor-pointer"
                   />
+                  <div className="mt-1.5 p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-200 leading-relaxed">
+                    💡 <strong>Cadangan Terbaik untuk Smart TV & Peranti Lain:</strong> Gunakan tab <span className="text-yellow-300 font-bold">"Video YouTube"</span> dan masukkan link YouTube (contoh: <code>https://www.youtube.com/watch?v=i8HoTEU3h_I</code>). Ini menjamin video boleh dimuat turun dan dimainkan serta-merta di semua Smart TV dan telefon merentas rangkaian tanpa had saiz fail.
+                  </div>
                 </div>
               </div>
 
