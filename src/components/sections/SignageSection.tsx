@@ -239,27 +239,32 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
     startTimeRef.current = Date.now();
   }, [activeSlides.length]);
 
-  // Video Element Play/Pause Controller with robust Audio Unlocking
+  // Video Element Play/Pause Controller with robust Audio Unlocking & Autoplay Fallback
   useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.muted = isMuted;
-      videoRef.current.volume = 1.0;
-      if (isPlaying) {
-        const playPromise = videoRef.current.play();
-        if (playPromise !== undefined) {
-          playPromise.catch((err) => {
-            console.warn('Autoplay with audio blocked by browser policy, attempting muted play as temporary fallback:', err);
-            if (videoRef.current) {
-              videoRef.current.muted = true;
-              videoRef.current.play().catch(() => {});
-            }
-          });
-        }
-      } else {
-        videoRef.current.pause();
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.muted = isMuted;
+    video.volume = 1.0;
+
+    if (isPlaying) {
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          console.warn('Unmuted autoplay blocked by browser security policy. Auto-falling back to muted autoplay:', err);
+          // If unmuted autoplay fails, immediately switch to muted to guarantee the video plays seamlessly
+          if (videoRef.current) {
+            videoRef.current.muted = true;
+            videoRef.current.play().catch((playErr) => {
+              console.error('Muted autoplay also failed:', playErr);
+            });
+          }
+        });
       }
+    } else {
+      video.pause();
     }
-  }, [isPlaying, currentIndex, currentMediaType, isMuted]);
+  }, [isPlaying, currentIndex, currentMediaType, isMuted, currentSlide?.id]);
 
   // Audio Context & Gesture Unlocker for Smart TV & Web Browsers
   useEffect(() => {
@@ -707,6 +712,7 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
                     poster={formatGoogleDriveUrl(currentSlide.imageUrl)}
                     autoPlay={isPlaying}
                     playsInline
+                    preload="auto"
                     muted={isMuted}
                     className="w-full h-full object-contain object-center drop-shadow-2xl"
                     onLoadedMetadata={(e) => {
