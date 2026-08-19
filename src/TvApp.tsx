@@ -31,10 +31,10 @@ export default function TvApp() {
     setIsRefreshing(true);
     try {
       // 1. Dapatkan kemas kini serta-merta dari Pelayan Siaran Langsung (/api/signage)
+      let bestSlides: SignageSlide[] = [];
       const liveData = await fetchLiveSignageFromServer();
       if (liveData && Array.isArray(liveData.slides) && liveData.slides.length > 0) {
-        setSlides(liveData.slides);
-        saveSignageSlides(liveData.slides);
+        bestSlides = liveData.slides;
         if (liveData.config && Object.keys(liveData.config).length > 0) {
           setConfig(prev => {
             const updated = { ...prev, ...liveData.config };
@@ -49,8 +49,14 @@ export default function TvApp() {
       if (raw) {
         const parsed = parseSchoolDataFromSheets(raw);
         if (parsed.signageSlides && parsed.signageSlides.length > 0) {
-          setSlides(parsed.signageSlides);
-          saveSignageSlides(parsed.signageSlides);
+          if (parsed.signageSlides.length >= bestSlides.length) {
+            bestSlides = parsed.signageSlides;
+          } else {
+            // Gabungkan slaid baharu yang belum sempat ditulis ke Google Sheets
+            const sheetIds = new Set(parsed.signageSlides.map(s => s.id));
+            const extra = bestSlides.filter(s => !sheetIds.has(s.id));
+            bestSlides = [...parsed.signageSlides, ...extra];
+          }
         }
         if (parsed.signageConfig && Object.keys(parsed.signageConfig).length > 0) {
           setConfig(prev => {
@@ -66,6 +72,11 @@ export default function TvApp() {
             return updated;
           });
         }
+      }
+
+      if (bestSlides.length > 0) {
+        setSlides(bestSlides);
+        saveSignageSlides(bestSlides);
       }
       setLastSyncTime(new Date().toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
     } catch (err) {

@@ -72,6 +72,21 @@ function doGet(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+    if (action === "syncSignage" || action === "updateSignage" || action === "syncBulkData") {
+      var rawPayload = (e && e.parameter && e.parameter.payload) || (e && e.parameter && e.parameter.data) || "";
+      if (rawPayload) {
+        try {
+          var parsedPayload = typeof rawPayload === "string" ? JSON.parse(decodeURIComponent(rawPayload)) : rawPayload;
+          handleBulkSync(parsedPayload);
+          return ContentService.createTextOutput(JSON.stringify({ success: true, message: "Signage berjaya dikemas kini via GET!" }))
+            .setMimeType(ContentService.MimeType.JSON);
+        } catch(errJson) {
+          return ContentService.createTextOutput(JSON.stringify({ success: false, error: errJson.toString() }))
+            .setMimeType(ContentService.MimeType.JSON);
+        }
+      }
+    }
+
     var template = HtmlService.createTemplateFromFile('Index');
     return template.evaluate()
       .setTitle('SK Merbau Pulas | Laman Sesawang Rasmi')
@@ -88,8 +103,18 @@ function doGet(e) {
 function doPost(e) {
   try {
     autoSetupDatabaseSheets();
-    var contents = e && e.postData && e.postData.contents ? JSON.parse(e.postData.contents) : {};
-    var action = contents.action || "submitFeedback";
+    var contents = {};
+    if (e && e.postData && e.postData.contents) {
+      try {
+        contents = JSON.parse(e.postData.contents);
+      } catch(parseErr) {
+        contents = e.parameter || {};
+      }
+    } else if (e && e.parameter) {
+      contents = e.parameter;
+    }
+
+    var action = contents.action || (e && e.parameter && e.parameter.action) || "submitFeedback";
     
     if (action === "submitFeedback") {
       var res = submitFeedback(contents.data || contents);
@@ -97,8 +122,12 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
-    if (action === "syncBulkData") {
-      var resBulk = handleBulkSync(contents.payload || {});
+    if (action === "syncBulkData" || action === "syncSignage" || action === "updateSignage") {
+      var payloadData = contents.payload || contents.data || contents;
+      if (typeof payloadData === "string") {
+        try { payloadData = JSON.parse(payloadData); } catch(pErr){}
+      }
+      var resBulk = handleBulkSync(payloadData || {});
       return ContentService.createTextOutput(JSON.stringify(resBulk))
         .setMimeType(ContentService.MimeType.JSON);
     }

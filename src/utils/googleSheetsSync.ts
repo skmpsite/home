@@ -112,6 +112,7 @@ export async function syncBulkDataToGoogleSheets(payload: {
   }
 
   try {
+    // 1. Cuba kaedah POST dengan payload JSON
     await fetch(url, {
       method: 'POST',
       headers: {
@@ -123,6 +124,22 @@ export async function syncBulkDataToGoogleSheets(payload: {
         payload
       })
     });
+
+    // 2. Jika payload mengandungi signageSlides, buat panggilan sandaran GET untuk memastikan Google Apps Script mengemaskini Google Sheets
+    if (payload.signageSlides || payload.signageConfig) {
+      try {
+        const compactSignage = {
+          signageSlides: payload.signageSlides,
+          signageConfig: payload.signageConfig
+        };
+        const encoded = encodeURIComponent(JSON.stringify(compactSignage));
+        const separator = url.includes('?') ? '&' : '?';
+        const getSyncUrl = `${url}${separator}action=syncSignage&payload=${encoded}&_t=${Date.now()}`;
+        fetch(getSyncUrl, { method: 'GET', mode: 'no-cors', cache: 'no-store' }).catch(() => {});
+      } catch (e) {
+        // Abaikan ralat fallback
+      }
+    }
 
     return {
       success: true,
