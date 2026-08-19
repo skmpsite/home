@@ -693,22 +693,6 @@ export const initialSignageSlides: SignageSlide[] = [
     createdAt: "2026-08-16"
   },
   {
-    id: "signage-slide-2",
-    title: "Montaj & Video Rasmi SK Merbau Pulas",
-    subtitle: "Saksikan perkongsian aktiviti dan kecemerlangan warga Sekolah Kebangsaan Merbau Pulas",
-    mediaType: "youtube",
-    youtubeUrl: "https://www.youtube.com/watch?v=i8HoTEU3h_I",
-    youtubeId: "i8HoTEU3h_I",
-    imageUrl: "https://img.youtube.com/vi/i8HoTEU3h_I/maxresdefault.jpg",
-    durationSeconds: 45,
-    useVideoDuration: true,
-    isMuted: false,
-    isActive: true,
-    order: 2,
-    category: "video",
-    createdAt: "2026-08-16"
-  },
-  {
     id: "signage-slide-3",
     title: "Pendaftaran Tahun 1 Sesi 2027 KPM Melalui Portal idMe",
     subtitle: "Ibu bapa dan penjaga dipohon melengkapkan permohonan kemasukan sebelum 30 September 2026",
@@ -716,7 +700,7 @@ export const initialSignageSlides: SignageSlide[] = [
     imageUrl: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&q=80&w=1920",
     durationSeconds: 8,
     isActive: true,
-    order: 3,
+    order: 2,
     category: "pengumuman",
     createdAt: "2026-08-16"
   },
@@ -728,7 +712,7 @@ export const initialSignageSlides: SignageSlide[] = [
     imageUrl: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&q=80&w=1920",
     durationSeconds: 8,
     isActive: true,
-    order: 4,
+    order: 3,
     category: "kejayaan",
     createdAt: "2026-08-16"
   },
@@ -743,7 +727,7 @@ export const initialSignageSlides: SignageSlide[] = [
     useVideoDuration: true,
     isMuted: false,
     isActive: true,
-    order: 5,
+    order: 4,
     category: "aktiviti",
     createdAt: "2026-08-16"
   },
@@ -755,8 +739,56 @@ export const initialSignageSlides: SignageSlide[] = [
     imageUrl: "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&q=80&w=1920",
     durationSeconds: 8,
     isActive: true,
-    order: 6,
+    order: 5,
     category: "info",
+    createdAt: "2026-08-16"
+  },
+  {
+    id: "signage-slide-7",
+    title: "HARI GURU SK MERBAU PULAS",
+    subtitle: "Sambutan Hari Guru Peringkat Sekolah Kebangsaan Merbau Pulas",
+    mediaType: "youtube",
+    youtubeUrl: "https://www.youtube.com/watch?v=i8HoTEU3h_I",
+    youtubeId: "i8HoTEU3h_I",
+    imageUrl: "https://img.youtube.com/vi/i8HoTEU3h_I/maxresdefault.jpg",
+    durationSeconds: 60,
+    useVideoDuration: true,
+    isMuted: false,
+    isActive: true,
+    order: 6,
+    category: "video",
+    createdAt: "2026-08-16"
+  },
+  {
+    id: "signage-slide-8",
+    title: "Johan Action Song 2026",
+    subtitle: "Persembahan Pasukan Action Song SK Merbau Pulas",
+    mediaType: "youtube",
+    youtubeUrl: "https://www.youtube.com/watch?v=7X9M5YI_2dw",
+    youtubeId: "7X9M5YI_2dw",
+    imageUrl: "https://img.youtube.com/vi/7X9M5YI_2dw/maxresdefault.jpg",
+    durationSeconds: 45,
+    useVideoDuration: true,
+    isMuted: false,
+    isActive: true,
+    order: 7,
+    category: "kejayaan",
+    createdAt: "2026-08-16"
+  },
+  {
+    id: "signage-slide-9",
+    title: "Takbir Raya 2026",
+    subtitle: "Gema Takbir Aidilfitri Warga SK Merbau Pulas",
+    mediaType: "youtube",
+    youtubeUrl: "https://www.youtube.com/watch?v=dmx5dtWNsJM",
+    youtubeId: "dmx5dtWNsJM",
+    imageUrl: "https://img.youtube.com/vi/dmx5dtWNsJM/maxresdefault.jpg",
+    durationSeconds: 45,
+    useVideoDuration: true,
+    isMuted: false,
+    isActive: true,
+    order: 8,
+    category: "aktiviti",
     createdAt: "2026-08-16"
   }
 ];

@@ -30,10 +30,14 @@ import {
   Info,
   UploadCloud,
   RefreshCw,
-  Cloud
+  Cloud,
+  Share2,
+  Copy,
+  Link
 } from 'lucide-react';
 import { compressAndResizeImage, formatGoogleDriveUrl } from '../../utils/imageHelpers';
-import { syncBulkDataToGoogleSheets } from '../../utils/googleSheetsSync';
+import { syncBulkDataToGoogleSheets, getGasWebAppUrl } from '../../utils/googleSheetsSync';
+import { broadcastLiveSignage } from '../../utils/liveSignageSync';
 import { CODE_GS_SCRIPT } from '../../data/gasCodeTemplate';
 import {
   extractYouTubeId,
@@ -220,6 +224,7 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
 
     const updated = [...slides, created];
     onSaveSlides(updated);
+    broadcastLiveSignage(updated, config);
 
     setNewSlide({
       title: '',
@@ -236,7 +241,7 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
     });
     setMediaType('image');
 
-    showToast(effectiveMediaType === 'youtube' ? '🎬 Slaid Video YouTube Berjaya Ditambah & Disegerak!' : '✨ Slaid Signage Baharu Berjaya Ditambah!');
+    showToast(effectiveMediaType === 'youtube' ? '🎬 Slaid Video YouTube Berjaya Ditambah & Disiarkan ke Semua TV!' : '✨ Slaid Signage Baharu Berjaya Ditambah & Disiarkan!');
   };
 
   // Update Slide Handler
@@ -267,8 +272,9 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
 
     const updated = slides.map((s) => (s.id === finalSlide.id ? finalSlide : s));
     onSaveSlides(updated);
+    broadcastLiveSignage(updated, config);
     setEditingSlide(null);
-    showToast('✅ Maklumat Slaid Berjaya Dikemas Kini & Disegerakkan!');
+    showToast('✅ Maklumat Slaid Berjaya Dikemas Kini & Disiarkan ke Semua TV!');
   };
 
   // Delete Slide Handler
@@ -276,6 +282,7 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
     if (!window.confirm('Adakah anda pasti mahu memadam slaid ini?')) return;
     const updated = slides.filter((s) => s.id !== id);
     onSaveSlides(updated);
+    broadcastLiveSignage(updated, config);
     showToast('🗑️ Slaid Berjaya Dipadam!');
   };
 
@@ -283,7 +290,8 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
   const handleToggleActive = (id: string) => {
     const updated = slides.map((s) => (s.id === id ? { ...s, isActive: !s.isActive } : s));
     onSaveSlides(updated);
-    showToast('Status Slaid Dikemas Kini!');
+    broadcastLiveSignage(updated, config);
+    showToast('Status Slaid Dikemas Kini & Disiarkan!');
   };
 
   // Reorder Up
@@ -295,6 +303,7 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
     list[index] = temp;
     const updated = list.map((item, idx) => ({ ...item, order: idx + 1 }));
     onSaveSlides(updated);
+    broadcastLiveSignage(updated, config);
     showToast('Susunan Slaid Dikemas Kini!');
   };
 
@@ -307,6 +316,7 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
     list[index] = temp;
     const updated = list.map((item, idx) => ({ ...item, order: idx + 1 }));
     onSaveSlides(updated);
+    broadcastLiveSignage(updated, config);
     showToast('Susunan Slaid Dikemas Kini!');
   };
 
@@ -314,6 +324,7 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
   const handleSaveConfig = (e: React.FormEvent) => {
     e.preventDefault();
     onSaveConfig(editConfig);
+    broadcastLiveSignage(slides, editConfig);
     showToast('⚙️ Tetapan Paparan Digital Signage Berjaya Disimpan!');
   };
 
@@ -371,15 +382,30 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
             <span>{isSyncingCloud ? 'Menyegerak ke Awan...' : 'Segerak ke Storan Awan (TV)'}</span>
           </button>
 
+          <button
+            type="button"
+            onClick={() => {
+              const gasUrl = getGasWebAppUrl();
+              const fullTvUrl = `${window.location.origin}/?view=tv${gasUrl ? `&gas=${encodeURIComponent(gasUrl)}` : ''}`;
+              navigator.clipboard.writeText(fullTvUrl);
+              showToast('📋 Pautan Pintar Smart TV Berjaya Disalin! Buka pautan ini di TV atau telefon lain.');
+            }}
+            className="px-4 py-2.5 bg-purple-600 hover:bg-purple-500 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition border border-purple-400 shadow-xl shadow-purple-600/20"
+            title="Salin pautan Smart TV lengkap dengan storan awan untuk dibuka di Smart TV atau peranti lain"
+          >
+            <Share2 className="w-4 h-4 text-yellow-300" />
+            <span>Salin Pautan TV (Peranti Lain)</span>
+          </button>
+
           <a
-            href="/?view=tv"
+            href={`/?view=tv${getGasWebAppUrl() ? `&gas=${encodeURIComponent(getGasWebAppUrl())}` : ''}`}
             target="_blank"
             rel="noopener noreferrer"
             className="px-4 py-2.5 bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-blue-950 font-black rounded-xl text-xs flex items-center gap-2 transition border border-yellow-300 shadow-xl shadow-yellow-400/20"
             title="Buka paparan penuh Smart TV digital signage (?view=tv)"
           >
             <ExternalLink className="w-4 h-4" />
-            <span>Buka Paparan Smart TV (?view=tv)</span>
+            <span>Buka Paparan Smart TV</span>
           </a>
         </div>
       </div>

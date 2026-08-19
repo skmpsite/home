@@ -267,9 +267,8 @@ export function saveCoCurriculum(list: CoCurriculumUnit[]): void {
 export function loadSignageSlides(): SignageSlide[] {
   const slides = getStored<SignageSlide[]>(KEYS.SIGNAGE_SLIDES, initialSignageSlides);
   if (Array.isArray(slides) && slides.length > 0) {
-    // Check if any old placeholder youtube ID exists and upgrade to official video
     let needsUpdate = false;
-    const mapped = slides.map(s => {
+    let mapped = slides.map(s => {
       if (s.youtubeId === 'kXYiU_JCYtU' || (s.youtubeUrl && s.youtubeUrl.includes('kXYiU_JCYtU'))) {
         needsUpdate = true;
         return {
@@ -280,6 +279,19 @@ export function loadSignageSlides(): SignageSlide[] {
         };
       }
       return s;
+    });
+
+    // Check if new initial slides (e.g. YouTube slides 7, 8, 9) are missing from cached storage
+    initialSignageSlides.forEach(initialSlide => {
+      const exists = mapped.some(s => 
+        s.id === initialSlide.id || 
+        (initialSlide.youtubeId && s.youtubeId === initialSlide.youtubeId) ||
+        (s.title && s.title.toLowerCase().trim() === initialSlide.title.toLowerCase().trim())
+      );
+      if (!exists) {
+        mapped.push(initialSlide);
+        needsUpdate = true;
+      }
     });
 
     if (needsUpdate) {

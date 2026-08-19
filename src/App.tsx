@@ -53,6 +53,7 @@ import {
   parseSchoolDataFromSheets,
   syncBulkDataToGoogleSheets
 } from './utils/googleSheetsSync';
+import { broadcastLiveSignage, fetchLiveSignageFromServer } from './utils/liveSignageSync';
 import { Header } from './components/Header';
 import { Navbar, TabType } from './components/Navbar';
 import { HeroSection } from './components/sections/HeroSection';
@@ -326,12 +327,14 @@ export default function App() {
     setSignageSlides(slides);
     saveSignageSlides(slides);
     autoPushToCloud({ signageSlides: slides });
+    broadcastLiveSignage(slides, signageConfig);
   };
 
   const handleUpdateSignageConfig = (cfg: SignageConfig) => {
     setSignageConfig(cfg);
     saveSignageConfig(cfg);
     autoPushToCloud({ signageConfig: cfg });
+    broadcastLiveSignage(signageSlides, cfg);
   };
 
   const handleAddFeedback = (data: Omit<FeedbackEntry, 'id' | 'createdAt' | 'status'>) => {

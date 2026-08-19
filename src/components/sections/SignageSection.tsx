@@ -66,6 +66,19 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
   const [slides, setSlides] = useState<SignageSlide[]>(() => initialSlides || loadSignageSlides());
   const [config, setConfig] = useState<SignageConfig>(() => initialConfig || loadSignageConfig());
 
+  // Sync state when props change
+  useEffect(() => {
+    if (initialSlides && initialSlides.length > 0) {
+      setSlides(initialSlides);
+    }
+  }, [initialSlides]);
+
+  useEffect(() => {
+    if (initialConfig && Object.keys(initialConfig).length > 0) {
+      setConfig(initialConfig);
+    }
+  }, [initialConfig]);
+
   // Player States
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
