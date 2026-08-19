@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { compressAndResizeImage, formatGoogleDriveUrl } from '../../utils/imageHelpers';
 import { syncBulkDataToGoogleSheets } from '../../utils/googleSheetsSync';
+import { CODE_GS_SCRIPT } from '../../data/gasCodeTemplate';
 import {
   extractYouTubeId,
   isYouTubeUrl,
@@ -99,6 +100,9 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
 
   // Cloud Sync State
   const [isSyncingCloud, setIsSyncingCloud] = useState(false);
+  const [showSheetsGuideModal, setShowSheetsGuideModal] = useState(false);
+  const [copiedScript, setCopiedScript] = useState(false);
+  const [copiedHeaders, setCopiedHeaders] = useState(false);
 
   // Manual Push to Google Sheets
   const handleManualCloudSync = async () => {
@@ -344,6 +348,16 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
+            onClick={() => setShowSheetsGuideModal(true)}
+            className="px-3.5 py-2.5 bg-emerald-600/90 hover:bg-emerald-500 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition border border-emerald-400/40 shadow-xl shadow-emerald-600/20"
+            title="Panduan & Kod Automatik Jana Tab Signage di Google Sheets"
+          >
+            <Sparkles className="w-4 h-4 text-yellow-300" />
+            <span>Jana Tab Google Sheets</span>
+          </button>
+
+          <button
+            type="button"
             onClick={handleManualCloudSync}
             disabled={isSyncingCloud}
             className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 active:scale-95 disabled:opacity-50 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition border border-blue-400 shadow-xl shadow-blue-600/30"
@@ -358,13 +372,14 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
           </button>
 
           <a
-            href="/tv.html"
+            href="/?view=tv"
             target="_blank"
             rel="noopener noreferrer"
             className="px-4 py-2.5 bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-blue-950 font-black rounded-xl text-xs flex items-center gap-2 transition border border-yellow-300 shadow-xl shadow-yellow-400/20"
+            title="Buka paparan penuh Smart TV digital signage (?view=tv)"
           >
             <ExternalLink className="w-4 h-4" />
-            <span>Buka 'tv.html' Khas TV</span>
+            <span>Buka Paparan Smart TV (?view=tv)</span>
           </a>
         </div>
       </div>
@@ -1347,6 +1362,116 @@ export const AdminSignageManager: React.FC<AdminSignageManagerProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: PANDUAN PENYEDIAAN TAB GOOGLE SHEETS */}
+      {showSheetsGuideModal && (
+        <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-white/20 rounded-3xl p-6 sm:p-8 max-w-2xl w-full text-white shadow-2xl space-y-6 animate-scaleUp my-8">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-slate-950 flex items-center justify-center font-black">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-white">
+                    Cara Menjana Tab Signage di Google Sheets
+                  </h3>
+                  <p className="text-xs text-slate-300">
+                    2 cara mudah untuk menambah tab <code className="text-yellow-300 font-bold">Signage_Digital</code> dan <code className="text-yellow-300 font-bold">Konfigurasi_Signage</code>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowSheetsGuideModal(false)}
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Opsyen 1 (Paling Mudah & Disyorkan) */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-emerald-950/80 to-blue-950/80 border border-emerald-500/40 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="px-3 py-1 bg-emerald-500 text-slate-950 text-[11px] font-black rounded-full uppercase">
+                  Pilihan 1: Automatik (Disyorkan - 1 Minit)
+                </span>
+              </div>
+              <p className="text-xs text-slate-200 leading-relaxed">
+                Skrip <strong className="text-white">Code.gs</strong> terkini sudah dilengkapi fungsi <code className="text-yellow-300 bg-white/10 px-1.5 py-0.5 rounded font-mono">autoSetupDatabaseSheets()</code> yang akan membina tab dan menyuntik slaid video YouTube secara automatik!
+              </p>
+              <ol className="text-xs text-slate-300 space-y-1.5 list-decimal list-inside bg-black/30 p-3.5 rounded-xl border border-white/5 font-medium">
+                <li>Buka Google Sheets anda &rarr; klik menu <strong className="text-white">Extensions (Sambungan) &gt; Apps Script</strong>.</li>
+                <li>Gantikan semua kod di dalam fail <strong className="text-yellow-300">Code.gs</strong> dengan kod terkini di bawah.</li>
+                <li>Di bahagian atas toolbar Apps Script, pilih fungsi <strong className="text-emerald-400 font-mono">autoSetupDatabaseSheets</strong> dan klik butang <strong className="text-emerald-400">Run (Jalankan)</strong>.</li>
+                <li>Tab <strong className="text-yellow-300">Signage_Digital</strong> dan <strong className="text-yellow-300">Konfigurasi_Signage</strong> akan tercipta secara automatik di Google Sheets anda!</li>
+              </ol>
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(CODE_GS_SCRIPT);
+                    setCopiedScript(true);
+                    setTimeout(() => setCopiedScript(false), 2500);
+                  }}
+                  className="w-full py-2.5 bg-yellow-400 hover:bg-yellow-300 text-blue-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-lg"
+                >
+                  <CheckCircle2 className={`w-4 h-4 ${copiedScript ? 'text-emerald-700' : ''}`} />
+                  <span>{copiedScript ? '✅ Kod Code.gs Berjaya Disalin!' : '📋 Salin Kod Code.gs Terkini'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Opsyen 2: Manual */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+              <span className="px-3 py-1 bg-white/10 text-slate-300 text-[11px] font-black rounded-full uppercase">
+                Pilihan 2: Tambah Tab Secara Manual
+              </span>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Di Google Sheets anda, klik butang <strong>+ (Tambah Helaian)</strong> di bahagian bawah dan namakan tab sebagai:
+              </p>
+              <div className="space-y-2">
+                <div className="p-3 bg-black/40 rounded-xl border border-white/10 text-xs">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold text-yellow-300">Tab 1: Signage_Digital</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText("ID\tTajuk\tSubtajuk\tJenis_Media\tURL_Media\tURL_Video\tURL_YouTube\tYouTube_ID\tDurasi_Saat\tGuna_Durasi_Video\tStatus_Mute\tKategori\tAktif\tSusunan\tTarikh_Cipta");
+                        setCopiedHeaders(true);
+                        setTimeout(() => setCopiedHeaders(false), 2500);
+                      }}
+                      className="px-2 py-0.5 bg-white/10 hover:bg-white/20 text-[10px] rounded text-slate-200"
+                    >
+                      {copiedHeaders ? 'Disalin!' : 'Salin Header'}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-slate-400 font-mono break-all">
+                    Kolum A-O: ID | Tajuk | Subtajuk | Jenis_Media | URL_Media | URL_Video | URL_YouTube | YouTube_ID | Durasi_Saat | Guna_Durasi_Video | Status_Mute | Kategori | Aktif | Susunan | Tarikh_Cipta
+                  </p>
+                </div>
+
+                <div className="p-3 bg-black/40 rounded-xl border border-white/10 text-xs">
+                  <span className="font-bold text-yellow-300">Tab 2: Konfigurasi_Signage</span>
+                  <p className="text-[11px] text-slate-400 font-mono mt-1">
+                    Kolum A &amp; B: Kunci | Nilai
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setShowSheetsGuideModal(false)}
+                className="px-6 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl text-xs transition"
+              >
+                Tutup
+              </button>
+            </div>
           </div>
         </div>
       )}

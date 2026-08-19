@@ -301,8 +301,92 @@ function autoSetupDatabaseSheets() {
       if (config.name === "Profil_Sekolah") {
         seedInitialProfileData(sheet);
       }
+      // Isi Data Asas jika tab Signage Baru dicipta
+      if (config.name === "Signage_Digital") {
+        seedInitialSignageData(sheet);
+      }
+      if (config.name === "Konfigurasi_Signage") {
+        seedInitialSignageConfig(sheet);
+      }
     }
   }
+}
+
+/**
+ * Menyuntik data awal slaid signage termasuk Video YouTube rasmi
+ */
+function seedInitialSignageData(sheet) {
+  var defaultSlides = [
+    [
+      "signage-slide-1",
+      "Selamat Datang ke SK Merbau Pulas",
+      "Pendidikan Berkualiti Insan Terdidik Negara Sejahtera • Berilmu, Beramal, Berbakti",
+      "image",
+      "https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&q=80&w=1920",
+      "",
+      "",
+      "",
+      10,
+      "TRUE",
+      "FALSE",
+      "poster",
+      "TRUE",
+      1,
+      "2026-08-16"
+    ],
+    [
+      "signage-slide-2",
+      "Montaj & Video Rasmi SK Merbau Pulas",
+      "Saksikan perkongsian aktiviti dan kecemerlangan warga Sekolah Kebangsaan Merbau Pulas",
+      "youtube",
+      "https://img.youtube.com/vi/i8HoTEU3h_I/maxresdefault.jpg",
+      "",
+      "https://www.youtube.com/watch?v=i8HoTEU3h_I",
+      "i8HoTEU3h_I",
+      45,
+      "TRUE",
+      "FALSE",
+      "video",
+      "TRUE",
+      2,
+      "2026-08-16"
+    ],
+    [
+      "signage-slide-3",
+      "Pendaftaran Tahun 1 Sesi 2027 KPM Melalui Portal idMe",
+      "Ibu bapa dan penjaga dipohon melengkapkan permohonan kemasukan sebelum 30 September 2026",
+      "image",
+      "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&q=80&w=1920",
+      "",
+      "",
+      "",
+      8,
+      "FALSE",
+      "FALSE",
+      "pengumuman",
+      "TRUE",
+      3,
+      "2026-08-16"
+    ]
+  ];
+  sheet.getRange(2, 1, defaultSlides.length, SHEETS_CONFIG.SIGNAGE.headers.length).setValues(defaultSlides);
+}
+
+/**
+ * Menyuntik konfigurasi awal Smart TV
+ */
+function seedInitialSignageConfig(sheet) {
+  var defaultCfg = [
+    ["Default_Duration", 8],
+    ["Auto_Play", "TRUE"],
+    ["Auto_Enable_Audio", "TRUE"],
+    ["Show_Clock", "TRUE"],
+    ["Show_Marquee", "TRUE"],
+    ["Marquee_Text", "SELAMAT DATANG KE SK MERBAU PULAS • BERILMU, BERAMAL, BERBAKTI • PENDAFTARAN TAHUN 1 SESI 2027 KINI DIBUKA DI PORTAL idMe KPM"],
+    ["Show_Weather_Badge", "TRUE"],
+    ["Theme", "dark"]
+  ];
+  sheet.getRange(2, 1, defaultCfg.length, 2).setValues(defaultCfg);
 }
 
 /**

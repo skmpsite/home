@@ -1021,7 +1021,7 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
             <div className="p-3 bg-blue-950/60 border border-blue-400/30 rounded-2xl flex items-start gap-2.5 text-[11px] text-blue-200">
               <Sparkles className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
               <span>
-                <strong>Tip Kiosk TV:</strong> Buka pautan <code className="text-yellow-300 font-mono">/tv.html</code> pada pelayar web Android TV, Google TV, atau Tizen OS untuk pengalaman televisyen sepenuhnya tanpa bar navigasi.
+                <strong>Tip Kiosk TV:</strong> Buka pautan <code className="text-yellow-300 font-mono">/?view=tv</code> (atau <code className="text-yellow-300 font-mono">#tv</code>) pada pelayar web Android TV, Google TV, atau Tizen OS untuk pengalaman televisyen skrin penuh sepenuhnya tanpa bar navigasi.
               </span>
             </div>
 

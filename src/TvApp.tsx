@@ -88,7 +88,16 @@ export default function TvApp() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-center items-center overflow-hidden p-0 m-0 select-none">
+    <div className="relative min-h-screen w-screen bg-slate-950 text-white flex flex-col justify-center items-center overflow-hidden p-0 m-0 select-none">
+      {/* Back to Portal button (appears on hover) */}
+      <a
+        href="/"
+        className="fixed bottom-3 right-3 z-[10000] px-3 py-1.5 rounded-xl bg-slate-900/80 hover:bg-yellow-400 hover:text-blue-950 text-slate-400 text-[11px] font-bold border border-white/10 backdrop-blur-md opacity-30 hover:opacity-100 transition-all shadow-lg"
+        title="Kembali ke Portal Rasmi Sekolah"
+      >
+        &larr; Portal Rasmi
+      </a>
+
       <SignageSection
         profile={profile}
         slides={slides}

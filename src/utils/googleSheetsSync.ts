@@ -13,11 +13,22 @@ import {
 import { DEFAULT_GAS_URL } from '../config';
 import { getSafeNewsImageUrl, formatGoogleDriveUrl } from './imageHelpers';
 import { sortStaffBySeniority } from './staffHelpers';
+import { extractYouTubeId, getYouTubeThumbnail, isVideoUrl } from './signageMediaHelpers';
 
 const GAS_URL_KEY = 'skmp_gas_url_v1';
 
 export function getGasWebAppUrl(): string {
   try {
+    // 1. Check URL query parameters (?gas= or ?gasUrl=) so TV links can carry the custom script URL directly
+    if (typeof window !== 'undefined' && window.location?.search) {
+      const params = new URLSearchParams(window.location.search);
+      const gasParam = params.get('gas') || params.get('gasUrl') || params.get('gas_url');
+      if (gasParam && gasParam.trim().startsWith('http')) {
+        const cleanUrl = decodeURIComponent(gasParam.trim());
+        localStorage.setItem(GAS_URL_KEY, cleanUrl);
+        return cleanUrl;
+      }
+    }
     const customUrl = localStorage.getItem(GAS_URL_KEY);
     if (customUrl && customUrl.trim()) {
       return customUrl.trim();
@@ -407,14 +418,28 @@ export function parseSchoolDataFromSheets(rawData: any): {
     const validSlides: SignageSlide[] = rawData.Signage_Digital
       .filter((row: any) => row.Tajuk || row.Title || row['URL_Media'] || row['URL_YouTube'] || row['URL_Video'])
       .map((row: any, idx: number) => {
-        const mediaTypeRaw = (row['Jenis_Media'] || row.MediaType || row.mediaType || 'image').toLowerCase();
-        const mediaType: 'image' | 'video' | 'youtube' =
-          mediaTypeRaw.includes('youtube') ? 'youtube' : mediaTypeRaw.includes('video') ? 'video' : 'image';
+        const rawYtUrl = String(row['URL_YouTube'] || row.YoutubeUrl || row.youtubeUrl || '').trim();
+        const rawVidUrl = String(row['URL_Video'] || row.VideoUrl || row.videoUrl || '').trim();
+        const rawImgUrl = String(row['URL_Media'] || row.ImageUrl || row.imageUrl || '').trim();
+        const explicitYid = String(row['YouTube_ID'] || row.YoutubeId || row.youtubeId || '').trim();
 
-        const youtubeUrl = row['URL_YouTube'] || row.YoutubeUrl || row.youtubeUrl || '';
-        const youtubeId = row['YouTube_ID'] || row.YoutubeId || row.youtubeId || '';
-        const videoUrl = row['URL_Video'] || row.VideoUrl || row.videoUrl || '';
-        const imageUrl = row['URL_Media'] || row.ImageUrl || row.imageUrl || '';
+        // Extract YouTube ID from any field if present
+        const detectedYid =
+          explicitYid ||
+          extractYouTubeId(rawYtUrl) ||
+          extractYouTubeId(rawVidUrl) ||
+          extractYouTubeId(rawImgUrl) ||
+          null;
+
+        const mediaTypeRaw = String(row['Jenis_Media'] || row.MediaType || row.mediaType || '').toLowerCase();
+        let mediaType: 'image' | 'video' | 'youtube' = 'image';
+        if (detectedYid) {
+          mediaType = 'youtube';
+        } else if (mediaTypeRaw.includes('video') || isVideoUrl(rawVidUrl) || isVideoUrl(rawImgUrl)) {
+          mediaType = 'video';
+        } else {
+          mediaType = 'image';
+        }
 
         const isMutedStr = String(row['Status_Mute'] || row.isMuted || 'false').toLowerCase();
         const isMuted = isMutedStr === 'true' || isMutedStr === '1';
@@ -425,16 +450,26 @@ export function parseSchoolDataFromSheets(rawData: any): {
         const isActiveStr = String(row['Aktif'] || row.isActive || 'true').toLowerCase();
         const isActive = isActiveStr !== 'false' && isActiveStr !== '0';
 
+        const effectiveImgUrl = rawImgUrl
+          ? formatGoogleDriveUrl(rawImgUrl)
+          : detectedYid
+          ? getYouTubeThumbnail(detectedYid)
+          : '';
+
+        const effectiveYoutubeUrl = detectedYid
+          ? rawYtUrl || `https://www.youtube.com/watch?v=${detectedYid}`
+          : undefined;
+
         return {
           id: row.ID || `signage-slide-${idx + 1}`,
           title: row.Tajuk || row.Title || 'Slaid Sekolah',
           subtitle: row.Subtajuk || row.Subtitle || '',
           mediaType,
-          imageUrl: formatGoogleDriveUrl(imageUrl),
-          videoUrl: formatGoogleDriveUrl(videoUrl),
-          youtubeUrl: youtubeUrl || undefined,
-          youtubeId: youtubeId || undefined,
-          durationSeconds: Number(row['Durasi_Saat'] || row.durationSeconds) || 8,
+          imageUrl: effectiveImgUrl,
+          videoUrl: mediaType === 'video' ? formatGoogleDriveUrl(rawVidUrl || rawImgUrl) : '',
+          youtubeUrl: effectiveYoutubeUrl,
+          youtubeId: detectedYid || undefined,
+          durationSeconds: Number(row['Durasi_Saat'] || row.durationSeconds) || (mediaType === 'youtube' ? 30 : 8),
           useVideoDuration,
           isMuted,
           isActive,

@@ -215,7 +215,7 @@ export const GasScriptSection: React.FC<GasScriptSectionProps> = ({
             </span>
           </h4>
           <p className="leading-relaxed">
-            Fungsi <code className="font-mono bg-white/10 px-1 py-0.5 rounded font-bold text-yellow-300">autoSetupDatabaseSheets()</code> dipanggil secara automatik setiap kali laman web dibuka melalui <code className="font-mono bg-white/10 px-1 py-0.5 rounded font-bold text-yellow-300">doGet()</code> atau <code className="font-mono bg-white/10 px-1 py-0.5 rounded font-bold text-yellow-300">doPost()</code>. Jika tab pangkalan data belum wujud (seperti <em>Profil_Sekolah, Warga_Sekolah, Berita, Takwim, Galeri, Anugerah, Muat_Turun, Maklum_Balas, PIBG</em>), sistem akan mencipta tab dan menyuntik tajuk kolum (headers) secara automatik!
+            Fungsi <code className="font-mono bg-white/10 px-1 py-0.5 rounded font-bold text-yellow-300">autoSetupDatabaseSheets()</code> dipanggil secara automatik setiap kali laman web dibuka melalui <code className="font-mono bg-white/10 px-1 py-0.5 rounded font-bold text-yellow-300">doGet()</code> atau <code className="font-mono bg-white/10 px-1 py-0.5 rounded font-bold text-yellow-300">doPost()</code>. Jika tab pangkalan data belum wujud (seperti <em>Profil_Sekolah, Warga_Sekolah, Berita, Takwim, Galeri, Anugerah, Muat_Turun, Maklum_Balas, PIBG, Signage_Digital, Konfigurasi_Signage</em>), sistem akan mencipta tab dan menyuntik tajuk kolum (headers) serta data awal secara automatik!
           </p>
         </div>
       </div>

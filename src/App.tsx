@@ -70,8 +70,56 @@ import { GasScriptSection } from './components/sections/GasScriptSection';
 import { AdminDashboard } from './components/AdminDashboard';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { Footer } from './components/Footer';
+import TvApp from './TvApp';
 
 export default function App() {
+  // Check URL if TV Signage full screen mode is requested
+  const [isTvMode, setIsTvMode] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const search = (window.location.search || '').toLowerCase();
+    const hash = (window.location.hash || '').toLowerCase();
+    const pathname = (window.location.pathname || '').toLowerCase();
+    return (
+      search.includes('view=tv') ||
+      search.includes('tv=1') ||
+      search.includes('tv=true') ||
+      search.includes('signage=1') ||
+      hash === '#tv' ||
+      hash === '#/tv' ||
+      hash.includes('view=tv') ||
+      pathname.endsWith('/tv') ||
+      pathname.endsWith('/tv.html')
+    );
+  });
+
+  // Listen to popstate and hashchange to allow seamless switching
+  useEffect(() => {
+    const handleUrlChange = () => {
+      const search = (window.location.search || '').toLowerCase();
+      const hash = (window.location.hash || '').toLowerCase();
+      const pathname = (window.location.pathname || '').toLowerCase();
+      const tvActive = (
+        search.includes('view=tv') ||
+        search.includes('tv=1') ||
+        search.includes('tv=true') ||
+        search.includes('signage=1') ||
+        hash === '#tv' ||
+        hash === '#/tv' ||
+        hash.includes('view=tv') ||
+        pathname.endsWith('/tv') ||
+        pathname.endsWith('/tv.html')
+      );
+      setIsTvMode(tvActive);
+    };
+
+    window.addEventListener('popstate', handleUrlChange);
+    window.addEventListener('hashchange', handleUrlChange);
+    return () => {
+      window.removeEventListener('popstate', handleUrlChange);
+      window.removeEventListener('hashchange', handleUrlChange);
+    };
+  }, []);
+
   // Main Data States
   const [profile, setProfile] = useState<SchoolProfile>(loadProfile);
   const [staffList, setStaffList] = useState<Staff[]>(loadStaff);
@@ -390,6 +438,11 @@ export default function App() {
   const unreadFeedbackCount = useMemo(() => {
     return feedbackList.filter((f) => f.status === 'baru').length;
   }, [feedbackList]);
+
+  // Jika mod TV Signage diaktifkan melalui URL (?view=tv atau #tv), paparkan terus aplikasi khas Smart TV
+  if (isTvMode) {
+    return <TvApp />;
+  }
 
   return (
     <div
