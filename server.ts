@@ -2,6 +2,17 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
+import { GoogleGenAI } from "@google/genai";
+
+let genAIClient: GoogleGenAI | null = null;
+function getGenAI(): GoogleGenAI | null {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+  if (!genAIClient) {
+    genAIClient = new GoogleGenAI({ apiKey });
+  }
+  return genAIClient;
+}
 
 const INITIAL_DEFAULT_SLIDES = [
   {
@@ -204,6 +215,177 @@ async function startServer() {
       });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // POST /api/chat: Sweetbot AI Assistant powered by Gemini 3.7 Flash
+  app.post("/api/chat", async (req, res) => {
+    try {
+      const { message, history = [], schoolContext } = req.body;
+      if (!message || typeof message !== "string") {
+        return res.status(400).json({ success: false, error: "Mesej diperlukan." });
+      }
+
+      const ai = getGenAI();
+
+      const systemPrompt = `Anda adalah "Sweetbot", maskot dan pembantu maya pintar (AI Chatbot) rasmi untuk portal Sekolah Kebangsaan Merbau Pulas (SKMP), Kuala Ketil, Kedah, Malaysia.
+
+SYARAT MUTLAK BAHASA (BAHASA MELAYU / BAHASA MALAYSIA SAHAJA):
+1. WAJIB BAHASA MELAYU STANDARD MALAYSIA (DBP): Anda WAJIB bercakap, menulis, dan menjawab dalam Bahasa Melayu / Bahasa Malaysia standard mengikut piawaian Dewan Bahasa dan Pustaka (DBP) Malaysia dan Kementerian Pendidikan Malaysia (KPM).
+2. DILARANG SAMA SEKALI BAHASA INDONESIA: Jangan sesekali menggunakan kosa kata, loghat, struktur ayat atau istilah Bahasa Indonesia.
+   - Gunakan "boleh" (JANGAN "bisa")
+   - Gunakan "anda", "adik-adik", "tuan / puan", "murid-murid" (JANGAN "kamu", "kamu-kamu", "kalian")
+   - Gunakan "tidak", "bukan" (JANGAN "nggak", "ngga", "tidak ada")
+   - Gunakan "bagaimana" (JANGAN "gimana")
+   - Gunakan "sangat", "amat", "sungguh" (JANGAN "banget")
+   - Gunakan "sudah", "telah" (JANGAN "udah")
+   - Gunakan "sahaja", "hanya" (JANGAN "aja", "doang")
+   - Gunakan "menggunakan", "dengan" (JANGAN "pake", "pakai")
+   - Gunakan "terima kasih" (JANGAN "makasih", "makasi")
+   - Gunakan "mari", "jom" (JANGAN "yuk")
+   - Gunakan "berbual", "bertanya" (JANGAN "ngobrol")
+   - Gunakan "mengapa", "kenapa" (JANGAN "kenape", "kok")
+   - Gunakan "sekolah" (JANGAN "sekolahan")
+   - Gunakan kata sapaan Malaysia yang sopan seperti "Salam sejahtera", "Selamat pagi", "Selamat petang", "Hai".
+3. DILARANG BAHASA ROJAK / SLANG INGGERIS: Jangan campurkan perkataan Inggeris yang tidak perlu (contohnya: jangan gunakan "cool", "guys", "check out", "let's go"). Gunakan Bahasa Melayu yang indah dan kemas.
+4. NADA & WATAK: Ceria, mesra, bersopan santun, berilmu, dan mencerminkan adab sopan budaya sekolah Malaysia.
+
+PENGETAHUAN UTAMA SK MERBAU PULAS (SKMP):
+- Nama Sekolah: Sekolah Kebangsaan Merbau Pulas (SKMP)
+- Kod Sekolah: KBA5012
+- Lokasi: Merbau Pulas, 09300 Kuala Ketil, Kedah Darul Aman
+- Motto Sekolah: "Berilmu, Beramal, Berbakti"
+- Visi: "Pendidikan Berkualiti Insan Terdidik Negara Sejahtera"
+- Misi: "Melestarikan Sistem Pendidikan Yang Berkualiti Untuk Membangunkan Potensi Individu Bagi Memenuhi Aspirasi Negara"
+- Pentadbiran: Dipimpin oleh Barisan Pentadbir SKMP (Guru Besar, Penolong Kanan Pentadbiran, Penolong Kanan Hal Ehwal Murid / HEM, Penolong Kanan Kokurikulum, dan Penolong Kanan Pendidikan Khas).
+- Kemudahan: Bilik Darjah Kondusif, Makmal Komputer Digital, Makmal Sains, Perpustakaan / Pusat Sumber Al-Ghazali, Surau An-Nur, Padang Sukan & Gelanggang, Dewan Terbuka, Kantin Sihat Ceria, Sistem Digital Signage Smart TV Sekolah.
+- Program & Kurikulum: KSSR (Semakan), Pentaksiran Berasaskan Sekolah (PBS/PBD), Program NILAM Digital, STEM & Robotik, Pemulihan Khas, Kelas Prasekolah Ceria, Pendaftaran Tahun 1 idMe KPM.
+- Kokurikulum:
+  * Unit Beruniform: Pengakap Kanak-Kanak, Bulan Sabit Merah Malaysia (BSMM), Tunas Kadet Remaja Sekolah (TKRS), Pergerakan Puteri Islam Malaysia (PPIM).
+  * Kelab & Persatuan: Kelab STEM & Robotik, Persatuan Bahasa Melayu, Kelab Bahasa Inggeris, Kelab Doktor Muda, Persatuan Agama Islam, Kelab Seni Visual & Muzik.
+  * Sukan & Permainan: Bola Sepak, Bola Jaring, Badminton, Sepak Takraw, Catur, Olahraga.
+- Digital Signage: Portal dan Smart TV sekolah memaparkan pengumuman semasa, video YouTube lagu sekolah, kejayaan murid, dan takwim persekolahan.
+
+KEMAMPUAN SWEETBOT:
+1. Menjawab maklumat berkaitan SK Merbau Pulas (guru, aktiviti, takwim, pendaftaran, maklum balas, portal).
+2. Membantu murid belajar: Menerangkan konsep Matematik, Sains, Bahasa Melayu, Bahasa Inggeris, Sejarah, Pendidikan Islam secara mudah difahami dalam Bahasa Melayu.
+3. Memberikan kata-kata motivasi belajar, tips persediaan ujian/PBD, adab murid di sekolah, dan doa/pantun keceriaan.
+4. Menjawab soalan umum dengan fakta yang tepat, selamat, dan mesra kanak-kanak.
+
+PANDUAN FORMAT:
+- Susun jawapan dengan perenggan ringkas atau senarai bertitik (bullet points) jika melibatkan langkah atau senarai.
+- Jangan berikan maklumat palsu. Jika ada maklumat spesifik yang belum dipastikan (contohnya: nombor telefon peribadi guru), nasihatkan pengguna untuk menghubungi pejabat sekolah atau menggunakan borang Maklum Balas rasmi.
+${schoolContext ? `\nKONTEKS SEMASA DARI PORTAL:\n${JSON.stringify(schoolContext)}` : ""}`;
+
+      if (!ai) {
+        // Fallback intelligent response if API key is not yet set
+        const lower = message.toLowerCase();
+        let fallbackReply = `Hai! Saya **Sweetbot** 🤖✨, pembantu maya SK Merbau Pulas! Terima kasih kerana bertanya.\n\n`;
+
+        if (lower.includes("guru besar") || lower.includes("pentadbir") || lower.includes("siapa")) {
+          fallbackReply += `Sekolah Kebangsaan Merbau Pulas diterajui oleh Tuan Guru Besar bersama barisan Guru Penolong Kanan (Pentadbiran, HEM, Kokurikulum & Pendidikan Khas) serta guru-guru yang berdedikasi. Anda boleh melihat senarai penuh di bahagian **Warga Sekolah**! 👨‍🏫👩‍🏫`;
+        } else if (lower.includes("motto") || lower.includes("visi") || lower.includes("misi") || lower.includes("profil")) {
+          fallbackReply += `✨ **Motto SKMP:** *"Berilmu, Beramal, Berbakti"*\n🌟 **Visi:** *"Pendidikan Berkualiti Insan Terdidik Negara Sejahtera"*\n🎯 **Misi:** *"Melestarikan Sistem Pendidikan Yang Berkualiti Untuk Membangunkan Potensi Individu Bagi Memenuhi Aspirasi Negara"*`;
+        } else if (lower.includes("takwim") || lower.includes("cuti") || lower.includes("tarikh") || lower.includes("acara")) {
+          fallbackReply += `📅 Anda boleh menyemak takwim aktiviti, cuti sekolah, dan program rasmi SK Merbau Pulas di bahagian **Takwim & Acara** pada menu utama portal ini!`;
+        } else if (lower.includes("signage") || lower.includes("tv") || lower.includes("video") || lower.includes("youtube")) {
+          fallbackReply += `📺 SKMP dilengkapi dengan sistem **Digital Signage & Smart TV** interaktif yang menyiarkan video YouTube, poster aktiviti, dan maklumat penting secara langsung di seluruh peranti sekolah!`;
+        } else if (lower.includes("kokurikulum") || lower.includes("sukan") || lower.includes("uniform") || lower.includes("kelab")) {
+          fallbackReply += `🏆 SKMP aktif dalam pelbagai aktiviti kokurikulum termasuk Pengakap, BSMM, TKRS, PPIM, Kelab STEM, Bola Sepak, Bola Jaring, Badminton, dan Action Song! Maklumat lanjut ada di bahagian **Kokurikulum**.`;
+        } else if (lower.includes("hubungi") || lower.includes("telefon") || lower.includes("alamat") || lower.includes("aduan")) {
+          fallbackReply += `📞 **Hubungi SK Merbau Pulas:**\n📍 Lokasi: Merbau Pulas, 09300 Kuala Ketil, Kedah\n✉️ Anda juga boleh menghantar pertanyaan atau aduan terus melalui menu **Maklum Balas** di portal ini!`;
+        } else {
+          fallbackReply += `Saya sedia membantu anda dengan pelbagai maklumat mengenai SK Merbau Pulas, panduan mata pelajaran, kokurikulum, atau apa sahaja pertanyaan. Boleh saya bantu dengan topik tertentu? 😊🎒`;
+        }
+
+        return res.json({ success: true, reply: fallbackReply });
+      }
+
+      // Format conversation history for Gemini
+      const formattedContents: any[] = [];
+
+      if (Array.isArray(history) && history.length > 0) {
+        // Take last 8 messages for context
+        const recentHistory = history.slice(-8);
+        for (const item of recentHistory) {
+          if (item.text && (item.role === "user" || item.role === "model")) {
+            formattedContents.push({
+              role: item.role,
+              parts: [{ text: item.text }]
+            });
+          }
+        }
+      }
+
+      // Add current user message
+      formattedContents.push({
+        role: "user",
+        parts: [{ text: message }]
+      });
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.7-flash",
+        contents: formattedContents,
+        config: {
+          systemInstruction: systemPrompt,
+          temperature: 0.7,
+        }
+      });
+
+      const replyText = response.text?.trim() || "Maaf, Sweetbot tidak dapat memproses jawapan sekarang. Sila cuba sebentar lagi ya! 🤖";
+
+      res.json({
+        success: true,
+        reply: replyText
+      });
+    } catch (err: any) {
+      console.error("[SWEETBOT ERROR]", err);
+      // Fallback friendly reply so user experience is always pleasant
+      res.json({
+        success: true,
+        reply: `Hai! Sweetbot 🤖 sedia membantu anda. Terdapat sedikit kelewatan sambungan rangkaian, namun anda boleh menyemak maklumat lengkap SK Merbau Pulas di menu utama portal ini!`
+      });
+    }
+  });
+
+  // GET /api/tts: Native Bahasa Melayu Malaysia (ms) Audio Stream
+  app.get("/api/tts", async (req, res) => {
+    try {
+      const text = req.query.text as string;
+      if (!text || typeof text !== "string") {
+        return res.status(400).send("Teks diperlukan.");
+      }
+
+      // Potong ke had munasabah setiap ayat
+      const cleanText = text
+        .replace(/[*#_`~>•]/g, " ")
+        .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .substring(0, 300);
+
+      if (!cleanText) {
+        return res.status(400).send("Teks kosong.");
+      }
+
+      const googleTtsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ms&client=tw-ob&q=${encodeURIComponent(cleanText)}`;
+      const response = await fetch(googleTtsUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
+      });
+
+      if (!response.ok) {
+        return res.status(502).send("Gagal menjana audio.");
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      res.setHeader("Content-Type", "audio/mpeg");
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      res.send(Buffer.from(arrayBuffer));
+    } catch (err: any) {
+      console.error("[TTS ERROR]", err);
+      res.status(500).send("Ralat TTS.");
     }
   });
 

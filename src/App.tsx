@@ -70,6 +70,7 @@ import { ContactSection } from './components/sections/ContactSection';
 import { GasScriptSection } from './components/sections/GasScriptSection';
 import { AdminDashboard } from './components/AdminDashboard';
 import { AdminLoginModal } from './components/AdminLoginModal';
+import { SweetbotWidget } from './components/chat/SweetbotWidget';
 import { Footer } from './components/Footer';
 import TvApp from './TvApp';
 
@@ -613,6 +614,18 @@ export default function App() {
         onLoginSuccess={() => {
           setIsAdmin(true);
           setActiveTab('admin_cms');
+        }}
+      />
+
+      {/* Sweetbot AI Robot Assistant (Peeking on the screen edge) */}
+      <SweetbotWidget
+        profile={profile}
+        events={events}
+        newsList={newsList}
+        staffList={staffList}
+        onNavigateSection={(sectionId) => {
+          setActiveTab(sectionId as any);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
       />
     </div>
