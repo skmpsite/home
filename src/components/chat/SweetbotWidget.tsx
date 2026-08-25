@@ -437,12 +437,13 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
   };
 
   const quickQuestions = [
-    { label: '👨‍🏫 Guru Besar & Pentadbir', query: 'Siapakah barisan pentadbir dan Guru Besar SK Merbau Pulas?' },
-    { label: '🌟 Visi & Motto Sekolah', query: 'Apakah visi, misi dan motto SK Merbau Pulas?' },
-    { label: '📅 Takwim & Cuti', query: 'Apakah program atau takwim persekolahan yang terdekat?' },
-    { label: '🏆 Aktiviti Kokurikulum', query: 'Apakah kelab, persatuan dan sukan yang ada di SK Merbau Pulas?' },
-    { label: '📺 Digital Signage Smart TV', query: 'Ceritakan tentang sistem Digital Signage TV sekolah' },
-    { label: '💡 Tips Belajar Cemerlang', query: 'Berikan saya 3 tips belajar yang cemerlang untuk murid sekolah rendah' }
+    { label: '🤖 Tanya Apa Sahaja', query: 'Hai Sweetbot! Apakah yang boleh anda bantu saya pelajari hari ini?' },
+    { label: '🔢 Bantu Matematik & Sains', query: 'Boleh bantu saya selesaikan soalan Matematik dan terangkan konsep Sains?' },
+    { label: '📚 Bahasa Melayu & Karangan', query: 'Boleh bantu saya bina perenggan karangan dan terangkan maksud peribahasa?' },
+    { label: '🏫 Info SK Merbau Pulas', query: 'Ceritakan tentang profil, pentadbir, dan keistimewaan SK Merbau Pulas' },
+    { label: '📅 Takwim & Aktiviti', query: 'Apakah aktiviti dan program sekolah yang terdekat dalam takwim?' },
+    { label: '🏆 Sukan & Kokurikulum', query: 'Apakah aktiviti sukan, kelab dan unit beruniform di SKMP?' },
+    { label: '💡 Motivasi & Tips Belajar', query: 'Berikan kata-kata motivasi dan 3 tips belajar berkesan untuk murid cemerlang' }
   ];
 
   return (
