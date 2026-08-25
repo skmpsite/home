@@ -124,6 +124,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
   useEffect(() => {
     if (!isOpen) {
       stopSpeaking();
+      setIsPeekingHovered(false);
     }
   }, [isOpen]);
 
@@ -219,53 +220,27 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
       };
 
       audio.onerror = () => {
-        console.warn('Audio stream error, falling back to Web Speech API for chunk:', nextChunk);
-        // Fallback ke Web Speech API jika berlaku ralat audio stream
-        fallbackWebSpeechChunk(nextChunk, msgId);
+        console.warn('Audio stream error for chunk:', nextChunk);
+        // Teruskan ke chunk seterusnya tanpa menduplikasi panggilan web speech
+        playNextAudioChunk(msgId);
       };
 
       audio.play().catch((playErr) => {
         console.warn('Audio play failed (maybe autoplay restriction):', playErr);
-        fallbackWebSpeechChunk(nextChunk, msgId);
+        // Jika autoplay disekat pelayar, hentikan barisan dan elakkan percakapan berganda
+        isPlayingAudioRef.current = false;
+        setCurrentlySpeakingId(null);
       });
     } catch (e) {
-      fallbackWebSpeechChunk(nextChunk, msgId);
-    }
-  };
-
-  // Fallback sekunder jika audio stream disekat pelayar
-  const fallbackWebSpeechChunk = (chunk: string, msgId?: string) => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       playNextAudioChunk(msgId);
-      return;
     }
-
-    const utterance = new SpeechSynthesisUtterance(chunk);
-    const malayVoice = getBestMalayVoice();
-    if (malayVoice) {
-      utterance.voice = malayVoice;
-      utterance.lang = malayVoice.lang || 'ms-MY';
-    } else {
-      utterance.lang = 'ms-MY';
-    }
-    utterance.rate = 0.98;
-    utterance.pitch = 1.05;
-
-    utterance.onend = () => {
-      playNextAudioChunk(msgId);
-    };
-    utterance.onerror = () => {
-      playNextAudioChunk(msgId);
-    };
-
-    window.speechSynthesis.speak(utterance);
   };
 
   // Text-To-Speech Bahasa Melayu / Bahasa Malaysia Tulen
   const speakText = (text: string, msgId?: string) => {
     if (!speechEnabled) return;
     
-    // Hentikan sebarang pertuturan semasa
+    // Hentikan sebarang pertuturan semasa serta-merta
     stopSpeaking();
 
     if (currentlySpeakingId === msgId && msgId) {
@@ -475,7 +450,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
       {/* 1. ROBOT BERPAUT MENGINTAI DI TEPI BINGKAI WEB (Peeking Behind The Wall on Right Edge) */}
       {!isOpen && (
         <div className="fixed right-0 top-[55%] -translate-y-1/2 z-50 flex items-center select-none pointer-events-auto">
-          {/* Peeking Speech Bubble (HANYA MUNCUL KETIKA DIHALAKAN TETIKUS / CURSOR) */}
+          {/* Peeking Speech Bubble (HANYA MUNCUL DI DESKTOP BILA DIHALAKAN TETIKUS - TIADA ISU TERLEKAT DI TELEFON) */}
           <AnimatePresence>
             {isPeekingHovered && !isOpen && (
               <motion.div
@@ -483,8 +458,11 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
                 animate={{ opacity: 1, x: 0, scale: 1 }}
                 exit={{ opacity: 0, x: 15, scale: 0.8 }}
                 transition={{ duration: 0.2 }}
-                onClick={() => setIsOpen(true)}
-                className="flex items-center gap-2 mr-2 bg-slate-900/95 text-white px-3.5 py-2 rounded-2xl rounded-tr-none shadow-[0_10px_30px_rgba(0,0,0,0.6)] border border-blue-400/50 text-xs font-bold cursor-pointer hover:scale-105 active:scale-95 transition backdrop-blur-md group"
+                onClick={() => {
+                  setIsPeekingHovered(false);
+                  setIsOpen(true);
+                }}
+                className="hidden md:flex items-center gap-2 mr-2 bg-slate-900/95 text-white px-3.5 py-2 rounded-2xl rounded-tr-none shadow-[0_10px_30px_rgba(0,0,0,0.6)] border border-blue-400/50 text-xs font-bold cursor-pointer hover:scale-105 active:scale-95 transition backdrop-blur-md group"
               >
                 <Sparkles className="w-3.5 h-3.5 text-yellow-300 animate-spin" />
                 <span className="tracking-wide text-blue-100 group-hover:text-white transition">
@@ -498,9 +476,13 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
           {/* Animated Robot Peeking Body (Hides ~65% behind the wall when idle, slides out on hover) */}
           <motion.div
             id="sweetbot-peek-btn"
-            onClick={() => setIsOpen(true)}
+            onClick={() => {
+              setIsPeekingHovered(false);
+              setIsOpen(true);
+            }}
             onMouseEnter={() => setIsPeekingHovered(true)}
             onMouseLeave={() => setIsPeekingHovered(false)}
+            onTouchStart={() => setIsPeekingHovered(false)}
             initial={{ x: 50 }}
             animate={
               isPeekingHovered
@@ -510,7 +492,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
                     scale: 1.05
                   }
                 : {
-                    x: [50, 48, 36, 48, 50],
+                    x: [52, 48, 38, 48, 52],
                     rotate: [0, -1, -3, -1, 0],
                     y: [0, -4, 0]
                   }
