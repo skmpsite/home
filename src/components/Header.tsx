@@ -30,6 +30,7 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleMobileMenu
 }) => {
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
 
   return (
     <header className="bg-white/10 backdrop-blur-lg border-b border-white/10 text-white shadow-md">
@@ -101,37 +102,133 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Main Header Brand Area */}
-      <div className="max-w-7xl mx-auto px-4 py-3.5 flex flex-col md:flex-row items-center justify-between gap-4">
-        {/* School Crest & Name */}
-        <div className="flex items-center gap-3.5 w-full md:w-auto">
-          <div className="relative group flex-shrink-0">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white/10 backdrop-blur-md rounded-2xl p-1 shadow-lg shadow-yellow-400/20 border-2 border-yellow-300/60 flex items-center justify-center overflow-hidden flex-shrink-0">
-              <img
-                src={profile.logoUrl}
-                alt="Logo SK Merbau Pulas"
-                className="w-full h-full object-contain"
-                onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
-                }}
-              />
+      <div className="max-w-7xl mx-auto px-4 py-3.5 flex flex-col md:flex-row items-center justify-between gap-3">
+        {/* School Crest & Name + Mobile Search Toggle Button */}
+        <div className="flex items-center justify-between w-full md:w-auto">
+          <div className="flex items-center gap-3 sm:gap-3.5">
+            <div className="relative group flex-shrink-0">
+              <div className="w-13 h-13 sm:w-16 sm:h-16 bg-white/10 backdrop-blur-md rounded-2xl p-1 shadow-lg shadow-yellow-400/20 border-2 border-yellow-300/60 flex items-center justify-center overflow-hidden flex-shrink-0">
+                <img
+                  src={profile.logoUrl}
+                  alt="Logo SK Merbau Pulas"
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                />
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base sm:text-xl md:text-2xl font-black tracking-tight text-white uppercase leading-snug">
+                  {profile.name}
+                </h1>
+              </div>
+              <p className="text-[11px] sm:text-sm font-medium text-yellow-400 mt-0.5 flex items-center gap-2">
+                <span>{profile.postcode} {profile.city}, {profile.state}</span>
+                <span className="hidden sm:inline text-slate-400">•</span>
+                <span className="hidden sm:inline text-slate-300 italic">"{profile.motto}"</span>
+              </p>
             </div>
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg sm:text-xl md:text-2xl font-black tracking-tight text-white uppercase leading-snug">
-                {profile.name}
-              </h1>
-            </div>
-            <p className="text-xs sm:text-sm font-medium text-yellow-400 mt-0.5 flex items-center gap-2">
-              <span>{profile.postcode} {profile.city}, {profile.state}</span>
-              <span className="hidden sm:inline text-slate-400">•</span>
-              <span className="hidden sm:inline text-slate-300 italic">"{profile.motto}"</span>
-            </p>
+
+          {/* Mobile Search Button Icon (Kanta Carian Sahaja untuk Mod Telefon) */}
+          <div className="md:hidden flex items-center flex-shrink-0 ml-2">
+            <button
+              onClick={() => {
+                setIsMobileSearchOpen((prev) => !prev);
+                setShowSearchResults(true);
+              }}
+              className={`p-2 rounded-xl border transition flex items-center justify-center shadow-md ${
+                isMobileSearchOpen
+                  ? 'bg-yellow-400 text-blue-950 border-yellow-300 ring-2 ring-yellow-400/40'
+                  : 'bg-white/10 hover:bg-white/20 text-yellow-300 border-white/20'
+              }`}
+              aria-label="Carian Portal"
+              title={isMobileSearchOpen ? 'Tutup Carian' : 'Buka Ruangan Carian'}
+            >
+              {isMobileSearchOpen ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+            </button>
           </div>
         </div>
 
-        {/* Global Search Bar */}
-        <div className="relative w-full md:w-80">
+        {/* Mobile Expandable Search Bar Drawer */}
+        {isMobileSearchOpen && (
+          <div className="w-full md:hidden pt-1 pb-1 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="relative">
+              <Search className="w-4 h-4 text-yellow-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                autoFocus
+                placeholder="Cari berita, guru, takwim, murid..."
+                value={searchQuery}
+                onChange={(e) => {
+                  onSearchChange(e.target.value);
+                  setShowSearchResults(true);
+                }}
+                onFocus={() => setShowSearchResults(true)}
+                className="w-full bg-slate-900/90 backdrop-blur-xl text-white text-xs pl-9 pr-8 py-2.5 rounded-xl border-2 border-yellow-400/60 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 transition shadow-lg placeholder:text-slate-400"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    onSearchChange('');
+                    setShowSearchResults(false);
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Mobile Dropdown Search Results */}
+            {showSearchResults && searchQuery.trim().length > 0 && (
+              <div className="mt-2 bg-slate-900/98 backdrop-blur-2xl border border-yellow-400/40 rounded-2xl shadow-2xl overflow-hidden z-50 max-h-72 overflow-y-auto">
+                {searchResults.length === 0 ? (
+                  <div className="p-3.5 text-center text-xs text-slate-400">
+                    Tiada rekod dijumpai untuk "{searchQuery}".
+                  </div>
+                ) : (
+                  <div className="divide-y divide-white/10">
+                    <div className="px-3 py-1.5 bg-yellow-400/10 text-[10px] font-extrabold text-yellow-300 uppercase tracking-wider">
+                      Hasil Carian ({searchResults.length})
+                    </div>
+                    {searchResults.map((item, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          onSelectSearchResult(item);
+                          setShowSearchResults(false);
+                          setIsMobileSearchOpen(false);
+                        }}
+                        className="w-full text-left p-3 hover:bg-white/10 transition flex items-center justify-between group"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded font-extrabold uppercase bg-yellow-500/20 text-yellow-300 border border-yellow-400/30">
+                              {item.type}
+                            </span>
+                            <span className="text-xs font-bold text-slate-100 group-hover:text-yellow-300 transition line-clamp-1">
+                              {item.title}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">
+                            {item.subtitle}
+                          </p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-yellow-400 transition ml-2 flex-shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Desktop Permanent Search Bar (Hanya muncul di skrin sederhana & besar) */}
+        <div className="hidden md:block relative w-80">
           <div className="relative">
             <Search className="w-4 h-4 text-slate-300 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
@@ -158,7 +255,7 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
 
-          {/* Autocomplete Dropdown Results */}
+          {/* Autocomplete Dropdown Results Desktop */}
           {showSearchResults && searchQuery.trim().length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-2 bg-slate-900/95 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl overflow-hidden z-50 max-h-80 overflow-y-auto">
               {searchResults.length === 0 ? (

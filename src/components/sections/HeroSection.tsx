@@ -90,10 +90,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               </span>
             </h2>
 
-            <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-normal max-w-xl">
-              Platform bersepadu penyampaian maklumat sekolah, takwim akademik, pencapaian kokurikulum, pengurusan borang rasmi, serta portal integrasi sistem Pendidikan KPM.
-            </p>
-
             {/* Quick Action Badges */}
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <button
