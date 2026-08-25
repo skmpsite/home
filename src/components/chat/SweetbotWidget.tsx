@@ -473,7 +473,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
             )}
           </AnimatePresence>
 
-          {/* Animated Robot Peeking Body (Hides ~65% behind the wall when idle, slides out on hover) */}
+          {/* Animated Robot Peeking Body (Hides behind wall, slides out full head with a cheerful smile, then hides back) */}
           <motion.div
             id="sweetbot-peek-btn"
             onClick={() => {
@@ -483,31 +483,31 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
             onMouseEnter={() => setIsPeekingHovered(true)}
             onMouseLeave={() => setIsPeekingHovered(false)}
             onTouchStart={() => setIsPeekingHovered(false)}
-            initial={{ x: 50 }}
+            initial={{ x: 52 }}
             animate={
               isPeekingHovered
                 ? {
                     x: 0,
                     rotate: 0,
-                    scale: 1.05
+                    scale: 1.08
                   }
                 : {
-                    x: [52, 48, 38, 48, 52],
-                    rotate: [0, -1, -3, -1, 0],
-                    y: [0, -4, 0]
+                    x: [52, 52, 0, 0, 0, 52, 52],
+                    rotate: [0, 0, -4, 2, -2, 0, 0],
+                    y: [0, 0, -6, -3, -6, 0, 0]
                   }
             }
             transition={
               isPeekingHovered
                 ? { type: 'spring', stiffness: 350, damping: 22 }
                 : {
-                    x: { repeat: Infinity, duration: 6, times: [0, 0.4, 0.5, 0.6, 1], ease: 'easeInOut' },
-                    rotate: { repeat: Infinity, duration: 6, times: [0, 0.4, 0.5, 0.6, 1], ease: 'easeInOut' },
-                    y: { repeat: Infinity, duration: 3, ease: 'easeInOut' }
+                    x: { repeat: Infinity, duration: 7.5, times: [0, 0.22, 0.36, 0.55, 0.68, 0.8, 1], ease: 'easeInOut' },
+                    rotate: { repeat: Infinity, duration: 7.5, times: [0, 0.22, 0.36, 0.55, 0.68, 0.8, 1], ease: 'easeInOut' },
+                    y: { repeat: Infinity, duration: 7.5, times: [0, 0.22, 0.36, 0.55, 0.68, 0.8, 1], ease: 'easeInOut' }
                   }
             }
             className="cursor-pointer group relative flex items-center focus:outline-none pr-0"
-            title="Sweetbot sedang mengintai! Klik untuk buka chatbot AI."
+            title="Sweetbot sedang mengintai & tersenyum! Klik untuk buka perbualan AI."
           >
             {/* Clinging Wall Tabs / Handles for easy clicking even when mostly hidden */}
             <div className="relative bg-gradient-to-l from-blue-800 via-indigo-700 to-amber-500 p-1.5 rounded-l-3xl shadow-[-10px_0px_30px_rgba(37,99,235,0.45)] border-l-2 border-y-2 border-yellow-300 flex items-center group-hover:shadow-[-12px_0px_35px_rgba(234,179,8,0.5)] transition-all duration-300">
@@ -529,42 +529,97 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
 
                 {/* Robot Screen Face */}
                 <div className="w-12 h-9 sm:w-14 sm:h-10 bg-slate-950 rounded-lg border border-cyan-400/50 flex items-center justify-around px-1.5 shadow-[inset_0_0_10px_rgba(6,182,212,0.4)] mt-2">
-                  {/* Glowing Animated Robot Eyes looking sideways into the page */}
+                  {/* Glowing Animated Robot Eyes (Beams happily when peeking out & smiling) */}
                   <motion.div
-                    animate={{
-                      scaleY: [1, 0.1, 1],
-                      scaleX: isPeekingHovered ? 1 : [1, 1.15, 1],
-                      x: isPeekingHovered ? 0 : [-1, -2, -1]
-                    }}
-                    transition={{ repeat: Infinity, duration: 3.5, repeatDelay: 2 }}
-                    className="w-3 h-3.5 bg-cyan-300 rounded-full shadow-[0_0_8px_#22d3ee] flex items-center justify-center"
+                    animate={
+                      isPeekingHovered
+                        ? {
+                            scaleY: [1, 0.2, 1],
+                            scaleX: 1.15,
+                            x: 0
+                          }
+                        : {
+                            scaleY: [1, 1, 0.75, 0.75, 0.75, 1, 1],
+                            scaleX: [1, 1, 1.15, 1.15, 1.15, 1, 1],
+                            x: [-2, -2, 0, 0, 0, -2, -2]
+                          }
+                    }
+                    transition={
+                      isPeekingHovered
+                        ? { repeat: Infinity, duration: 2.5, repeatDelay: 1.5 }
+                        : { repeat: Infinity, duration: 7.5, times: [0, 0.22, 0.36, 0.55, 0.68, 0.8, 1], ease: 'easeInOut' }
+                    }
+                    className="w-3.5 h-4 bg-cyan-300 rounded-full shadow-[0_0_8px_#22d3ee] flex items-center justify-center relative overflow-hidden"
                   >
-                    <span className="w-1 h-1 bg-white rounded-full self-start mr-0.5 mt-0.5" />
+                    <span className="w-1.5 h-1.5 bg-white rounded-full self-start mr-0.5 mt-0.5 shadow-sm" />
                   </motion.div>
                   <motion.div
-                    animate={{
-                      scaleY: [1, 0.1, 1],
-                      scaleX: isPeekingHovered ? 1 : [1, 1.15, 1],
-                      x: isPeekingHovered ? 0 : [-1, -2, -1]
-                    }}
-                    transition={{ repeat: Infinity, duration: 3.5, repeatDelay: 2 }}
-                    className="w-3 h-3.5 bg-cyan-300 rounded-full shadow-[0_0_8px_#22d3ee] flex items-center justify-center"
+                    animate={
+                      isPeekingHovered
+                        ? {
+                            scaleY: [1, 0.2, 1],
+                            scaleX: 1.15,
+                            x: 0
+                          }
+                        : {
+                            scaleY: [1, 1, 0.75, 0.75, 0.75, 1, 1],
+                            scaleX: [1, 1, 1.15, 1.15, 1.15, 1, 1],
+                            x: [-2, -2, 0, 0, 0, -2, -2]
+                          }
+                    }
+                    transition={
+                      isPeekingHovered
+                        ? { repeat: Infinity, duration: 2.5, repeatDelay: 1.5 }
+                        : { repeat: Infinity, duration: 7.5, times: [0, 0.22, 0.36, 0.55, 0.68, 0.8, 1], ease: 'easeInOut' }
+                    }
+                    className="w-3.5 h-4 bg-cyan-300 rounded-full shadow-[0_0_8px_#22d3ee] flex items-center justify-center relative overflow-hidden"
                   >
-                    <span className="w-1 h-1 bg-white rounded-full self-start mr-0.5 mt-0.5" />
+                    <span className="w-1.5 h-1.5 bg-white rounded-full self-start mr-0.5 mt-0.5 shadow-sm" />
                   </motion.div>
                 </div>
 
-                {/* Cute Cheeks */}
-                <div className="flex justify-between w-11 mt-0.5">
-                  <div className="w-2 h-1 bg-pink-400/80 rounded-full blur-[0.5px]" />
-                  <div className="w-2 h-1 bg-pink-400/80 rounded-full blur-[0.5px]" />
-                </div>
+                {/* Cute Cheeks with Blushing Animation */}
+                <motion.div
+                  animate={
+                    isPeekingHovered
+                      ? { opacity: 1, scale: 1.2 }
+                      : {
+                          opacity: [0.5, 0.5, 1, 1, 1, 0.5, 0.5],
+                          scale: [1, 1, 1.25, 1.25, 1.25, 1, 1]
+                        }
+                  }
+                  transition={
+                    isPeekingHovered
+                      ? { duration: 0.2 }
+                      : { repeat: Infinity, duration: 7.5, times: [0, 0.22, 0.36, 0.55, 0.68, 0.8, 1], ease: 'easeInOut' }
+                  }
+                  className="flex justify-between w-11 mt-0.5"
+                >
+                  <div className="w-2 h-1 bg-pink-400 rounded-full blur-[0.5px] shadow-[0_0_5px_#f472b6]" />
+                  <div className="w-2 h-1 bg-pink-400 rounded-full blur-[0.5px] shadow-[0_0_5px_#f472b6]" />
+                </motion.div>
 
-                {/* Robot Mouth (Smiles more when hovered) */}
-                <div
-                  className={`h-1 bg-cyan-400 rounded-full mt-0.5 transition-all duration-300 ${
-                    isPeekingHovered ? 'w-5 bg-yellow-300' : 'w-3.5 bg-cyan-400/80'
-                  }`}
+                {/* Robot Mouth (Expands into a joyful, beaming smile to user when emerging) */}
+                <motion.div
+                  animate={
+                    isPeekingHovered
+                      ? {
+                          scaleX: 1.5,
+                          scaleY: 1.4,
+                          backgroundColor: '#facc15'
+                        }
+                      : {
+                          scaleX: [1, 1, 1.6, 1.65, 1.6, 1, 1],
+                          scaleY: [1, 1, 1.4, 1.5, 1.4, 1, 1],
+                          backgroundColor: ['#22d3ee', '#22d3ee', '#facc15', '#facc15', '#facc15', '#22d3ee', '#22d3ee']
+                        }
+                  }
+                  transition={
+                    isPeekingHovered
+                      ? { duration: 0.25 }
+                      : { repeat: Infinity, duration: 7.5, times: [0, 0.22, 0.36, 0.55, 0.68, 0.8, 1], ease: 'easeInOut' }
+                  }
+                  className="h-1.5 w-4 rounded-full mt-0.5 shadow-[0_0_8px_rgba(250,204,21,0.7)] flex items-center justify-center"
                 />
 
                 {/* Robot Claws / Hands Clutching The Wall Edge */}
