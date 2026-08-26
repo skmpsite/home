@@ -69,79 +69,42 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         </div>
       </div>
 
-      {/* Main Hero Spotlight Banner */}
-      <div className="bg-white/10 backdrop-blur-xl text-white rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden border border-white/20">
+      {/* Main Principal Welcome Banner */}
+      <div className="bg-white/10 backdrop-blur-xl text-white rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden border border-white/20">
         {/* Subtle Background Graphic Decorative Elements */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-yellow-400/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-500/20 rounded-full blur-2xl pointer-events-none" />
 
-        <div className="relative z-10 grid lg:grid-cols-12 gap-8 items-center">
-          {/* Left Hero Copy */}
-          <div className="lg:col-span-7 space-y-5">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-yellow-500/20 text-yellow-300 font-bold rounded-full text-xs border border-yellow-400/30">
-              <img src={profile.logoUrl} alt="Lencana SKMP" className="w-4 h-4 object-contain" />
-              <span>Sistem Sekolah Pintar ({profile.code})</span>
-            </div>
-
-            <h2 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight text-white">
-              Laman Sesawang Rasmi <br className="hidden sm:inline" />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-300 to-yellow-200">
-                {profile.name}
-              </span>
-            </h2>
-
-            {/* Quick Action Badges */}
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <button
-                onClick={() => onNavigate('portal')}
-                className="px-5 py-3 bg-yellow-400 hover:bg-yellow-300 text-blue-950 font-black rounded-xl text-xs flex items-center gap-2 transition shadow-lg shadow-yellow-400/20"
-              >
-                <BookOpen className="w-4 h-4" />
-                <span>Portal KPM & DELIMa</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-
-              <button
-                onClick={() => onNavigate('akademik')}
-                className="px-5 py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition border border-white/20 backdrop-blur-md"
-              >
-                <Calendar className="w-4 h-4 text-yellow-400" />
-                <span>Takwim Persekolahan</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Right Principal Message Card */}
-          <div className="lg:col-span-5">
-            <div className="bg-slate-900/60 backdrop-blur-xl rounded-2xl p-6 border border-white/10 shadow-2xl relative">
-              <Quote className="w-8 h-8 text-yellow-400/30 absolute top-4 right-4" />
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-yellow-400 p-1 shadow-lg overflow-hidden flex-shrink-0 border-2 border-yellow-300/60 flex items-center justify-center">
-                  {displayPhoto && displayPhoto.trim() !== '' ? (
-                    <img
-                      src={displayPhoto}
-                      alt={displayName}
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                      className="w-full h-full object-cover rounded-xl"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-slate-900 rounded-xl flex flex-col items-center justify-center text-yellow-400">
-                      <UserCheck className="w-9 h-9 opacity-80" />
-                    </div>
-                  )}
+        <div className="relative z-10 bg-slate-900/60 backdrop-blur-xl rounded-2xl p-6 sm:p-8 border border-white/10 shadow-2xl">
+          <Quote className="w-8 h-8 text-yellow-400/30 absolute top-4 right-4" />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 mb-4">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-yellow-400 p-1 shadow-lg overflow-hidden flex-shrink-0 border-2 border-yellow-300/60 flex items-center justify-center">
+              {displayPhoto && displayPhoto.trim() !== '' ? (
+                <img
+                  src={displayPhoto}
+                  alt={displayName}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                  className="w-full h-full object-cover rounded-xl"
+                />
+              ) : (
+                <div className="w-full h-full bg-slate-900 rounded-xl flex flex-col items-center justify-center text-yellow-400">
+                  <UserCheck className="w-9 h-9 opacity-80" />
                 </div>
-                <div>
-                  <h4 className="font-black text-sm sm:text-base text-yellow-300">{displayName}</h4>
-                  <p className="text-xs text-slate-300 font-medium">{displayTitle}</p>
-                </div>
+              )}
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-yellow-500/20 text-yellow-300 font-bold rounded-full text-[11px] border border-yellow-400/30 mb-1.5">
+                <span>Perutusan & Kata Alu-Aluan</span>
               </div>
-              <p className="text-xs text-slate-200 italic leading-relaxed font-light">
-                "{profile.principalSpeech || "Selamat datang ke laman web rasmi SK Merbau Pulas. Semoga platform ini menjadi jembatan perhubungan yang mantap antara warga sekolah, ibu bapa, dan komuniti dalam mencapai kecemerlangan modal insan."}"
-              </p>
+              <h4 className="font-black text-base sm:text-lg text-yellow-300">{displayName}</h4>
+              <p className="text-xs sm:text-sm text-slate-300 font-medium">{displayTitle}</p>
             </div>
           </div>
+          <p className="text-xs sm:text-sm text-slate-200 italic leading-relaxed font-light border-t border-white/10 pt-3">
+            "{profile.principalSpeech || "Selamat datang ke laman web rasmi SK Merbau Pulas. Semoga platform ini menjadi jembatan perhubungan yang mantap antara warga sekolah, ibu bapa, dan komuniti dalam mencapai kecemerlangan modal insan."}"
+          </p>
         </div>
       </div>
 
