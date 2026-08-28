@@ -34,7 +34,8 @@ import {
   PibgCommittee,
   PibgActivity,
   CoCurriculumUnit,
-  DownloadDocument
+  DownloadDocument,
+  SystemLink
 } from '../../types';
 
 interface Message {
@@ -55,6 +56,7 @@ interface SweetbotWidgetProps {
   pibgActivities?: PibgActivity[];
   coCurriculumUnits?: CoCurriculumUnit[];
   documents?: DownloadDocument[];
+  systemLinks?: SystemLink[];
   onNavigateSection?: (sectionId: string) => void;
 }
 
@@ -68,6 +70,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
   pibgActivities = [],
   coCurriculumUnits = [],
   documents = [],
+  systemLinks = [],
   onNavigateSection
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -465,7 +468,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
     setIsTyping(true);
 
     try {
-      // Sediakan konteks sekolah lengkap, dinamik & terkini dari portal
+      // Sediakan konteks sekolah lengkap, menyeluruh & masa nyata dari portal
       const gbFromStaff = staffList.find(
         (s) =>
           s.position.toLowerCase().includes('guru besar') ||
@@ -481,22 +484,33 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
 
       const teachersList = staffList
         .filter((s) => s.category === 'guru')
-        .map((s) => `${s.name} (${s.position}, Gred ${s.grade || '-'})`);
+        .map((s) => `${s.name} (${s.position}${s.subject ? ' - ' + s.subject : ''}, Gred ${s.grade || '-'})`);
 
       const akpList = staffList
-        .filter((s) => s.category === 'akp')
+        .filter((s) => s.category === 'staf')
         .map((s) => `${s.name} (${s.position}, Gred ${s.grade || '-'})`);
 
       const schoolContext = {
         name: profile?.name || 'Sekolah Kebangsaan Merbau Pulas',
         code: profile?.code || 'KBA5012',
         motto: profile?.motto || 'Berilmu, Beramal, Berbakti',
-        vision: profile?.vision || 'Pendidikan Berkualiti Insan Terdidik Negara Sejahtera',
-        mission: profile?.mission || 'Melestarikan Sistem Pendidikan Yang Berkualiti Untuk Membangunkan Potensi Individu Bagi Memenuhi Aspirasi Negara',
+        vision: profile?.vision || 'Pendidikan Berkualiti Insan Terdidik Negara Sejahtera.',
+        mission: profile?.mission || 'Melestarikan Sistem Pendidikan Yang Berkualiti Untuk Membangunkan Potensi Individu Bagi Memenuhi Aspirasi Negara.',
+        history: profile?.history || 'Sekolah Kebangsaan Merbau Pulas telah ditubuhkan pada tahun 1954 untuk menyediakan kemudahan pendidikan asas kepada anak-anak penduduk di sekitar Merbau Pulas, Kuala Ketil, Kedah.',
+        logoDescription: profile?.logoDescription || [
+          'Buku Terbuka: Melambangkan ilmu pengetahuan yang sentiasa dituntut.',
+          'Obor Menyala: Melambangkan semangat kegigihan dan penerang masa depan.',
+          'Warna Biru Diraja: Melambangkan perpaduan dan keharmonian.',
+          'Warna Kuning Keemasan: Melambangkan kecemerlangan pendidikan.',
+          'Bintang & Bulan Sabit: Melambangkan nilai murni dan pegangan agama Islam.'
+        ],
+        songTitle: profile?.songTitle || 'Gagah SK Merbau Pulas',
+        songLyrics: profile?.songLyrics || [],
+        songComposer: profile?.songComposer || 'Cikgu Rosli bin Hassan (Lirik & Lagu)',
         principalName: gbName,
         principalTitle: gbTitle,
         principalSpeech: profile?.principalSpeech || '',
-        address: `${profile?.address || 'Jalan Baling, Kampong Merbau Pulas'}, ${profile?.postcode || '09300'} ${profile?.city || 'Kuala Ketil'}, ${profile?.state || 'Kedah'}`,
+        address: `${profile?.address || 'Jalan Baling, Kampong Merbau Pulas'}, ${profile?.postcode || '09300'} ${profile?.city || 'Kuala Ketil'}, ${profile?.state || 'Kedah Darul Aman'}`,
         phone: profile?.phone || '04-403 1200',
         fax: profile?.fax || '04-403 1201',
         email: profile?.email || 'KBA5012@moe.edu.my',
@@ -509,13 +523,14 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
         teachers: teachersList,
         akp: akpList,
         totalStaff: staffList.length,
-        upcomingEvents: events.map((e) => `${e.date} (${e.time || 'Sepanjang Hari'}): ${e.title} - ${e.location || 'SKMP'} [${e.category}]`),
-        latestNews: newsList.slice(0, 8).map((n) => `${n.date}: ${n.title} - ${n.summary || ''}`),
-        recentAwards: awards.slice(0, 8).map((a) => `${a.year} - ${a.rank} (${a.competition}) oleh ${a.recipient}`),
-        pibgCommittee: pibgCommittee.map((p) => `${p.role}: ${p.name}`),
-        pibgActivities: pibgActivities.slice(0, 5).map((act) => `${act.date}: ${act.title}`),
-        coCurriculumUnits: coCurriculumUnits.map((c) => `${c.name} (${c.type}) - Penasihat: ${c.teacherInCharge || '-'}`),
-        downloadDocuments: documents.slice(0, 8).map((d) => `${d.title} (${d.category})`)
+        upcomingEvents: events.map((e) => `${e.date}: ${e.title} - ${e.location || 'SKMP'} [${e.category}]`),
+        latestNews: newsList.slice(0, 10).map((n) => `${n.date}: ${n.title} - ${n.summary || ''}`),
+        recentAwards: awards.slice(0, 10).map((a) => `${a.year} - ${a.achievement} (${a.title}) penerima: ${a.recipient}`),
+        pibgCommittee: pibgCommittee.map((p) => `${p.position}: ${p.name}`),
+        pibgActivities: pibgActivities.slice(0, 8).map((act) => `${act.date}: ${act.title}`),
+        coCurriculumUnits: coCurriculumUnits.map((c) => `${c.name} (${c.category}) - Guru Penasihat: ${c.advisorTeacher || '-'}`),
+        downloadDocuments: documents.slice(0, 10).map((d) => `${d.title} (${d.category}, ${d.fileType})`),
+        systemLinks: systemLinks.map((s) => `${s.name} (${s.badge}): ${s.description}`)
       };
 
       // Bina riwayat mesej untuk API
@@ -559,18 +574,69 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
       // Dapatkan data dinamik terkini untuk fallback tempatan
       const currentGb = profile?.principalName || staffList.find((s) => s.category === 'pentadbir' && (s.position.toLowerCase().includes('besar') || s.position.toLowerCase().includes('pengetua')))?.name || 'Puan Norhafiza Binti Dolah';
       const currentGbTitle = profile?.principalTitle || 'Guru Besar (DG48)';
+      const currentSchoolName = profile?.name || 'Sekolah Kebangsaan Merbau Pulas';
+      const currentMotto = profile?.motto || 'Berilmu, Beramal, Berbakti';
+      const currentVision = profile?.vision || 'Pendidikan Berkualiti Insan Terdidik Negara Sejahtera.';
+      const currentMission = profile?.mission || 'Melestarikan Sistem Pendidikan Yang Berkualiti Untuk Membangunkan Potensi Individu Bagi Memenuhi Aspirasi Negara.';
+      const currentHistory = profile?.history || 'Sekolah Kebangsaan Merbau Pulas telah ditubuhkan pada tahun 1954 untuk menyediakan kemudahan pendidikan asas kepada anak-anak penduduk di sekitar Merbau Pulas, Kuala Ketil, Kedah.';
+      const currentAddress = `${profile?.address || 'Jalan Baling, Kampong Merbau Pulas'}, ${profile?.postcode || '09300'} ${profile?.city || 'Kuala Ketil'}, ${profile?.state || 'Kedah'}`;
+      const currentPhone = profile?.phone || '04-403 1200';
+      const currentEmail = profile?.email || 'KBA5012@moe.edu.my';
       const pentadbir = staffList.filter((s) => s.category === 'pentadbir');
 
-      let fallbackText = `Hai! Saya **Sweetbot** 🤖✨, Pembantu Maya Rasmi SK Merbau Pulas.\n\nSekolah sentiasa mengutamakan kecemerlangan modal insan berteraskan motto *"Berilmu, Beramal, Berbakti"*. Sila layari menu utama portal untuk maklumat lanjut! 🌟🎒`;
+      let fallbackText = `Hai! Saya **Sweetbot** 🤖✨, Pembantu Maya Rasmi ${currentSchoolName}.\n\nSekolah sentiasa mengutamakan kecemerlangan modal insan berteraskan motto *"${currentMotto}"*.\n\n🎯 **Visi:** ${currentVision}\n🚀 **Misi:** ${currentMission}\n\nSila kemukakan sebarang soalan mengenai guru, takwim, dokumen atau pembelajaran! 🌟🎒`;
 
       if (
+        lower.includes('pk 1') ||
+        lower.includes('pk1') ||
+        lower.includes('pk satu') ||
+        lower.includes('penolong kanan satu') ||
+        lower.includes('penolong kanan 1') ||
+        lower.includes('penolong kanan pentadbiran') ||
+        lower.includes('pk pentadbiran') ||
+        lower.includes('guru penolong kanan 1') ||
+        lower.includes('guru penolong kanan satu')
+      ) {
+        fallbackText = `Guru Penolong Kanan Pentadbiran (PK 1) ${currentSchoolName} ialah **Puan Noraini binti Yusof** (DG44) 👩‍🏫✨.`;
+      } else if (
+        lower.includes('pk hem') ||
+        lower.includes('pkhem') ||
+        lower.includes('pk 2') ||
+        lower.includes('pk2') ||
+        lower.includes('pk dua') ||
+        lower.includes('penolong kanan dua') ||
+        lower.includes('penolong kanan 2') ||
+        lower.includes('hal ehwal murid') ||
+        lower.includes('guru penolong kanan hem') ||
+        lower.includes('guru penolong kanan 2')
+      ) {
+        fallbackText = `Guru Penolong Kanan Hal Ehwal Murid (PK HEM) ${currentSchoolName} ialah **Encik Mohd Ridzuan bin Osman** (DG44) 👨‍🏫✨.`;
+      } else if (
+        lower.includes('pk koko') ||
+        lower.includes('pkkoko') ||
+        lower.includes('pk kokurikulum') ||
+        lower.includes('pk 3') ||
+        lower.includes('pk3') ||
+        lower.includes('pk tiga') ||
+        lower.includes('penolong kanan tiga') ||
+        lower.includes('penolong kanan 3') ||
+        lower.includes('guru penolong kanan kokurikulum') ||
+        lower.includes('guru penolong kanan 3')
+      ) {
+        fallbackText = `Guru Penolong Kanan Kokurikulum (PK Kokurikulum) ${currentSchoolName} ialah **Puan Siti Hajar binti Abdul Rahman** (DG44) 👩‍🏫✨.`;
+      } else if (
         lower.includes('guru besar') ||
         lower.includes('nama guru besar') ||
         lower.includes('siapa guru besar') ||
         lower.includes('siapakah guru besar') ||
-        lower.includes('pengetua') ||
+        lower.includes('pengetua')
+      ) {
+        fallbackText = `Guru Besar ${currentSchoolName} ialah **${currentGb}** (${currentGbTitle}) 👩‍🏫✨.`;
+      } else if (
         lower.includes('pentadbir') ||
-        lower.includes('penolong kanan')
+        lower.includes('barisan pentadbir') ||
+        lower.includes('carta organisasi') ||
+        lower.includes('pengurusan sekolah')
       ) {
         let pListStr = '';
         if (pentadbir.length > 0) {
@@ -578,10 +644,31 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
         } else {
           pListStr = `1. **${currentGb}** - ${currentGbTitle}\n2. **Puan Noraini binti Yusof** - Penolong Kanan Pentadbiran\n3. **Encik Mohd Ridzuan bin Osman** - Penolong Kanan HEM\n4. **Puan Siti Hajar binti Abdul Rahman** - Penolong Kanan Kokurikulum`;
         }
-        fallbackText = `Guru Besar Sekolah Kebangsaan Merbau Pulas (SKMP) terkini ialah **${currentGb}** (${currentGbTitle}) 👩‍🏫✨.\n\nBarisan Pentadbir Rasmi SKMP:\n${pListStr}\n\nSila layari tab **Warga Sekolah** untuk melihat senarai penuh pentadbir, guru akademik dan staf sokongan!`;
-      } else if (lower.includes('takwim') || lower.includes('acara') || lower.includes('program') || lower.includes('tarikh') || lower.includes('aktiviti')) {
+        fallbackText = `Barisan Pentadbir Rasmi ${currentSchoolName}:\n\n${pListStr}\n\nSila layari tab **Warga Sekolah** untuk melihat senarai penuh pentadbir, guru akademik dan staf sokongan!`;
+      } else if (lower.includes('visi') && !lower.includes('misi')) {
+        fallbackText = `Visi ${currentSchoolName} ialah:\n\n🎯 **"${currentVision}"**`;
+      } else if (lower.includes('misi') && !lower.includes('visi')) {
+        fallbackText = `Misi ${currentSchoolName} ialah:\n\n🚀 **"${currentMission}"**`;
+      } else if (lower.includes('visi') && lower.includes('misi')) {
+        fallbackText = `✨ **Visi & Misi ${currentSchoolName}:**\n\n🎯 **Visi:**\n*"${currentVision}"*\n\n🚀 **Misi:**\n*"${currentMission}"*`;
+      } else if (lower.includes('sejarah') || lower.includes('latar belakang') || lower.includes('asal usul') || lower.includes('ditubuhkan')) {
+        fallbackText = `🏛️ **Latar Belakang & Sejarah ${currentSchoolName}:**\n\n${currentHistory}\n\n📌 **Tahun Ditubuhkan:** 1954\n📍 **Lokasi:** ${currentAddress}`;
+      } else if (lower.includes('motto') || lower.includes('cogan kata')) {
+        fallbackText = `Motto rasmi ${currentSchoolName} ialah: 🌟 **"${currentMotto}"**`;
+      } else if (lower.includes('kod sekolah') || lower.includes('kod skmp')) {
+        fallbackText = `Kod rasmi ${currentSchoolName} ialah **${profile?.code || 'KBA5012'}** 📌.`;
+      } else if (lower.includes('logo') || lower.includes('lencana')) {
+        const logoDesc = profile?.logoDescription?.join('\n• ') || 'Buku Terbuka (Ilmu), Obor Menyala (Semangat), Warna Biru Diraja (Perpaduan), Warna Kuning (Kecemerlangan), Bulan & Bintang (Nilai Islam).';
+        fallbackText = `🛡️ **Maksud Logo & Lencana ${currentSchoolName}:**\n\n• ${logoDesc}`;
+      } else if (lower.includes('lagu') || lower.includes('lirik')) {
+        const lyrics = profile?.songLyrics?.join('\n') || 'Gagah berdiri SK Merbau Pulas...';
+        fallbackText = `🎵 **Lagu Rasmi Sekolah: "${profile?.songTitle || 'Gagah SK Merbau Pulas'}"**\n*(${profile?.songComposer || 'Cikgu Rosli bin Hassan'})*\n\n${lyrics}`;
+      } else if (lower.includes('ydp') || lower.includes('yang dipertua')) {
+        const ydp = pibgCommittee.find((p) => p.position.toLowerCase().includes('ydp') || p.position.toLowerCase().includes('yang dipertua'));
+        fallbackText = `Yang Dipertua (YDP) PIBG ${currentSchoolName} ialah **${ydp ? ydp.name : 'Tuan Haji Azmi bin Ahmad'}** 🤝✨.`;
+      } else if (lower.includes('takwim') || lower.includes('acara') || lower.includes('program') || lower.includes('tarikh') || lower.includes('aktiviti') || lower.includes('cuti')) {
         if (events.length > 0) {
-          const evStr = events.slice(0, 5).map((e) => `• **${e.date}**: ${e.title} (${e.location || 'SKMP'})`).join('\n');
+          const evStr = events.slice(0, 6).map((e) => `• **${e.date}**: ${e.title} (${e.location || 'SKMP'})`).join('\n');
           fallbackText = `📅 **Takwim & Acara Terkini SKMP:**\n\n${evStr}\n\nAnda boleh melihat senarai penuh dan menapis mengikut kategori di bahagian **Takwim & Acara**!`;
         }
       } else if (lower.includes('berita') || lower.includes('pengumuman') || lower.includes('hebahan')) {
@@ -589,14 +676,23 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
           const newsStr = newsList.slice(0, 3).map((n) => `• **${n.title}** (${n.date})\n  ${n.summary}`).join('\n\n');
           fallbackText = `📰 **Berita & Pengumuman Terkini SKMP:**\n\n${newsStr}`;
         }
-      } else if (lower.includes('pibg') || lower.includes('ydp') || lower.includes('persatuan ibu bapa')) {
-        const ydp = pibgCommittee.find((p) => p.role.toLowerCase().includes('ydp') || p.role.toLowerCase().includes('yang dipertua'));
+      } else if (lower.includes('pibg') || lower.includes('persatuan ibu bapa')) {
+        const ydp = pibgCommittee.find((p) => p.position.toLowerCase().includes('ydp') || p.position.toLowerCase().includes('yang dipertua'));
         fallbackText = `🤝 **Persatuan Ibu Bapa & Guru (PIBG) SKMP:**\n\n• **Penasihat:** ${currentGb} (Guru Besar)\n• **Yang Dipertua (YDP) PIBG:** ${ydp ? ydp.name : 'Tuan Haji Azmi bin Ahmad'}\n\nUntuk senarai penuh AJK dan aktiviti PIBG, sila layari tab **Warga Sekolah** bahagian PIBG!`;
       } else if (lower.includes('anugerah') || lower.includes('pencapaian') || lower.includes('kejayaan') || lower.includes('johan')) {
         if (awards.length > 0) {
-          const awStr = awards.slice(0, 4).map((a) => `🏆 **${a.rank}** - ${a.competition} (${a.recipient})`).join('\n');
+          const awStr = awards.slice(0, 4).map((a) => `🏆 **${a.achievement}** - ${a.title} (${a.recipient})`).join('\n');
           fallbackText = `🎉 **Pencapaian & Anugerah Terkini SKMP:**\n\n${awStr}`;
         }
+      } else if (lower.includes('dokumen') || lower.includes('muat turun') || lower.includes('borang') || lower.includes('pekeliling')) {
+        if (documents.length > 0) {
+          const docStr = documents.slice(0, 5).map((d) => `📄 **${d.title}** (${d.category.toUpperCase()} - ${d.fileType})`).join('\n');
+          fallbackText = `📥 **Dokumen & Borang Rasmi Untuk Dimuat Turun:**\n\n${docStr}\n\nSila layari tab **Muat Turun** untuk memuat turun fail lengkap!`;
+        }
+      } else if (lower.includes('idme') || lower.includes('apdm') || lower.includes('delima') || lower.includes('splkpm') || lower.includes('sistem')) {
+        fallbackText = `🔗 **Pautan Sistem Rasmi KPM & Sekolah:**\n\n• **idMe KPM:** Sistem Pengurusan Identiti Bersepadu KPM\n• **APDM:** Aplikasi Pangkalan Data Murid\n• **DELIMa KPM:** Platform Pembelajaran Digital Google/Apple/Microsoft\n• **SPLKPM:** Sistem Pengurusan Latihan KPM\n• **HRMIS:** Pengurusan Sumber Manusia Sektor Awam\n\nAnda boleh mengakses semua pautan ini di bahagian **Pautan Sistem** portal!`;
+      } else if (lower.includes('alamat') || lower.includes('telefon') || lower.includes('hubungi') || lower.includes('emel') || lower.includes('lokasi')) {
+        fallbackText = `📞 **Maklumat Hubungan Rasmi ${currentSchoolName}:**\n\n📍 **Alamat:** ${currentAddress}\n☎️ **No Telefon:** ${currentPhone}\n📠 **No Faks:** ${profile?.fax || '04-403 1201'}\n✉️ **Emel:** ${currentEmail}`;
       }
 
       const fallbackMsg: Message = {

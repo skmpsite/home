@@ -628,6 +628,7 @@ export default function App() {
         pibgActivities={pibgActivities}
         coCurriculumUnits={coCurriculumUnits}
         documents={documents}
+        systemLinks={systemLinks}
         onNavigateSection={(sectionId) => {
           setActiveTab(sectionId as any);
           window.scrollTo({ top: 0, behavior: 'smooth' });
