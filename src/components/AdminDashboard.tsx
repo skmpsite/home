@@ -50,6 +50,7 @@ import { AdminSignageManager } from './admin/AdminSignageManager';
 import { AdminHemManager } from './admin/AdminHemManager';
 import { FirebaseManager } from './admin/FirebaseManager';
 import { syncBulkDataToGoogleSheets } from '../utils/googleSheetsSync';
+import { syncAllDataToFirestore } from '../utils/firebaseRealtime';
 import { getSafeNewsImageUrl, compressAndResizeImage, compressStaffPhoto, OFFICIAL_NEWS_PHOTOS, SECONDARY_FALLBACK_PHOTOS } from '../utils/imageHelpers';
 import { sortStaffBySeniority } from '../utils/staffHelpers';
 
@@ -140,6 +141,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setTimeout(() => setToastMsg(null), 4000);
   };
 
+  const [isFirebaseSyncing, setIsFirebaseSyncing] = useState(false);
+
   const handleQuickSyncToSheets = async () => {
     setIsQuickSyncing(true);
     const res = await syncBulkDataToGoogleSheets({
@@ -156,6 +159,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       showToast('🚀 Semua Data Portal Berjaya Ditolak Masuk Ke Google Sheets!');
     } else {
       showToast(res.message || 'Gagal menyegerak ke Google Sheets. Sila semak URL Web App.');
+    }
+  };
+
+  const handleQuickSyncToFirebase = async () => {
+    setIsFirebaseSyncing(true);
+    try {
+      await syncAllDataToFirestore({
+        profile,
+        staffList,
+        newsList,
+        events,
+        awards,
+        documents,
+        gallery,
+        hemData,
+        pibgActivities,
+        pibgCommittee,
+        cocurriculum: coCurriculumUnits,
+        signageSlides,
+        signageConfig
+      });
+      showToast('🔥 Semua Data (Termasuk PKP & Warga Staf) Berjaya Disegerak Ke Firebase Firestore!');
+    } catch (err) {
+      console.error('Firebase quick sync error:', err);
+      showToast('Gagal menyegerak ke Firebase. Semak Rules di Firebase Console.');
+    } finally {
+      setIsFirebaseSyncing(false);
     }
   };
 
@@ -779,12 +809,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <div className="flex flex-wrap items-center gap-3 flex-shrink-0">
           <button
             type="button"
+            onClick={handleQuickSyncToFirebase}
+            disabled={isFirebaseSyncing}
+            className="px-4 py-2.5 bg-orange-500 hover:bg-orange-400 active:scale-95 text-white font-black rounded-xl text-xs flex items-center gap-2 transition border border-orange-400 shadow-xl shadow-orange-500/20 disabled:opacity-50"
+            title="Segerak semua data ke Google Firebase (Cloud Firestore)"
+          >
+            <Flame className={`w-4 h-4 ${isFirebaseSyncing ? 'animate-bounce text-yellow-200' : 'text-yellow-300'}`} />
+            <span>{isFirebaseSyncing ? 'Menyegerak Firebase...' : '🔥 Segerak Ke Firebase'}</span>
+          </button>
+
+          <button
+            type="button"
             onClick={handleQuickSyncToSheets}
             disabled={isQuickSyncing}
             className="px-4 py-2.5 bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-blue-950 font-black rounded-xl text-xs flex items-center gap-2 transition border border-yellow-300 shadow-xl shadow-yellow-400/20 disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${isQuickSyncing ? 'animate-spin' : ''}`} />
-            <span>{isQuickSyncing ? 'Sedang Menyegerak...' : '🚀 Tolak Data Ke Google Sheets'}</span>
+            <span>{isQuickSyncing ? 'Sedang Menyegerak...' : '🚀 Tolak Ke Google Sheets'}</span>
           </button>
 
           <button
@@ -2854,6 +2895,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {activeTab === 'firebase' && (
         <FirebaseManager
           showToast={showToast}
+          allData={{
+            profile,
+            staffList,
+            newsList,
+            events,
+            gallery,
+            awards,
+            documents,
+            hemData,
+            pibgActivities,
+            pibgCommittee,
+            cocurriculum: coCurriculumUnits,
+            signageSlides,
+            signageConfig
+          }}
         />
       )}
     </div>

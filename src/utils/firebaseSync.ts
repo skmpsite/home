@@ -23,13 +23,22 @@ export interface FirebaseCustomConfig {
   appId?: string;
 }
 
+export const DEFAULT_FIREBASE_CONFIG: FirebaseCustomConfig = {
+  apiKey: "AIzaSyCSiNMVretZhkqS3_oZzA1Lf1kDsAHUavQ",
+  authDomain: "sk-merbau-pulas-db.firebaseapp.com",
+  projectId: "sk-merbau-pulas-db",
+  storageBucket: "sk-merbau-pulas-db.firebasestorage.app",
+  messagingSenderId: "683640600208",
+  appId: "1:683640600208:web:6b2a4776319c1e4dab8a15"
+};
+
 const FIREBASE_CONFIG_KEY = 'skmp_firebase_config_v1';
 const FIREBASE_STATUS_KEY = 'skmp_firebase_enabled_v1';
 
 let firebaseAppInstance: FirebaseApp | null = null;
 let firestoreDbInstance: Firestore | null = null;
 
-export function getSavedFirebaseConfig(): FirebaseCustomConfig | null {
+export function getSavedFirebaseConfig(): FirebaseCustomConfig {
   try {
     const raw = localStorage.getItem(FIREBASE_CONFIG_KEY);
     if (raw) {
@@ -41,7 +50,7 @@ export function getSavedFirebaseConfig(): FirebaseCustomConfig | null {
   } catch (e) {
     console.warn('Failed to read Firebase config from storage:', e);
   }
-  return null;
+  return DEFAULT_FIREBASE_CONFIG;
 }
 
 export function saveFirebaseConfig(config: FirebaseCustomConfig): void {
@@ -59,10 +68,10 @@ export function isFirebaseEnabled(): boolean {
   try {
     const status = localStorage.getItem(FIREBASE_STATUS_KEY);
     if (status === 'false') return false;
-    const config = getSavedFirebaseConfig();
-    return !!(config && config.projectId && config.apiKey);
+    // Default to true because default config is provided
+    return true;
   } catch {
-    return false;
+    return true;
   }
 }
 

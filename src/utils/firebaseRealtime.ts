@@ -42,6 +42,71 @@ export async function pushToFirestore(collectionName: string, docId: string, dat
 }
 
 /**
+ * Tolak SEMUA data semasa ke Firestore (Full Seed / Bulk Upload)
+ */
+export async function syncAllDataToFirestore(data: {
+  profile?: SchoolProfile;
+  staffList?: Staff[];
+  newsList?: NewsItem[];
+  events?: CalendarEvent[];
+  gallery?: GalleryItem[];
+  awards?: AwardItem[];
+  documents?: DownloadDocument[];
+  hemData?: HemData;
+  pibgActivities?: PibgActivity[];
+  pibgCommittee?: PibgCommittee[];
+  cocurriculum?: CoCurriculumUnit[];
+  signageSlides?: SignageSlide[];
+  signageConfig?: SignageConfig;
+}): Promise<boolean> {
+  if (!isFirebaseEnabled()) return false;
+  const db = getFirebaseDb();
+  if (!db) return false;
+
+  try {
+    const promises: Promise<any>[] = [];
+    if (data.profile) {
+      promises.push(setDoc(doc(db, 'school_data', 'profile'), { ...data.profile, updatedAt: new Date().toISOString() }, { merge: true }));
+    }
+    if (data.staffList) {
+      promises.push(setDoc(doc(db, 'school_data', 'staff'), { items: data.staffList, updatedAt: new Date().toISOString() }, { merge: true }));
+    }
+    if (data.newsList) {
+      promises.push(setDoc(doc(db, 'school_data', 'news'), { items: data.newsList, updatedAt: new Date().toISOString() }, { merge: true }));
+    }
+    if (data.events) {
+      promises.push(setDoc(doc(db, 'school_data', 'events'), { items: data.events, updatedAt: new Date().toISOString() }, { merge: true }));
+    }
+    if (data.hemData) {
+      promises.push(setDoc(doc(db, 'school_data', 'hem'), { ...data.hemData, updatedAt: new Date().toISOString() }, { merge: true }));
+    }
+    if (data.cocurriculum) {
+      promises.push(setDoc(doc(db, 'school_data', 'cocurriculum'), { items: data.cocurriculum, updatedAt: new Date().toISOString() }, { merge: true }));
+    }
+    if (data.pibgActivities || data.pibgCommittee) {
+      promises.push(setDoc(doc(db, 'school_data', 'pibg'), {
+        activities: data.pibgActivities || [],
+        committee: data.pibgCommittee || [],
+        updatedAt: new Date().toISOString()
+      }, { merge: true }));
+    }
+    if (data.signageSlides || data.signageConfig) {
+      promises.push(setDoc(doc(db, 'school_data', 'signage'), {
+        slides: data.signageSlides || [],
+        config: data.signageConfig || {},
+        updatedAt: new Date().toISOString()
+      }, { merge: true }));
+    }
+
+    await Promise.all(promises);
+    return true;
+  } catch (err) {
+    console.error('Error syncing all data to Firestore:', err);
+    throw err;
+  }
+}
+
+/**
  * Setup Realtime Listeners for All Main School Collections
  */
 export function setupFirestoreRealtimeSync(callbacks: {
