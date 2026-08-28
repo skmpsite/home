@@ -56,6 +56,8 @@ import {
   parseSchoolDataFromSheets,
   syncBulkDataToGoogleSheets
 } from './utils/googleSheetsSync';
+import { isFirebaseEnabled } from './utils/firebaseSync';
+import { pushToFirestore, setupFirestoreRealtimeSync } from './utils/firebaseRealtime';
 import { broadcastLiveSignage, fetchLiveSignageFromServer } from './utils/liveSignageSync';
 import { Header } from './components/Header';
 import { Navbar, TabType } from './components/Navbar';
@@ -210,12 +212,56 @@ export default function App() {
     // 2. Semak data baru secara pantas (setiap 4 saat)
     const interval = setInterval(refreshFromGoogleSheets, 4000);
 
-    // 3. Semak data serta-merta apabila pengguna membuka tab, fokus pelayar, atau peranti kembali aktif
+    // 3. Langganan Firestore Masa Nyata (Real-time Live Sync across devices)
+    const unsubFirestore = setupFirestoreRealtimeSync({
+      onProfileChange: (p) => {
+        setProfile(p);
+        saveProfile(p);
+      },
+      onStaffChange: (s) => {
+        setStaffList(s);
+        saveStaff(s);
+      },
+      onNewsChange: (n) => {
+        setNewsList(n);
+        saveNews(n);
+      },
+      onEventsChange: (e) => {
+        setEvents(e);
+        saveCalendarEvents(e);
+      },
+      onHemDataChange: (h) => {
+        setHemData(h);
+        saveHemData(h);
+      },
+      onCoCurriculumChange: (c) => {
+        setCoCurriculumUnits(c);
+        saveCoCurriculum(c);
+      },
+      onPibgCommitteeChange: (comm) => {
+        setPibgCommittee(comm);
+        savePibgCommittee(comm);
+      },
+      onPibgActivitiesChange: (act) => {
+        setPibgActivities(act);
+        savePibgActivities(act);
+      },
+      onSignageSlidesChange: (slides) => {
+        setSignageSlides(slides);
+        saveSignageSlides(slides);
+      },
+      onSignageConfigChange: (cfg) => {
+        setSignageConfig(cfg);
+        saveSignageConfig(cfg);
+      }
+    });
+
+    // 4. Semak data serta-merta apabila pengguna membuka tab, fokus pelayar, atau peranti kembali aktif
     const handleImmediateSync = () => {
       refreshFromGoogleSheets();
     };
 
-    // 4. Penyelarasan antara tab/tetingkap secara 0ms (segera)
+    // 5. Penyelarasan antara tab/tetingkap secara 0ms (segera)
     const handleStorageEvent = (e: StorageEvent) => {
       if (e.key === 'skmp_staff_v1') setStaffList(loadStaff());
       if (e.key === 'skmp_profile_v1') setProfile(loadProfile());
@@ -235,6 +281,7 @@ export default function App() {
 
     return () => {
       clearInterval(interval);
+      unsubFirestore();
       window.removeEventListener('visibilitychange', handleImmediateSync);
       window.removeEventListener('focus', handleImmediateSync);
       window.removeEventListener('online', handleImmediateSync);
@@ -242,7 +289,7 @@ export default function App() {
     };
   }, []);
 
-  // Helper untuk tolak data ke Google Sheets secara automatik apabila Admin mengemas kini
+  // Helper untuk tolak data ke Google Sheets & Google Firebase secara automatik apabila Admin mengemas kini
   const autoPushToCloud = (partialUpdate: {
     profile?: SchoolProfile;
     staffList?: Staff[];
@@ -253,7 +300,9 @@ export default function App() {
     documents?: DownloadDocument[];
     signageSlides?: SignageSlide[];
     signageConfig?: SignageConfig;
+    hemData?: HemData;
   }) => {
+    // 1. Push to Google Sheets
     syncBulkDataToGoogleSheets({
       profile: partialUpdate.profile || profile,
       staffList: partialUpdate.staffList || staffList,
@@ -264,7 +313,20 @@ export default function App() {
       documents: partialUpdate.documents || documents,
       signageSlides: partialUpdate.signageSlides || signageSlides,
       signageConfig: partialUpdate.signageConfig || signageConfig
-    }).catch(err => console.warn('Auto cloud sync failed:', err));
+    }).catch(err => console.warn('Auto cloud sync sheets failed:', err));
+
+    // 2. Push to Google Firebase Firestore
+    if (partialUpdate.profile) pushToFirestore('school_data', 'profile', partialUpdate.profile);
+    if (partialUpdate.staffList) pushToFirestore('school_data', 'staff', { items: partialUpdate.staffList });
+    if (partialUpdate.newsList) pushToFirestore('school_data', 'news', { items: partialUpdate.newsList });
+    if (partialUpdate.events) pushToFirestore('school_data', 'events', { items: partialUpdate.events });
+    if (partialUpdate.hemData) pushToFirestore('school_data', 'hem', partialUpdate.hemData);
+    if (partialUpdate.signageSlides || partialUpdate.signageConfig) {
+      pushToFirestore('school_data', 'signage', {
+        slides: partialUpdate.signageSlides || signageSlides,
+        config: partialUpdate.signageConfig || signageConfig
+      });
+    }
   };
 
   // Persist Updates Handlers - Disegerakkan terus ke Google Sheets secara real-time
@@ -318,16 +380,25 @@ export default function App() {
   const handleUpdatePibgActivities = (act: PibgActivity[]) => {
     setPibgActivities(act);
     savePibgActivities(act);
+    if (isFirebaseEnabled()) {
+      pushToFirestore('school_data', 'pibg', { activities: act, committee: pibgCommittee });
+    }
   };
 
   const handleUpdatePibgCommittee = (comm: PibgCommittee[]) => {
     setPibgCommittee(comm);
     savePibgCommittee(comm);
+    if (isFirebaseEnabled()) {
+      pushToFirestore('school_data', 'pibg', { activities: pibgActivities, committee: comm });
+    }
   };
 
   const handleUpdateCoCurriculum = (units: CoCurriculumUnit[]) => {
     setCoCurriculumUnits(units);
     saveCoCurriculum(units);
+    if (isFirebaseEnabled()) {
+      pushToFirestore('school_data', 'cocurriculum', { items: units });
+    }
   };
 
   const handleUpdateSignageSlides = (slides: SignageSlide[]) => {
@@ -347,6 +418,7 @@ export default function App() {
   const handleUpdateHemData = (data: HemData) => {
     setHemData(data);
     saveHemData(data);
+    autoPushToCloud({ hemData: data });
   };
 
   const handleAddFeedback = (data: Omit<FeedbackEntry, 'id' | 'createdAt' | 'status'>) => {

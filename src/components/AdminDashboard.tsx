@@ -41,12 +41,14 @@ import {
   UploadCloud,
   RefreshCw,
   UserCheck,
-  HeartHandshake
+  HeartHandshake,
+  Flame
 } from 'lucide-react';
 import { initialSchoolProfile, initialHemData } from '../data/initialData';
 import { GasScriptSection } from './sections/GasScriptSection';
 import { AdminSignageManager } from './admin/AdminSignageManager';
 import { AdminHemManager } from './admin/AdminHemManager';
+import { FirebaseManager } from './admin/FirebaseManager';
 import { syncBulkDataToGoogleSheets } from '../utils/googleSheetsSync';
 import { getSafeNewsImageUrl, compressAndResizeImage, compressStaffPhoto, OFFICIAL_NEWS_PHOTOS, SECONDARY_FALLBACK_PHOTOS } from '../utils/imageHelpers';
 import { sortStaffBySeniority } from '../utils/staffHelpers';
@@ -127,6 +129,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     | 'profile'
     | 'feedback'
     | 'gas_code'
+    | 'firebase'
   >('news');
 
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -819,6 +822,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           { id: 'signage', label: 'Urus Signage TV', icon: Tv },
           { id: 'profile', label: 'Profil Sekolah', icon: School },
           { id: 'feedback', label: 'Peti Maklum Balas', icon: MessageSquare, badge: feedbackList.filter((f) => f.status === 'baru').length },
+          { id: 'firebase', label: 'Google Firebase (Masa Nyata)', icon: Flame },
           { id: 'gas_code', label: 'Kod Google Apps Script', icon: Code2 }
         ].map((tab) => {
           const Icon = tab.icon;
@@ -2843,6 +2847,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           awards={awards}
           documents={documents}
           gallery={gallery}
+        />
+      )}
+
+      {/* ==================== MODULE 11: GOOGLE FIREBASE CLOUD FIRESTORE ==================== */}
+      {activeTab === 'firebase' && (
+        <FirebaseManager
+          showToast={showToast}
         />
       )}
     </div>
