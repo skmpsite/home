@@ -12,7 +12,8 @@ import {
   PibgCommittee,
   CoCurriculumUnit,
   SignageSlide,
-  SignageConfig
+  SignageConfig,
+  HemData
 } from '../types';
 import {
   LayoutDashboard,
@@ -39,11 +40,13 @@ import {
   BookOpen,
   UploadCloud,
   RefreshCw,
-  UserCheck
+  UserCheck,
+  HeartHandshake
 } from 'lucide-react';
-import { initialSchoolProfile } from '../data/initialData';
+import { initialSchoolProfile, initialHemData } from '../data/initialData';
 import { GasScriptSection } from './sections/GasScriptSection';
 import { AdminSignageManager } from './admin/AdminSignageManager';
+import { AdminHemManager } from './admin/AdminHemManager';
 import { syncBulkDataToGoogleSheets } from '../utils/googleSheetsSync';
 import { getSafeNewsImageUrl, compressAndResizeImage, compressStaffPhoto, OFFICIAL_NEWS_PHOTOS, SECONDARY_FALLBACK_PHOTOS } from '../utils/imageHelpers';
 import { sortStaffBySeniority } from '../utils/staffHelpers';
@@ -75,6 +78,8 @@ interface AdminDashboardProps {
   onSaveSignageSlides: (slides: SignageSlide[]) => void;
   signageConfig: SignageConfig;
   onSaveSignageConfig: (config: SignageConfig) => void;
+  hemData?: HemData;
+  onSaveHemData?: (data: HemData) => void;
   onResetAll: () => void;
 }
 
@@ -105,6 +110,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onSaveSignageSlides,
   signageConfig,
   onSaveSignageConfig,
+  hemData,
+  onSaveHemData,
   onResetAll
 }) => {
   const [activeTab, setActiveTab] = useState<
@@ -115,6 +122,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     | 'gallery'
     | 'awards'
     | 'cocurriculum'
+    | 'hem'
     | 'signage'
     | 'profile'
     | 'feedback'
@@ -807,6 +815,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           { id: 'gallery', label: 'Galeri Media', icon: ImageIcon },
           { id: 'awards', label: 'Ruang Anugerah', icon: Award },
           { id: 'cocurriculum', label: 'Kokurikulum & PIBG', icon: Trophy },
+          { id: 'hem', label: 'Hal Ehwal Murid (HEM)', icon: HeartHandshake },
           { id: 'signage', label: 'Urus Signage TV', icon: Tv },
           { id: 'profile', label: 'Profil Sekolah', icon: School },
           { id: 'feedback', label: 'Peti Maklum Balas', icon: MessageSquare, badge: feedbackList.filter((f) => f.status === 'baru').length },
@@ -2307,14 +2316,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
             <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3 pt-2">
               {coCurriculumUnits.map((unit) => (
-                <div key={unit.id} className="p-3 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between text-xs">
-                  <div>
-                    <h5 className="font-bold text-white">{unit.name}</h5>
-                    <p className="text-[10px] text-yellow-300 uppercase">{unit.category}</p>
+                <div key={unit.id} className="p-3 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between text-xs hover:border-white/30 transition">
+                  <div className="space-y-0.5 max-w-[70%]">
+                    <h5 className="font-bold text-white truncate">{unit.name}</h5>
+                    <p className="text-[10px] text-yellow-300 uppercase font-semibold">{unit.category}</p>
+                    {unit.advisorTeacher && (
+                      <p className="text-[10px] text-slate-300 truncate">Guru: {unit.advisorTeacher}</p>
+                    )}
                   </div>
-                  <button onClick={() => handleDeleteCoUnit(unit.id)} className="p-1.5 text-rose-400 hover:bg-white/10 rounded-lg">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setEditingCoUnit({ ...unit })}
+                      className="p-1.5 text-yellow-400 hover:bg-white/10 rounded-lg transition"
+                      title="Sunting Unit"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCoUnit(unit.id)}
+                      className="p-1.5 text-rose-400 hover:bg-white/10 rounded-lg transition"
+                      title="Padam Unit"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -2364,8 +2389,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <td className="p-3 font-bold text-white">{c.name}</td>
                       <td className="p-3 text-slate-300">{c.position}</td>
                       <td className="p-3 font-semibold text-yellow-300 uppercase">{c.category}</td>
-                      <td className="p-3 text-center">
-                        <button onClick={() => handleDeletePibgComm(c.id)} className="p-1.5 text-rose-400 hover:bg-white/10 rounded-lg">
+                      <td className="p-3 text-center flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => setEditingPibgComm({ ...c })}
+                          className="p-1.5 text-yellow-400 hover:bg-white/10 rounded-lg transition"
+                          title="Sunting AJK"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeletePibgComm(c.id)}
+                          className="p-1.5 text-rose-400 hover:bg-white/10 rounded-lg transition"
+                          title="Padam"
+                        >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </td>
@@ -2374,6 +2410,176 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT MODAL: CO-CURRICULUM UNIT */}
+      {editingCoUnit && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-white/20 rounded-3xl p-6 max-w-lg w-full space-y-4 text-xs">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h4 className="font-extrabold text-base text-yellow-400 flex items-center gap-2">
+                <Edit3 className="w-4 h-4" /> Sunting Unit Kokurikulum
+              </h4>
+              <button onClick={() => setEditingCoUnit(null)} className="p-1 text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateCoUnitSubmit} className="space-y-3">
+              <div>
+                <label className="block font-bold text-slate-200 mb-1">Nama Unit Kokurikulum</label>
+                <input
+                  type="text"
+                  required
+                  value={editingCoUnit.name}
+                  onChange={(e) => setEditingCoUnit({ ...editingCoUnit, name: e.target.value })}
+                  placeholder="Contoh: Pengakap Kanak-Kanak / Kelab Robotik..."
+                  className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
+                />
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">Kategori</label>
+                  <select
+                    value={editingCoUnit.category}
+                    onChange={(e) => setEditingCoUnit({ ...editingCoUnit, category: e.target.value as any })}
+                    className="w-full p-2.5 bg-slate-950 border border-white/20 text-white rounded-xl"
+                  >
+                    <option value="beruniform">Badan Beruniform</option>
+                    <option value="kelab">Kelab & Persatuan</option>
+                    <option value="sukan">Sukan & Permainan</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">Guru Penasihat</label>
+                  <input
+                    type="text"
+                    value={editingCoUnit.advisorTeacher || ''}
+                    onChange={(e) => setEditingCoUnit({ ...editingCoUnit, advisorTeacher: e.target.value })}
+                    placeholder="Contoh: Cikgu Ahmad / Ustazah..."
+                    className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-200 mb-1">Masa Perjumpaan / Latihan</label>
+                <input
+                  type="text"
+                  value={editingCoUnit.meetingTime || ''}
+                  onChange={(e) => setEditingCoUnit({ ...editingCoUnit, meetingTime: e.target.value })}
+                  placeholder="Contoh: Rabu (2.00 petang - 4.00 petang)"
+                  className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-200 mb-1">Penerangan / Matlamat Unit</label>
+                <textarea
+                  rows={2}
+                  value={editingCoUnit.description || ''}
+                  onChange={(e) => setEditingCoUnit({ ...editingCoUnit, description: e.target.value })}
+                  placeholder="Aktiviti dan kemahiran yang dipelajari..."
+                  className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingCoUnit(null)}
+                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-bold hover:bg-slate-700"
+                >
+                  Batal
+                </button>
+                <button type="submit" className="px-5 py-2 bg-yellow-400 text-blue-950 font-black rounded-xl hover:bg-yellow-300 shadow">
+                  Simpan Perubahan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT MODAL: PIBG COMMITTEE */}
+      {editingPibgComm && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-white/20 rounded-3xl p-6 max-w-lg w-full space-y-4 text-xs">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h4 className="font-extrabold text-base text-yellow-400 flex items-center gap-2">
+                <Edit3 className="w-4 h-4" /> Sunting Ahli Jawatankuasa PIBG
+              </h4>
+              <button onClick={() => setEditingPibgComm(null)} className="p-1 text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdatePibgCommSubmit} className="space-y-3">
+              <div>
+                <label className="block font-bold text-slate-200 mb-1">Nama Penuh AJK</label>
+                <input
+                  type="text"
+                  required
+                  value={editingPibgComm.name}
+                  onChange={(e) => setEditingPibgComm({ ...editingPibgComm, name: e.target.value })}
+                  className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
+                />
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">Jawatan</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingPibgComm.position}
+                    onChange={(e) => setEditingPibgComm({ ...editingPibgComm, position: e.target.value })}
+                    placeholder="Contoh: Yang Dipertua (YDP) PIBG..."
+                    className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">Kategori</label>
+                  <select
+                    value={editingPibgComm.category}
+                    onChange={(e) => setEditingPibgComm({ ...editingPibgComm, category: e.target.value as any })}
+                    className="w-full p-2.5 bg-slate-950 border border-white/20 text-white rounded-xl"
+                  >
+                    <option value="ibu_bapa">Ibu Bapa / Komuniti</option>
+                    <option value="guru">Guru / Staf Sekolah</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-200 mb-1">No. Telefon (Pilihan)</label>
+                <input
+                  type="text"
+                  value={editingPibgComm.phone || ''}
+                  onChange={(e) => setEditingPibgComm({ ...editingPibgComm, phone: e.target.value })}
+                  placeholder="Contoh: 012-3456789"
+                  className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingPibgComm(null)}
+                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-bold hover:bg-slate-700"
+                >
+                  Batal
+                </button>
+                <button type="submit" className="px-5 py-2 bg-yellow-400 text-blue-950 font-black rounded-xl hover:bg-yellow-300 shadow">
+                  Simpan Perubahan
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -2604,6 +2810,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             ))}
           </div>
         </div>
+      )}
+
+      {/* ==================== MODULE: HAL EHWAL MURID (HEM) ==================== */}
+      {activeTab === 'hem' && (
+        <AdminHemManager
+          hemData={hemData || initialHemData}
+          onSaveHemData={onSaveHemData || (() => {})}
+          showToast={showToast}
+        />
       )}
 
       {/* ==================== MODULE: DIGITAL SIGNAGE SMART TV ==================== */}

@@ -15,7 +15,8 @@ import {
   CoCurriculumUnit,
   SearchResultItem,
   SignageSlide,
-  SignageConfig
+  SignageConfig,
+  HemData
 } from './types';
 import {
   loadProfile,
@@ -45,6 +46,8 @@ import {
   saveSignageSlides,
   loadSignageConfig,
   saveSignageConfig,
+  loadHemData,
+  saveHemData,
   resetAllToDefault
 } from './utils/storage';
 import {
@@ -60,6 +63,7 @@ import { HeroSection } from './components/sections/HeroSection';
 import { ProfileSection } from './components/sections/ProfileSection';
 import { OrganizationSection } from './components/sections/OrganizationSection';
 import { AcademicSection } from './components/sections/AcademicSection';
+import { HemSection } from './components/sections/HemSection';
 import { CokurriculumSection } from './components/sections/CokurriculumSection';
 import { SignageSection } from './components/sections/SignageSection';
 import { NewsSection } from './components/sections/NewsSection';
@@ -137,6 +141,7 @@ export default function App() {
   const [coCurriculumUnits, setCoCurriculumUnits] = useState<CoCurriculumUnit[]>(loadCoCurriculum);
   const [signageSlides, setSignageSlides] = useState<SignageSlide[]>(loadSignageSlides);
   const [signageConfig, setSignageConfig] = useState<SignageConfig>(loadSignageConfig);
+  const [hemData, setHemData] = useState<HemData>(loadHemData);
 
   // UI States
   const [activeTab, setActiveTab] = useState<TabType>('utama');
@@ -220,6 +225,7 @@ export default function App() {
       if (e.key === 'skmp_awards_v1') setAwards(loadAwards());
       if (e.key === 'skmp_signage_slides_v1') setSignageSlides(loadSignageSlides());
       if (e.key === 'skmp_signage_config_v1') setSignageConfig(loadSignageConfig());
+      if (e.key === 'skmp_hem_v1') setHemData(loadHemData());
     };
 
     window.addEventListener('visibilitychange', handleImmediateSync);
@@ -338,6 +344,11 @@ export default function App() {
     broadcastLiveSignage(signageSlides, cfg);
   };
 
+  const handleUpdateHemData = (data: HemData) => {
+    setHemData(data);
+    saveHemData(data);
+  };
+
   const handleAddFeedback = (data: Omit<FeedbackEntry, 'id' | 'createdAt' | 'status'>) => {
     const entry: FeedbackEntry = {
       ...data,
@@ -368,6 +379,9 @@ export default function App() {
     setPibgActivities(loadPibgActivities());
     setPibgCommittee(loadPibgCommittee());
     setCoCurriculumUnits(loadCoCurriculum());
+    setSignageSlides(loadSignageSlides());
+    setSignageConfig(loadSignageConfig());
+    setHemData(loadHemData());
   };
 
   // Global Search Autocomplete Builder
@@ -424,6 +438,31 @@ export default function App() {
           subtitle: `Takwim (${e.date})`,
           linkTab: 'akademik',
           id: e.id
+        });
+      }
+    });
+
+    // Search HEM
+    const hemKeywords = [
+      { key: 'hem', title: 'Hal Ehwal Murid (HEM)', sub: 'Pengurusan Disiplin, Kebajikan & 3K' },
+      { key: 'disiplin', title: 'Disiplin & Peraturan Sekolah', sub: 'Kod Tatatertib & Etika Murid' },
+      { key: 'kaunseling', title: 'Unit Bimbingan & Kaunseling (UBK)', sub: 'Program Guru Penyayang & Minda Sihat' },
+      { key: 'ssdm', title: 'Sistem Sahsiah Diri Murid (SSDM)', sub: 'Rekod Amalan Baik & Intervensi' },
+      { key: 'spbt', title: 'Skim Pinjaman Buku Teks (SPBT)', sub: 'Pengagihan & Bilik BOSS' },
+      { key: 'rmt', title: 'Rancangan Makanan Tambahan (RMT)', sub: 'Menu Sihat & Susu Sekolah' },
+      { key: 'bap', title: 'Bantuan Awal Persekolahan (BAP)', sub: 'Bantuan Tunai RM150 & KWAPM' },
+      { key: 'keselamatan', title: 'Keselamatan Murid & 3K', sub: 'Kawalan Pagar, Pelawat & Latihan Kebakaran' },
+      { key: 'kesihatan', title: 'Kesihatan Murid & Rawatan Gigi', sub: 'Klinik Bergerak KKM & Imunisasi' },
+      { key: 'kebersihan', title: 'Kebersihan Kelas & 3K', sub: 'Pertandingan Kelas Terbersih & 3R' }
+    ];
+    hemKeywords.forEach((h, idx) => {
+      if (h.key.includes(q) || h.title.toLowerCase().includes(q) || h.sub.toLowerCase().includes(q)) {
+        results.push({
+          type: 'pengumuman',
+          title: h.title,
+          subtitle: h.sub,
+          linkTab: 'hem',
+          id: `hem-${idx}`
         });
       }
     });
@@ -506,6 +545,8 @@ export default function App() {
         )}
 
         {activeTab === 'akademik' && <AcademicSection events={events} />}
+
+        {activeTab === 'hem' && <HemSection hemData={hemData} profile={profile} />}
 
         {activeTab === 'kokurikulum' && (
           <CokurriculumSection units={coCurriculumUnits} />
@@ -594,6 +635,8 @@ export default function App() {
             onSaveSignageSlides={handleUpdateSignageSlides}
             signageConfig={signageConfig}
             onSaveSignageConfig={handleUpdateSignageConfig}
+            hemData={hemData}
+            onSaveHemData={handleUpdateHemData}
             onResetAll={handleResetAllData}
           />
         )}
@@ -629,6 +672,7 @@ export default function App() {
         coCurriculumUnits={coCurriculumUnits}
         documents={documents}
         systemLinks={systemLinks}
+        hemData={hemData}
         onNavigateSection={(sectionId) => {
           setActiveTab(sectionId as any);
           window.scrollTo({ top: 0, behavior: 'smooth' });

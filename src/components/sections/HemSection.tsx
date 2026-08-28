@@ -1,0 +1,814 @@
+import React, { useState } from 'react';
+import {
+  HeartHandshake,
+  ShieldCheck,
+  UserCheck,
+  Scale,
+  Smile,
+  Heart,
+  Utensils,
+  BookMarked,
+  Coins,
+  ShieldAlert,
+  Sparkles,
+  CheckCircle2,
+  AlertTriangle,
+  ExternalLink,
+  ChevronRight,
+  Award,
+  Users,
+  X,
+  PhoneCall,
+  Activity
+} from 'lucide-react';
+import { HemData, SchoolProfile } from '../../types';
+import { initialHemData } from '../../data/initialData';
+
+interface HemSectionProps {
+  hemData?: HemData;
+  profile?: SchoolProfile;
+}
+
+export const HemSection: React.FC<HemSectionProps> = ({
+  hemData = initialHemData,
+  profile
+}) => {
+  const data = hemData || initialHemData;
+  const [activeSubTab, setActiveSubTab] = useState<'semua' | 'disiplin' | 'kebajikan' | '3k'>('semua');
+  const [selectedDetailModal, setSelectedDetailModal] = useState<{
+    title: string;
+    category: string;
+    icon: any;
+    content: React.ReactNode;
+  } | null>(null);
+
+  const principalName = profile?.principalName || "Puan Norhafiza Binti Dolah";
+  const principalTitle = profile?.principalTitle || "Guru Besar (DG48)";
+
+  return (
+    <div className="space-y-8 animate-fadeIn text-white">
+      {/* Title Banner */}
+      <div className="bg-white/10 backdrop-blur-xl text-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-white/20 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-yellow-400/10 rounded-full blur-2xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-emerald-500/20 text-emerald-300 font-bold rounded-full text-xs border border-emerald-400/30 mb-3">
+              <HeartHandshake className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Pengurusan Hal Ehwal Murid</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+              Hal Ehwal Murid (HEM)
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-200 mt-1 max-w-2xl leading-relaxed">
+              {data.gpkSpeech ||
+                "Memacu pembangunan sahsiah terpuji, menyantuni kebajikan murid secara inklusif, memperkukuh disiplin kendiri, serta memastikan persekitaran sekolah yang selamat, sihat dan ceria (3K)."}
+            </p>
+          </div>
+
+          {/* PK HEM Profile Mini-Card */}
+          <div className="bg-slate-900/80 backdrop-blur-md p-4 rounded-2xl border border-white/15 flex items-center gap-4 flex-shrink-0 shadow-lg">
+            <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 flex items-center justify-center flex-shrink-0">
+              <UserCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
+                {data.gpkTitle || "GPK Hal Ehwal Murid (PK 2)"}
+              </span>
+              <h4 className="text-xs sm:text-sm font-black text-white mt-1">
+                {data.gpkName || "Encik Mohd Ridzuan bin Osman"}
+              </h4>
+              <p className="text-[11px] text-slate-300">
+                {data.gpkGrade || "Pegawai Perkhidmatan Pendidikan (DG44)"}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Sub-Tabs Selector */}
+        <div className="mt-6 pt-4 border-t border-white/10 flex flex-wrap items-center gap-2">
+          {[
+            { id: 'semua', label: 'Semua Bidang HEM', icon: HeartHandshake },
+            { id: 'disiplin', label: '1. Disiplin & Bimbingan Kaunseling', icon: Scale },
+            { id: 'kebajikan', label: '2. Kebajikan Murid (SPBT, RMT, BAP)', icon: Heart },
+            { id: '3k', label: '3. Keselamatan & Kesihatan (3K)', icon: ShieldCheck }
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeSubTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveSubTab(tab.id as any)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition ${
+                  isActive
+                    ? 'bg-yellow-400 text-blue-950 shadow-md shadow-yellow-400/20 border border-yellow-300'
+                    : 'bg-white/5 hover:bg-white/15 text-slate-200 border border-white/10'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* QUICK HIGHLIGHT STATS */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-lg flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-400/30 text-blue-300 flex items-center justify-center">
+            <BookMarked className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-xl font-black text-white">{data.stats?.spbtPercentage || '100%'}</span>
+            <p className="text-[11px] font-semibold text-slate-300">Penerima SPBT</p>
+          </div>
+        </div>
+
+        <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-lg flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/30 text-amber-300 flex items-center justify-center">
+            <Utensils className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-xl font-black text-white">{data.stats?.rmtCount || '78 Murid'}</span>
+            <p className="text-[11px] font-semibold text-slate-300">Penerima RMT Sihat</p>
+          </div>
+        </div>
+
+        <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-lg flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 flex items-center justify-center">
+            <Coins className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-xl font-black text-white">{data.stats?.bapAmount || 'RM150'}</span>
+            <p className="text-[11px] font-semibold text-slate-300">BAP Setiap Murid</p>
+          </div>
+        </div>
+
+        <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-lg flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-400/30 text-purple-300 flex items-center justify-center">
+            <Smile className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-xl font-black text-white">{data.stats?.sahsiahPercentage || '96.8%'}</span>
+            <p className="text-[11px] font-semibold text-slate-300">Amalan Sahsiah Baik</p>
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION 1: DISIPLIN & BIMBINGAN KAUNSELING */}
+      {(activeSubTab === 'semua' || activeSubTab === 'disiplin') && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-white/10">
+            <div className="flex items-center gap-2">
+              <Scale className="w-5 h-5 text-yellow-400" />
+              <h3 className="text-lg sm:text-xl font-black text-white">
+                1. Disiplin & Bimbingan Kaunseling
+              </h3>
+            </div>
+            <span className="text-[11px] bg-yellow-400/20 text-yellow-300 font-bold px-3 py-1 rounded-full border border-yellow-400/30">
+              Sahsiah & Integriti
+            </span>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Card 1.1: Peraturan Sekolah */}
+            <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-lg flex flex-col justify-between space-y-4 hover:border-yellow-400/40 transition">
+              <div className="space-y-3">
+                <div className="w-10 h-10 bg-amber-500/20 text-amber-300 rounded-2xl flex items-center justify-center font-bold border border-amber-400/30">
+                  <ShieldAlert className="w-5 h-5 text-amber-300" />
+                </div>
+                <h4 className="font-extrabold text-white text-base">
+                  {data.disiplin?.title || 'Peraturan & Kod Disiplin Sekolah'}
+                </h4>
+                <p className="text-xs text-slate-200 leading-relaxed">
+                  {data.disiplin?.description ||
+                    'Garis panduan etika dan tatatertib murid SK Merbau Pulas bagi memupuk keperibadian luhur, ketepatan masa, dan perpaduan warga sekolah.'}
+                </p>
+
+                <div className="space-y-2 pt-2 text-xs text-slate-300">
+                  {data.disiplin?.rules?.map((rule, idx) => (
+                    <div key={rule.id || idx} className="flex items-start gap-2">
+                      {rule.type === 'warning' ? (
+                        <AlertTriangle className="w-3.5 h-3.5 text-rose-400 mt-0.5 flex-shrink-0" />
+                      ) : rule.type === 'info' ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 mt-0.5 flex-shrink-0" />
+                      ) : (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                      )}
+                      <span>
+                        <strong>{rule.title}:</strong> {rule.desc}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={() =>
+                  setSelectedDetailModal({
+                    title: 'Buku Panduan & Kod Disiplin SK Merbau Pulas',
+                    category: 'Disiplin Sekolah',
+                    icon: ShieldAlert,
+                    content: (
+                      <div className="space-y-4 text-xs text-slate-200">
+                        <div className="p-3 bg-amber-500/10 border border-amber-400/30 rounded-xl text-amber-200">
+                          📌 <strong>Matlamat Disiplin:</strong> Membentuk murid yang berdaya tahan, menghormati guru, berakhlak mulia serta menepati masa dalam semua urusan harian.
+                        </div>
+                        <div className="p-4 bg-white/5 border border-white/10 rounded-2xl whitespace-pre-line text-slate-200 leading-relaxed">
+                          {data.disiplin?.fullGuidelines ||
+                            '1. Waktu Persekolahan: 7.30 pagi - 1.00 petang (Tahap 1) / 1.30 petang (Tahap 2).\n2. Hari Rabu: Pemakaian unit beruniform lengkap sepanjang hari persekolahan.\n3. Kebenaran Keluar: Sebarang urusan keluar kawasan sekolah wajib mendapat kelulusan Pentadbir/PK HEM dan dicatat dalam Buku Keluar.'}
+                        </div>
+                      </div>
+                    )
+                  })
+                }
+                className="w-full py-2.5 px-3 bg-white/10 hover:bg-yellow-400 hover:text-blue-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
+              >
+                <span>Lihat Kod Peraturan Penuh</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Card 1.2: Unit Bimbingan & Kaunseling (UBK) */}
+            <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-lg flex flex-col justify-between space-y-4 hover:border-yellow-400/40 transition">
+              <div className="space-y-3">
+                <div className="w-10 h-10 bg-purple-500/20 text-purple-300 rounded-2xl flex items-center justify-center font-bold border border-purple-400/30">
+                  <Smile className="w-5 h-5 text-purple-300" />
+                </div>
+                <h4 className="font-extrabold text-white text-base">
+                  {data.disiplin?.ubkTitle || 'Unit Bimbingan & Kaunseling (UBK)'}
+                </h4>
+                <p className="text-xs text-slate-200 leading-relaxed">
+                  {data.disiplin?.ubkDescription ||
+                    'Menyediakan perkhidmatan kaunseling individu & kelompok, pembangunan emosi, bimbingan kerjaya, serta program kesejahteraan mental murid.'}
+                </p>
+
+                <div className="space-y-2 pt-2 text-xs text-slate-300">
+                  {data.disiplin?.ubkServices?.slice(0, 4).map((srv, idx) => (
+                    <div key={idx} className="flex items-start gap-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-purple-400 mt-0.5 flex-shrink-0" />
+                      <span>
+                        <strong>{srv.title}:</strong> {srv.desc}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={() =>
+                  setSelectedDetailModal({
+                    title: 'Perkhidmatan Unit Bimbingan & Kaunseling (UBK)',
+                    category: 'Kaunseling & Sahsiah',
+                    icon: Smile,
+                    content: (
+                      <div className="space-y-4 text-xs text-slate-200">
+                        <div className="p-3 bg-purple-500/10 border border-purple-400/30 rounded-xl text-purple-200">
+                          🤝 <strong>Misi UBK:</strong> "Membimbing Dengan Hati, Membina Insan Sejati" — Menyokong kestabilan psikososial murid dalam suasana pembelajaran yang tenang dan inklusif.
+                        </div>
+
+                        <h5 className="font-black text-white text-sm">Aktiviti Teras UBK Sepanjang Tahun:</h5>
+                        <div className="grid sm:grid-cols-2 gap-3">
+                          {data.disiplin?.ubkServices?.map((srv, idx) => (
+                            <div key={idx} className="p-3 bg-white/5 border border-white/10 rounded-xl">
+                              <h6 className="font-bold text-yellow-300">{srv.title}</h6>
+                              <p className="text-[11px] text-slate-300 mt-1">{srv.desc}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })
+                }
+                className="w-full py-2.5 px-3 bg-white/10 hover:bg-yellow-400 hover:text-blue-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
+              >
+                <span>Info Perkhidmatan UBK</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Card 1.3: SSDM (Sistem Sahsiah Diri Murid) */}
+            <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-lg flex flex-col justify-between space-y-4 hover:border-yellow-400/40 transition">
+              <div className="space-y-3">
+                <div className="w-10 h-10 bg-emerald-500/20 text-emerald-300 rounded-2xl flex items-center justify-center font-bold border border-emerald-400/30">
+                  <Award className="w-5 h-5 text-emerald-300" />
+                </div>
+                <h4 className="font-extrabold text-white text-base">Sistem Sahsiah Diri Murid (SSDM 2.0)</h4>
+                <p className="text-xs text-slate-200 leading-relaxed">
+                  {data.disiplin?.ssdmDescription ||
+                    'Sistem rasmi Kementerian Pendidikan Malaysia (KPM) bagi merekodkan amalan baik serta mengurus salah laku murid secara adil dan mendidik.'}
+                </p>
+
+                <div className="space-y-2 pt-2 text-xs text-slate-300">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                    <span><strong>Amalan Baik:</strong> Pengiktirafan murid berbudi pekerti & suka menolong.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                    <span><strong>Rekod Digital:</strong> Mata merit dan pemantauan terus oleh guru kelas.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                    <span><strong>Intervensi Sahsiah:</strong> Sesi kaunseling berfokus bagi kes salah laku.</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <a
+                  href={data.disiplin?.ssdmUrl || "https://ssdm.moe.gov.my/"}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full py-2.5 px-3 bg-emerald-500/80 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow"
+                >
+                  <span>Portal Rasmi SSDM KPM</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SECTION 2: KEBAJIKAN MURID */}
+      {(activeSubTab === 'semua' || activeSubTab === 'kebajikan') && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-white/10">
+            <div className="flex items-center gap-2">
+              <Heart className="w-5 h-5 text-rose-400" />
+              <h3 className="text-lg sm:text-xl font-black text-white">
+                2. Kebajikan Murid
+              </h3>
+            </div>
+            <span className="text-[11px] bg-rose-500/20 text-rose-300 font-bold px-3 py-1 rounded-full border border-rose-400/30">
+              Bantuan & Hak Murid
+            </span>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* SPBT */}
+            <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-lg space-y-4 hover:border-yellow-400/40 transition flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="w-10 h-10 bg-blue-500/20 text-blue-300 rounded-2xl flex items-center justify-center font-bold border border-blue-400/30">
+                  <BookMarked className="w-5 h-5 text-blue-300" />
+                </div>
+                <h4 className="font-extrabold text-white text-base">
+                  {data.kebajikan?.spbtTitle || 'Skim Pinjaman Buku Teks (SPBT)'}
+                </h4>
+                <p className="text-xs text-slate-200 leading-relaxed">
+                  {data.kebajikan?.spbtDescription ||
+                    'Buku teks dibekalkan 100% secara percuma kepada semua murid warganegara Malaysia dari Tahun 1 hingga Tahun 6.'}
+                </p>
+
+                <div className="space-y-2 pt-2 text-xs text-slate-300">
+                  <div className="p-3 bg-white/5 border border-white/10 rounded-xl space-y-1">
+                    <span className="font-bold text-yellow-300">Panduan Penjagaan:</span>
+                    <ul className="list-disc list-inside text-[11px] space-y-0.5 text-slate-300">
+                      {data.kebajikan?.spbtGuidelines?.slice(0, 3).map((g, idx) => (
+                        <li key={idx}>{g}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    🏢 <strong>Penyelaras SPBT:</strong> {data.kebajikan?.spbtCoordinator || 'Cikgu Nurul Ain binti Mahadzir'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() =>
+                  setSelectedDetailModal({
+                    title: 'Skim Pinjaman Buku Teks (SPBT) SK Merbau Pulas',
+                    category: 'Pengurusan SPBT',
+                    icon: BookMarked,
+                    content: (
+                      <div className="space-y-4 text-xs text-slate-200">
+                        <div className="p-3 bg-blue-500/10 border border-blue-400/30 rounded-xl text-blue-200">
+                          📚 <strong>Kelayakan SPBT:</strong> Semua murid warganegara Malaysia di SK Merbau Pulas layak menerima set lengkap buku teks SPBT dan Buku Aktiviti pada setiap awal sesi persekolahan.
+                        </div>
+
+                        <h5 className="font-black text-white text-sm">Garis Panduan Penjagaan Buku Teks:</h5>
+                        <ol className="list-decimal list-inside space-y-1 text-slate-300">
+                          {data.kebajikan?.spbtGuidelines?.map((g, idx) => (
+                            <li key={idx}>{g}</li>
+                          ))}
+                        </ol>
+                      </div>
+                    )
+                  })
+                }
+                className="w-full py-2.5 px-3 bg-white/10 hover:bg-yellow-400 hover:text-blue-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
+              >
+                <span>Info Penuh SPBT</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* RMT & Program Susu Sekolah */}
+            <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-lg space-y-4 hover:border-yellow-400/40 transition flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="w-10 h-10 bg-amber-500/20 text-amber-300 rounded-2xl flex items-center justify-center font-bold border border-amber-400/30">
+                  <Utensils className="w-5 h-5 text-amber-300" />
+                </div>
+                <h4 className="font-extrabold text-white text-base">
+                  {data.kebajikan?.rmtTitle || 'Rancangan Makanan Tambahan (RMT) & Susu'}
+                </h4>
+                <p className="text-xs text-slate-200 leading-relaxed">
+                  {data.kebajikan?.rmtDescription ||
+                    'Penyediaan sarapan pagi / makanan seimbang berkhasiat serta Program Susu Sekolah (PSS) bagi membantu murid mencapai tumbesaran fizikal dan daya tumpuan optimum.'}
+                </p>
+
+                <div className="space-y-2 pt-2 text-xs text-slate-300">
+                  <div className="p-3 bg-white/5 border border-white/10 rounded-xl space-y-1">
+                    <span className="font-bold text-yellow-300">Penyelaras:</span>
+                    <p className="text-[11px] text-slate-300">
+                      {data.kebajikan?.rmtCoordinator || 'Puan Fazilah binti Mat'}
+                    </p>
+                    <div className="mt-1.5 pt-1.5 border-t border-white/10">
+                      <span className="font-bold text-yellow-300">Contoh Menu RMT:</span>
+                      <ul className="text-[11px] space-y-0.5 text-slate-300 mt-1">
+                        {data.kebajikan?.rmtMenu?.slice(0, 2).map((m, idx) => (
+                          <li key={idx}><strong>{m.day}:</strong> {m.menu}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() =>
+                  setSelectedDetailModal({
+                    title: 'Rancangan Makanan Tambahan (RMT) & Susu Sekolah',
+                    category: 'Kebajikan Makanan',
+                    icon: Utensils,
+                    content: (
+                      <div className="space-y-4 text-xs text-slate-200">
+                        <div className="p-3 bg-amber-500/10 border border-amber-400/30 rounded-xl text-amber-200">
+                          🥣 <strong>Objektif RMT:</strong> Memastikan murid daripada keluarga B40 dan berkeperluan khusus mendapat bekalan nutrien secukupnya untuk kecerdasan minda dan kecergasan jasmani di sekolah.
+                        </div>
+
+                        <h5 className="font-black text-white text-sm">Jadual Menu Sihat RMT SKMP:</h5>
+                        <ul className="list-disc list-inside space-y-1 text-slate-300">
+                          {data.kebajikan?.rmtMenu?.map((m, idx) => (
+                            <li key={idx}>
+                              <strong>{m.day}:</strong> {m.menu}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )
+                  })
+                }
+                className="w-full py-2.5 px-3 bg-white/10 hover:bg-yellow-400 hover:text-blue-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
+              >
+                <span>Info Menu & Kelayakan RMT</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* BAP & Bantuan Khas */}
+            <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-lg space-y-4 hover:border-yellow-400/40 transition flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="w-10 h-10 bg-emerald-500/20 text-emerald-300 rounded-2xl flex items-center justify-center font-bold border border-emerald-400/30">
+                  <Coins className="w-5 h-5 text-emerald-300" />
+                </div>
+                <h4 className="font-extrabold text-white text-base">
+                  {data.kebajikan?.bapTitle || 'Bantuan Awal Persekolahan (BAP) & KWAPM'}
+                </h4>
+                <p className="text-xs text-slate-200 leading-relaxed">
+                  {data.kebajikan?.bapDescription ||
+                    'Bantuan tunai kewangan persekolahan RM150 kepada setiap murid warganegara serta bantuan Kumpulan Wang Amanah Pelajar Miskin (KWAPM) & e-Kasih.'}
+                </p>
+
+                <div className="space-y-2 pt-2 text-xs text-slate-300">
+                  <div className="p-3 bg-white/5 border border-white/10 rounded-xl space-y-1">
+                    <span className="font-bold text-yellow-300">Bantuan Yang Disalurkan:</span>
+                    <ul className="list-disc list-inside text-[11px] space-y-0.5 text-slate-300">
+                      {data.kebajikan?.bapDetails?.slice(0, 3).map((det, idx) => (
+                        <li key={idx}>{det}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() =>
+                  setSelectedDetailModal({
+                    title: 'Bantuan Awal Persekolahan (BAP) & Bantuan Kebajikan',
+                    category: 'Bantuan Kewangan',
+                    icon: Coins,
+                    content: (
+                      <div className="space-y-4 text-xs text-slate-200">
+                        <div className="p-3 bg-emerald-500/10 border border-emerald-400/30 rounded-xl text-emerald-200">
+                          💵 <strong>Bantuan Awal Persekolahan (BAP):</strong> Inisiatif Kementerian Pendidikan Malaysia bagi meringankan beban perbelanjaan ibu bapa dalam menyediakan kelengkapan sekolah anak-anak.
+                        </div>
+
+                        <h5 className="font-black text-white text-sm">Maklumat & Skim Bantuan:</h5>
+                        <ul className="list-disc list-inside space-y-1 text-slate-300">
+                          {data.kebajikan?.bapDetails?.map((det, idx) => (
+                            <li key={idx}>{det}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )
+                  })
+                }
+                className="w-full py-2.5 px-3 bg-white/10 hover:bg-yellow-400 hover:text-blue-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
+              >
+                <span>Info BAP & Bantuan Khas</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SECTION 3: KESELAMATAN & KESIHATAN (3K) */}
+      {(activeSubTab === 'semua' || activeSubTab === '3k') && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-white/10">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-emerald-400" />
+              <h3 className="text-lg sm:text-xl font-black text-white">
+                3. Keselamatan, Kesihatan & Kebersihan (Program 3K)
+              </h3>
+            </div>
+            <span className="text-[11px] bg-emerald-500/20 text-emerald-300 font-bold px-3 py-1 rounded-full border border-emerald-400/30">
+              Persekitaran Kondusif & Selamat
+            </span>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* 3.1 Keselamatan */}
+            <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-lg space-y-4 hover:border-yellow-400/40 transition flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="w-10 h-10 bg-blue-500/20 text-blue-300 rounded-2xl flex items-center justify-center font-bold border border-blue-400/30">
+                  <ShieldAlert className="w-5 h-5 text-blue-300" />
+                </div>
+                <h4 className="font-extrabold text-white text-base">
+                  {data.program3k?.safetyTitle || 'Panduan Keselamatan Murid'}
+                </h4>
+                <p className="text-xs text-slate-200 leading-relaxed">
+                  {data.program3k?.safetyDescription ||
+                    'Langkah menyeluruh menjaga keselamatan fizikal murid di kawasan pagar sekolah, bilik darjah, padang dan semasa aktiviti luar.'}
+                </p>
+
+                <div className="space-y-2 pt-2 text-xs text-slate-300">
+                  {data.program3k?.safetyPoints?.map((pt, idx) => (
+                    <div key={idx} className="flex items-start gap-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 mt-0.5 flex-shrink-0" />
+                      <span>{pt}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={() =>
+                  setSelectedDetailModal({
+                    title: 'Prosedur Standard Keselamatan Murid (SOP Keselamatan)',
+                    category: 'Keselamatan Sekolah',
+                    icon: ShieldAlert,
+                    content: (
+                      <div className="space-y-4 text-xs text-slate-200">
+                        <div className="p-3 bg-blue-500/10 border border-blue-400/30 rounded-xl text-blue-200">
+                          🚨 <strong>Polisi Keselamatan:</strong> Tiada kompromi dalam keselamatan warga sekolah. Semua pelawat wajib mendaftar dan memakai Pas Pelawat Rasmi.
+                        </div>
+
+                        <h5 className="font-black text-white text-sm">Panduan & Prosedur Keselamatan:</h5>
+                        <ul className="list-disc list-inside space-y-1 text-slate-300">
+                          {data.program3k?.safetyPoints?.map((pt, idx) => (
+                            <li key={idx}>{pt}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )
+                  })
+                }
+                className="w-full py-2.5 px-3 bg-white/10 hover:bg-yellow-400 hover:text-blue-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
+              >
+                <span>Lihat SOP Keselamatan</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* 3.2 Kesihatan */}
+            <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-lg space-y-4 hover:border-yellow-400/40 transition flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="w-10 h-10 bg-rose-500/20 text-rose-300 rounded-2xl flex items-center justify-center font-bold border border-rose-400/30">
+                  <Activity className="w-5 h-5 text-rose-300" />
+                </div>
+                <h4 className="font-extrabold text-white text-base">
+                  {data.program3k?.healthTitle || 'Kesihatan & Rawatan Murid'}
+                </h4>
+                <p className="text-xs text-slate-200 leading-relaxed">
+                  {data.program3k?.healthDescription ||
+                    'Kerjasama erat bersama Kementerian Kesihatan Malaysia (KKM) bagi pemeriksaan kesihatan, pergigian, imunisasi dan pencegahan wabak penyakit.'}
+                </p>
+
+                <div className="space-y-2 pt-2 text-xs text-slate-300">
+                  {data.program3k?.healthPoints?.map((pt, idx) => (
+                    <div key={idx} className="flex items-start gap-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-rose-400 mt-0.5 flex-shrink-0" />
+                      <span>{pt}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={() =>
+                  setSelectedDetailModal({
+                    title: 'Program Kesihatan & Rawatan Pergigian / Vaksinasi KKM',
+                    category: 'Kesihatan Murid',
+                    icon: Activity,
+                    content: (
+                      <div className="space-y-4 text-xs text-slate-200">
+                        <div className="p-3 bg-rose-500/10 border border-rose-400/30 rounded-xl text-rose-200">
+                          🩺 <strong>Bilik Rawatan Kesihatan:</strong> Bilik Kesihatan dilengkapi katil rehat, peti ubat kecemasan dan dipantau oleh Guru Bertugas Mingguan.
+                        </div>
+
+                        <h5 className="font-black text-white text-sm">Program Kesihatan Tahunan:</h5>
+                        <ul className="list-disc list-inside space-y-1 text-slate-300">
+                          {data.program3k?.healthPoints?.map((pt, idx) => (
+                            <li key={idx}>{pt}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )
+                  })
+                }
+                className="w-full py-2.5 px-3 bg-white/10 hover:bg-yellow-400 hover:text-blue-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
+              >
+                <span>Info Program Kesihatan</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* 3.3 Kebersihan */}
+            <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-lg space-y-4 hover:border-yellow-400/40 transition flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="w-10 h-10 bg-emerald-500/20 text-emerald-300 rounded-2xl flex items-center justify-center font-bold border border-emerald-400/30">
+                  <Sparkles className="w-5 h-5 text-emerald-300" />
+                </div>
+                <h4 className="font-extrabold text-white text-base">
+                  {data.program3k?.cleanlinessTitle || 'Kebersihan & Keceriaan Bilik Darjah'}
+                </h4>
+                <p className="text-xs text-slate-200 leading-relaxed">
+                  {data.program3k?.cleanlinessDescription ||
+                    'Mewujudkan persekitaran pembelajaran bilik darjah yang bersih, ceria, bermaklumat, dan mengamalkan budaya kelestarian alam (3R).'}
+                </p>
+
+                <div className="space-y-2 pt-2 text-xs text-slate-300">
+                  {data.program3k?.cleanlinessPoints?.map((pt, idx) => (
+                    <div key={idx} className="flex items-start gap-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                      <span>{pt}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={() =>
+                  setSelectedDetailModal({
+                    title: 'Program Kebersihan Bilik Darjah & Ekosistem Sekolah Sejahtera',
+                    category: 'Kebersihan & Keceriaan',
+                    icon: Sparkles,
+                    content: (
+                      <div className="space-y-4 text-xs text-slate-200">
+                        <div className="p-3 bg-emerald-500/10 border border-emerald-400/30 rounded-xl text-emerald-200">
+                          ✨ <strong>"Kebersihan Asas Keunggulan":</strong> Setiap bilik darjah dilengkapi jadual bertugas harian murid bagi menyemai nilai tanggungjawab bersama.
+                        </div>
+
+                        <h5 className="font-black text-white text-sm">Kriteria & Amalan Kebersihan:</h5>
+                        <ul className="list-disc list-inside space-y-1 text-slate-300">
+                          {data.program3k?.cleanlinessPoints?.map((pt, idx) => (
+                            <li key={idx}>{pt}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )
+                  })
+                }
+                className="w-full py-2.5 px-3 bg-white/10 hover:bg-yellow-400 hover:text-blue-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
+              >
+                <span>Info Penilaian Kebersihan</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* JAWATANKUASA KERJA INDUK UNIT HEM */}
+      <div className="bg-white/10 backdrop-blur-md rounded-3xl border border-white/10 p-6 sm:p-8 shadow-xl space-y-6">
+        <div className="flex items-center gap-2.5 pb-3 border-b border-white/10">
+          <Users className="w-5 h-5 text-yellow-400" />
+          <h3 className="text-xl font-black text-white">Jawatankuasa Kerja Induk Pengurusan HEM</h3>
+        </div>
+
+        <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-1">
+            <span className="text-[10px] font-extrabold text-yellow-400 uppercase tracking-wider">Pengerusi</span>
+            <h5 className="font-extrabold text-sm text-white">{principalName}</h5>
+            <p className="text-xs text-slate-300">{principalTitle}</p>
+          </div>
+
+          <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-1">
+            <span className="text-[10px] font-extrabold text-emerald-400 uppercase tracking-wider">Timbalan Pengerusi</span>
+            <h5 className="font-extrabold text-sm text-white">{data.gpkName}</h5>
+            <p className="text-xs text-slate-300">{data.gpkTitle}</p>
+          </div>
+
+          <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-1">
+            <span className="text-[10px] font-extrabold text-blue-400 uppercase tracking-wider">Naib Pengerusi I</span>
+            <h5 className="font-extrabold text-sm text-white">Puan Noraini binti Yusof</h5>
+            <p className="text-xs text-slate-300">PK Pentadbiran (DG44)</p>
+          </div>
+
+          <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-1">
+            <span className="text-[10px] font-extrabold text-purple-400 uppercase tracking-wider">Naib Pengerusi II</span>
+            <h5 className="font-extrabold text-sm text-white">Puan Siti Hajar binti Abdul Rahman</h5>
+            <p className="text-xs text-slate-300">PK Kokurikulum (DG44)</p>
+          </div>
+        </div>
+
+        {/* Dynamic List of HEM Committee Officers */}
+        <div className="grid sm:grid-cols-3 gap-3 pt-2">
+          {data.committee && data.committee.length > 0 ? (
+            data.committee.map((officer) => (
+              <div
+                key={officer.id}
+                className="p-3 bg-white/5 rounded-xl border border-white/10 flex items-center justify-between text-xs"
+              >
+                <div>
+                  <p className="font-bold text-white">{officer.role}</p>
+                  <p className="text-[11px] text-yellow-300">{officer.name}</p>
+                  {officer.phone && (
+                    <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                      <PhoneCall className="w-2.5 h-2.5 text-emerald-400" />
+                      <span>{officer.phone}</span>
+                    </p>
+                  )}
+                </div>
+                <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-slate-300 max-w-[100px] truncate">
+                  {officer.unit}
+                </span>
+              </div>
+            ))
+          ) : (
+            <p className="text-xs text-slate-400 col-span-3">Tiada jawatankuasa HEM didaftarkan.</p>
+          )}
+        </div>
+      </div>
+
+      {/* DETAIL MODAL POPUP */}
+      {selectedDetailModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-white/20 rounded-3xl p-6 max-w-xl w-full space-y-4 shadow-2xl animate-fadeIn">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-yellow-400/20 text-yellow-300 flex items-center justify-center">
+                  <selectedDetailModal.icon className="w-4 h-4 text-yellow-300" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-black uppercase text-yellow-400">
+                    {selectedDetailModal.category}
+                  </span>
+                  <h4 className="font-extrabold text-sm sm:text-base text-white">
+                    {selectedDetailModal.title}
+                  </h4>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedDetailModal(null)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="max-h-[65vh] overflow-y-auto pr-1">
+              {selectedDetailModal.content}
+            </div>
+
+            <div className="pt-3 border-t border-white/10 flex justify-end">
+              <button
+                onClick={() => setSelectedDetailModal(null)}
+                className="px-5 py-2 bg-yellow-400 hover:bg-yellow-300 text-blue-950 font-black rounded-xl text-xs transition shadow"
+              >
+                Tutup Maklumat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

@@ -12,7 +12,8 @@ import {
   PibgCommittee,
   CoCurriculumUnit,
   SignageSlide,
-  SignageConfig
+  SignageConfig,
+  HemData
 } from '../types';
 import {
   initialSchoolProfile,
@@ -28,7 +29,8 @@ import {
   initialPibgCommittee,
   initialCoCurriculumUnits,
   initialSignageSlides,
-  initialSignageConfig
+  initialSignageConfig,
+  initialHemData
 } from '../data/initialData';
 import { getSafeNewsImageUrl } from './imageHelpers';
 import { sortStaffBySeniority } from './staffHelpers';
@@ -47,7 +49,8 @@ const KEYS = {
   PIBG_COMM: 'skmp_pibg_comm_v1',
   COCURRICULUM: 'skmp_cocurriculum_v1',
   SIGNAGE_SLIDES: 'skmp_signage_slides_v1',
-  SIGNAGE_CONFIG: 'skmp_signage_config_v1'
+  SIGNAGE_CONFIG: 'skmp_signage_config_v1',
+  HEM: 'skmp_hem_v1'
 };
 
 function getStored<T>(key: string, fallback: T): T {
@@ -324,6 +327,23 @@ export function saveSignageConfig(config: SignageConfig): void {
   }
 }
 
+export function loadHemData(): HemData {
+  const data = getStored<HemData>(KEYS.HEM, initialHemData);
+  if (!data || !data.disiplin || !data.kebajikan || !data.program3k) {
+    return initialHemData;
+  }
+  return data;
+}
+
+export function saveHemData(data: HemData): void {
+  setStored(KEYS.HEM, data);
+  try {
+    window.dispatchEvent(new CustomEvent('skmp_hem_updated', { detail: { data } }));
+  } catch {
+    // Ignore in non-browser env
+  }
+}
+
 export function resetAllToDefault(): void {
   localStorage.removeItem(KEYS.PROFILE);
   localStorage.removeItem(KEYS.STAFF);
@@ -339,4 +359,5 @@ export function resetAllToDefault(): void {
   localStorage.removeItem(KEYS.COCURRICULUM);
   localStorage.removeItem(KEYS.SIGNAGE_SLIDES);
   localStorage.removeItem(KEYS.SIGNAGE_CONFIG);
+  localStorage.removeItem(KEYS.HEM);
 }

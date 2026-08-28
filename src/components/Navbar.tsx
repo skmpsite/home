@@ -15,7 +15,8 @@ import {
   X,
   LayoutDashboard,
   Award,
-  BookOpen
+  BookOpen,
+  HeartHandshake
 } from 'lucide-react';
 
 export type TabType =
@@ -23,6 +24,7 @@ export type TabType =
   | 'profil'
   | 'organisasi'
   | 'akademik'
+  | 'hem'
   | 'kokurikulum'
   | 'signage'
   | 'berita'
@@ -76,6 +78,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'profil' as TabType, label: 'Profil Sekolah', icon: School },
     { id: 'organisasi' as TabType, label: 'Carta Organisasi', icon: Network },
     { id: 'akademik' as TabType, label: 'Akademik & Takwim', icon: GraduationCap },
+    { id: 'hem' as TabType, label: 'Hal Ehwal Murid (HEM)', icon: HeartHandshake },
     { id: 'kokurikulum' as TabType, label: 'Kokurikulum', icon: Trophy },
     { id: 'berita' as TabType, label: 'Berita & Pekeliling', icon: Newspaper },
     { id: 'galeri' as TabType, label: 'Galeri Media', icon: ImageIcon },

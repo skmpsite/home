@@ -35,7 +35,8 @@ import {
   PibgActivity,
   CoCurriculumUnit,
   DownloadDocument,
-  SystemLink
+  SystemLink,
+  HemData
 } from '../../types';
 
 interface Message {
@@ -57,6 +58,7 @@ interface SweetbotWidgetProps {
   coCurriculumUnits?: CoCurriculumUnit[];
   documents?: DownloadDocument[];
   systemLinks?: SystemLink[];
+  hemData?: HemData;
   onNavigateSection?: (sectionId: string) => void;
 }
 
@@ -71,6 +73,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
   coCurriculumUnits = [],
   documents = [],
   systemLinks = [],
+  hemData,
   onNavigateSection
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -530,7 +533,22 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
         pibgActivities: pibgActivities.slice(0, 8).map((act) => `${act.date}: ${act.title}`),
         coCurriculumUnits: coCurriculumUnits.map((c) => `${c.name} (${c.category}) - Guru Penasihat: ${c.advisorTeacher || '-'}`),
         downloadDocuments: documents.slice(0, 10).map((d) => `${d.title} (${d.category}, ${d.fileType})`),
-        systemLinks: systemLinks.map((s) => `${s.name} (${s.badge}): ${s.description}`)
+        systemLinks: systemLinks.map((s) => `${s.name} (${s.badge}): ${s.description}`),
+        hemData: hemData ? {
+          gpkName: hemData.gpkName,
+          gpkTitle: hemData.gpkTitle,
+          gpkSpeech: hemData.gpkSpeech,
+          disiplinRules: hemData.disiplin?.rules?.map((r) => `${r.title}: ${r.desc}`),
+          ubkServices: hemData.disiplin?.ubkServices?.map((u) => `${u.title}: ${u.desc}`),
+          spbtCoordinator: hemData.kebajikan?.spbtCoordinator,
+          rmtCoordinator: hemData.kebajikan?.rmtCoordinator,
+          rmtMenu: hemData.kebajikan?.rmtMenu?.map((m) => `${m.day}: ${m.menu}`),
+          bapDetails: hemData.kebajikan?.bapDetails,
+          coordinator3k: hemData.program3k?.coordinator3k,
+          safetyPoints: hemData.program3k?.safetyPoints,
+          healthPoints: hemData.program3k?.healthPoints,
+          cleanlinessPoints: hemData.program3k?.cleanlinessPoints
+        } : undefined
       };
 
       // Bina riwayat mesej untuk API
@@ -691,6 +709,22 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
         }
       } else if (lower.includes('idme') || lower.includes('apdm') || lower.includes('delima') || lower.includes('splkpm') || lower.includes('sistem')) {
         fallbackText = `🔗 **Pautan Sistem Rasmi KPM & Sekolah:**\n\n• **idMe KPM:** Sistem Pengurusan Identiti Bersepadu KPM\n• **APDM:** Aplikasi Pangkalan Data Murid\n• **DELIMa KPM:** Platform Pembelajaran Digital Google/Apple/Microsoft\n• **SPLKPM:** Sistem Pengurusan Latihan KPM\n• **HRMIS:** Pengurusan Sumber Manusia Sektor Awam\n\nAnda boleh mengakses semua pautan ini di bahagian **Pautan Sistem** portal!`;
+      } else if (lower.includes('disiplin') || lower.includes('peraturan sekolah') || lower.includes('rambut') || lower.includes('uniform')) {
+        fallbackText = `⚖️ **Disiplin & Peraturan ${currentSchoolName}:**\n\n• **Waktu Hadir:** Sebelum 7.20 pagi di tapak perhimpunan.\n• **Pakaian:** Uniform lengkap, bertanda nama & lencana rasmi.\n• **Rambut:** Pendek dan kemas mengikut standard KPM.\n• **Larangan:** Telefon bimbit & barangan berbahaya tidak dibenarkan sama sekali.\n\nKetua Guru Disiplin: **Cikgu Rosli bin Hassan**. Sila rujuk menu **Hal Ehwal Murid (HEM)** untuk kod disiplin penuh!`;
+      } else if (lower.includes('kaunseling') || lower.includes('ubk') || lower.includes('bimbingan') || lower.includes('guru penyayang')) {
+        fallbackText = `🤝 **Unit Bimbingan & Kaunseling (UBK) ${currentSchoolName}:**\n\n• **Guru Bimbingan & Kaunseling:** Cikgu Zulkifli bin Ibrahim\n• **Perkhidmatan:** Bimbingan individu/kelompok, Program Guru Penyayang, Ujian Minda Sihat & Kelab Pembimbing Rakan Sebaya (PRS).\n\nSila layari menu **Hal Ehwal Murid (HEM)** untuk maklumat lanjut!`;
+      } else if (lower.includes('ssdm')) {
+        fallbackText = `🌟 **Sistem Sahsiah Diri Murid (SSDM 2.0):**\n\nSistem rasmi KPM untuk merekodkan amalan baik murid, mata merit, serta pengurusan intervensi sahsiah berhemah secara berpusat. Boleh dilayari melalui menu **Hal Ehwal Murid (HEM)**.`;
+      } else if (lower.includes('spbt') || lower.includes('buku teks')) {
+        fallbackText = `📚 **Skim Pinjaman Buku Teks (SPBT) ${currentSchoolName}:**\n\n• **Kelayakan:** 100% murid warganegara Malaysia (Tahun 1 hingga 6).\n• **Penyelaras:** Cikgu Nurul Ain binti Mahadzir.\n• **Bilik BOSS:** Bilik Operasi SPBT Sekolah.\n• **Syarat:** Buku wajib dibalut plastik jernih dan dijaga dengan cermat!`;
+      } else if (lower.includes('rmt') || lower.includes('susu') || lower.includes('makanan tambahan')) {
+        fallbackText = `🥣 **Rancangan Makanan Tambahan (RMT) & Susu Sekolah:**\n\n• **Sasaran:** Murid berkeperluan khas & keluarga B40/miskin tegar.\n• **Penyelaras:** Puan Fazilah binti Mat.\n• **Menu:** 20 menu seimbang berkhasiat mengikut standard KKM & KPM di kantin sekolah.`;
+      } else if (lower.includes('bap') || lower.includes('bantuan awal persekolahan') || lower.includes('kwapm') || lower.includes('bantuan')) {
+        fallbackText = `💵 **Bantuan Awal Persekolahan (BAP) & Kebajikan:**\n\n• **BAP:** RM150 secara 'one-off' untuk setiap murid warganegara tanpa had pendapatan.\n• **KWAPM & e-Kasih:** Bantuan pakaian dan kelengkapan sekolah untuk murid miskin.\n• Bantuan diagihkan secara telus kepada ibu bapa/penjaga yang sah.`;
+      } else if (lower.includes('3k') || lower.includes('keselamatan') || lower.includes('kesihatan') || lower.includes('kebersihan') || lower.includes('fire drill')) {
+        fallbackText = `🛡️ **Program 3K (Keselamatan, Kesihatan & Kebersihan) ${currentSchoolName}:**\n\n• **Keselamatan:** Pengawal 24 jam, pas pelawat, zon *drop-off* selamat, CCTV & latihan kebakaran berkala.\n• **Kesihatan:** Pemeriksaan gigi bergerak & imunisasi KKM, bilik rawatan kecemasan & sifar aedes (COMBI).\n• **Kebersihan:** Pertandingan keceriaan kelas mingguan & amalan 3R.\n• **Penyelaras 3K:** Cikgu Mohd Fadzil bin Yaakob.`;
+      } else if (lower.includes('hem') || lower.includes('hal ehwal murid')) {
+        fallbackText = `❤️ **Pengurusan Hal Ehwal Murid (HEM) ${currentSchoolName}:**\n\n• **PK HEM:** Encik Mohd Ridzuan bin Osman (DG44)\n• **Skop Utama:**\n  1. Disiplin & Kaunseling (SSDM, UBK)\n  2. Kebajikan Murid (SPBT, RMT, BAP)\n  3. Keselamatan & Kesihatan (Program 3K)\n\nSila klik menu **Hal Ehwal Murid (HEM)** di navigasi atas untuk info lengkap!`;
       } else if (lower.includes('alamat') || lower.includes('telefon') || lower.includes('hubungi') || lower.includes('emel') || lower.includes('lokasi')) {
         fallbackText = `📞 **Maklumat Hubungan Rasmi ${currentSchoolName}:**\n\n📍 **Alamat:** ${currentAddress}\n☎️ **No Telefon:** ${currentPhone}\n📠 **No Faks:** ${profile?.fax || '04-403 1201'}\n✉️ **Emel:** ${currentEmail}`;
       }

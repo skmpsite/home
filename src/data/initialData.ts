@@ -13,7 +13,8 @@ import {
   CoCurriculumUnit,
   FacebookPost,
   SignageSlide,
-  SignageConfig
+  SignageConfig,
+  HemData
 } from '../types';
 
 export const initialSchoolProfile: SchoolProfile = {
@@ -792,4 +793,182 @@ export const initialSignageSlides: SignageSlide[] = [
     createdAt: "2026-08-16"
   }
 ];
+
+export const initialHemData: HemData = {
+  gpkName: "Encik Mohd Ridzuan bin Osman",
+  gpkGrade: "Pegawai Perkhidmatan Pendidikan (DG44)",
+  gpkTitle: "Guru Penolong Kanan Hal Ehwal Murid (PK HEM)",
+  gpkSpeech: "Pengurusan Hal Ehwal Murid (HEM) komited memastikan kemenjadian sahsiah murid, kebajikan terpelihara serta iklim sekolah yang selamat, sihat dan kondusif berteraskan prinsip Anak yang Baik lagi Cerdik (ABC).",
+  stats: {
+    spbtPercentage: "100%",
+    rmtCount: "78 Murid",
+    bapAmount: "RM150",
+    sahsiahPercentage: "96.8%"
+  },
+  disiplin: {
+    title: "Peraturan & Kod Disiplin Sekolah",
+    description: "Garis panduan etika dan tatatertib murid SK Merbau Pulas bagi memupuk keperibadian luhur, ketepatan masa, dan perpaduan warga sekolah.",
+    rules: [
+      {
+        id: "rule-1",
+        title: "Kehadiran & Ketepatan Masa",
+        desc: "Wajib berada di tapak perhimpunan sebelum jam 7.20 pagi. Pintu pagar sekolah ditutup jam 7.25 pagi.",
+        type: "info"
+      },
+      {
+        id: "rule-2",
+        title: "Pakaian Seragam & Kekemasan",
+        desc: "Memakai pakaian seragam lengkap, lencana sekolah dan tanda nama dijahit kemas. Kasut dan stoking mengikut pekeliling.",
+        type: "success"
+      },
+      {
+        id: "rule-3",
+        title: "Kekemasan Rambut & Kuku",
+        desc: "Rambut pendek dan kemas mengikut standard KPM. Kuku sentiasa dipotong pendek dan bersih.",
+        type: "success"
+      },
+      {
+        id: "rule-4",
+        title: "Barang Larangan",
+        desc: "Dilarang membawa telefon pintar, peranti elektronik, alat tajam atau barangan berbahaya ke sekolah.",
+        type: "warning"
+      }
+    ],
+    fullGuidelines: "1. Waktu Persekolahan: 7.30 pagi - 1.00 petang (Tahap 1) / 1.30 petang (Tahap 2).\n2. Hari Rabu: Pemakaian unit beruniform lengkap sepanjang hari persekolahan.\n3. Kebenaran Keluar: Sebarang urusan keluar kawasan sekolah wajib mendapat kelulusan Pentadbir/PK HEM dan dicatat dalam Buku Keluar.",
+    ubkTitle: "Unit Bimbingan & Kaunseling (UBK)",
+    ubkDescription: "Menyediakan perkhidmatan kaunseling individu & kelompok, pembangunan emosi, bimbingan kerjaya, serta program kesejahteraan mental murid.",
+    ubkServices: [
+      {
+        title: "Program Guru Penyayang",
+        desc: "Sambutan ceria murid di pintu pagar seawal 7.00 pagi, meraikan hari lahir murid, dan ziarah cakna ke rumah keluarga murid."
+      },
+      {
+        title: "Sesi Kaunseling Mesra",
+        desc: "Bimbingan emosi, motivasi, pengurusan tekanan dan peningkatan prestasi akademik murid."
+      },
+      {
+        title: "Ujian Psikometrik (PPsi) & Minda Sihat",
+        desc: "Mengenal pasti potensi, minat kerjaya, kecenderungan pembelajaran dan saringan kestabilan emosi murid."
+      },
+      {
+        title: "Pembimbing Rakan Sebaya (PRS)",
+        desc: "Modul kepimpinan rakan sebaya untuk melatih murid menjadi pendengar yang prihatin dan positif."
+      }
+    ],
+    ssdmUrl: "https://ssdm.moe.gov.my/",
+    ssdmDescription: "Sistem Sahsiah Diri Murid (SSDM 2.0) merekodkan amalan baik serta mengurus salah laku murid secara adil dan mendidik berteraskan pendekatan intervensi kaunseling."
+  },
+  kebajikan: {
+    spbtTitle: "Skim Pinjaman Buku Teks (SPBT)",
+    spbtDescription: "Buku teks dan Buku Aktiviti dibekalkan 100% secara percuma kepada semua murid warganegara Malaysia dari Tahun 1 hingga Tahun 6.",
+    spbtGuidelines: [
+      "Buku teks wajib dibalut dengan pembalut plastik jernih.",
+      "Tulis nama dan kelas murid pada ruangan maklumat peminjam.",
+      "Buku teks yang hilang atau rosak hendaklah dilaporkan segera dan diganti.",
+      "Spot check pemeriksaan buku teks dilakukan secara berkala setiap penggal persekolahan."
+    ],
+    spbtCoordinator: "Cikgu Nurul Ain binti Mahadzir",
+    rmtTitle: "Rancangan Makanan Tambahan (RMT) & Susu",
+    rmtDescription: "Penyediaan sarapan pagi / hidangan seimbang berkhasiat serta Program Susu Sekolah (PSS) bagi membantu murid mencapai tumbesaran fizikal dan daya tumpuan optimum.",
+    rmtCoordinator: "Puan Fazilah binti Mat",
+    rmtMenu: [
+      { day: "Isnin", menu: "Nasi Ayam Kukus bersama Sayur Sup & Buah Segar" },
+      { day: "Selasa", menu: "Bihun Sup Daging / Ayam bersama Sayur & Susu UHT" },
+      { day: "Rabu", menu: "Nasi Lemak Sihat Telur Rebus bersama Timun & Buah Betik" },
+      { day: "Khamis", menu: "Mee Sup Sayuran bersama Ayam Carik & Buah Pisang" }
+    ],
+    bapTitle: "Bantuan Awal Persekolahan (BAP) & KWAPM",
+    bapDescription: "Bantuan tunai kewangan persekolahan RM150 kepada setiap murid warganegara serta sokongan Kumpulan Wang Amanah Pelajar Miskin (KWAPM) & e-Kasih.",
+    bapDetails: [
+      "Bantuan Awal Persekolahan (BAP) RM150/murid secara one-off diserahkan kepada ibu bapa/penjaga sah.",
+      "Bantuan KWAPM & e-Kasih disalurkan untuk pembelian pakaian dan keperluan asas murid asnaf/miskin tegar.",
+      "Tabung Kebajikan Murid & Zakat PIBG disediakan untuk bantuan kecemasan dan bencana luar jangka."
+    ]
+  },
+  program3k: {
+    safetyTitle: "Panduan Keselamatan Murid",
+    safetyDescription: "Langkah menyeluruh menjaga keselamatan fizikal murid di kawasan pagar sekolah, bilik darjah, padang dan semasa aktiviti luar.",
+    safetyPoints: [
+      "Zon Selamat Drop-Off di pintu pagar utama dengan kawalan lalulintas sehala.",
+      "Kawalan keselamatan 24 jam bersama pengawal bertugas dan sistem pas pelawat rasmi.",
+      "Latihan Kebakaran (Fire Drill) simulasi kecemasan berkala 2 kali setahun.",
+      "Pemantauan Kamera Litar Tertutup (CCTV) di koridor dan laluan strategik sekolah."
+    ],
+    healthTitle: "Kesihatan & Rawatan Murid",
+    healthDescription: "Kerjasama erat bersama Kementerian Kesihatan Malaysia (KKM) bagi pemeriksaan kesihatan, pergigian, imunisasi dan pencegahan wabak penyakit.",
+    healthPoints: [
+      "Klinik Pergigian Bergerak: Rawatan dan pemeriksaan gigi percuma secara tahunan.",
+      "Program Imunisasi KKM: Suntikan vaksin Tahun 1 & dos pencegahan penyakit berjangkit.",
+      "Bilik Rawatan & Isolasi: Dilengkapi katil rehat, peti pertolongan cemas dan pemantauan guru bertugas.",
+      "Program COMBI & Bebas Denggi: Pemeriksaan sifar jentik-jentik aedes setiap minggu."
+    ],
+    cleanlinessTitle: "Kebersihan & Keceriaan Bilik Darjah",
+    cleanlinessDescription: "Mewujudkan persekitaran pembelajaran bilik darjah yang bersih, ceria, bermaklumat, dan mengamalkan budaya kelestarian alam (3R).",
+    cleanlinessPoints: [
+      "Pertandingan Kelas Terbersih & Ceria Mingguan dengan piala pusingan.",
+      "Penarafan Tandas Bersih bertaraf bintang dengan penyelenggaraan berjadual.",
+      "Pemeriksaan kebersihan premis kantin sekolah (Penarafan Gred A KKM).",
+      "Amalan Kitar Semula (3R) dengan tong pengasingan sisa di setiap aras bangunan."
+    ],
+    coordinator3k: "Cikgu Mohd Fadzil bin Yaakob"
+  },
+  committee: [
+    {
+      id: "hem-c-1",
+      role: "Setiausaha HEM",
+      name: "Ustazah Salina binti Ismail",
+      unit: "Pengurusan & Dokumentasi HEM",
+      phone: "019-4567891"
+    },
+    {
+      id: "hem-c-2",
+      role: "Ketua Guru Disiplin & Pengawas",
+      name: "Cikgu Rosli bin Hassan",
+      unit: "Lembaga Disiplin & Pengawas Sekolah",
+      phone: "013-4012345"
+    },
+    {
+      id: "hem-c-3",
+      role: "Guru Bimbingan & Kaunseling",
+      name: "Cikgu Zulkifli bin Ibrahim",
+      unit: "Unit Bimbingan & Kaunseling (UBK)",
+      phone: "012-4789123"
+    },
+    {
+      id: "hem-c-4",
+      role: "Penyelaras SPBT",
+      name: "Cikgu Nurul Ain binti Mahadzir",
+      unit: "Bilik Operasi SPBT Sekolah (BOSS)",
+      phone: "017-5678901"
+    },
+    {
+      id: "hem-c-5",
+      role: "Penyelaras RMT & Susu Sekolah",
+      name: "Puan Fazilah binti Mat",
+      unit: "Rancangan Makanan Tambahan (RMT)",
+      phone: "019-5890123"
+    },
+    {
+      id: "hem-c-6",
+      role: "Penyelaras Program 3K & Keselamatan",
+      name: "Cikgu Mohd Fadzil bin Yaakob",
+      unit: "Keselamatan, Kesihatan & Kebersihan (3K)",
+      phone: "013-5671234"
+    },
+    {
+      id: "hem-c-7",
+      role: "Penyelaras Bantuan Kebajikan & BAP",
+      name: "Ustaz Ahmad Shakir bin Mahmud",
+      unit: "Bantuan Awal Persekolahan & KWAPM",
+      phone: "019-4123890"
+    },
+    {
+      id: "hem-c-8",
+      role: "Penyelaras Kantin & Kesihatan",
+      name: "Puan Rohaya binti Saad",
+      unit: "Kantin Sekolah & Kesihatan Murid",
+      phone: "017-4890123"
+    }
+  ]
+};
 

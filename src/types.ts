@@ -150,6 +150,76 @@ export interface CoCurriculumUnit {
   iconName: string;
 }
 
+export interface HemOfficer {
+  id: string;
+  role: string;
+  name: string;
+  unit: string;
+  phone?: string;
+}
+
+export interface HemRuleItem {
+  id: string;
+  title: string;
+  desc: string;
+  type: 'info' | 'warning' | 'success';
+}
+
+export interface HemRmtMenuItem {
+  day: string;
+  menu: string;
+}
+
+export interface HemData {
+  gpkName: string;
+  gpkGrade: string;
+  gpkTitle: string;
+  gpkSpeech?: string;
+  stats: {
+    spbtPercentage: string;
+    rmtCount: string;
+    bapAmount: string;
+    sahsiahPercentage: string;
+  };
+  disiplin: {
+    title: string;
+    description: string;
+    rules: HemRuleItem[];
+    fullGuidelines: string;
+    ubkTitle: string;
+    ubkDescription: string;
+    ubkServices: Array<{ title: string; desc: string }>;
+    ssdmUrl: string;
+    ssdmDescription: string;
+  };
+  kebajikan: {
+    spbtTitle: string;
+    spbtDescription: string;
+    spbtGuidelines: string[];
+    spbtCoordinator: string;
+    rmtTitle: string;
+    rmtDescription: string;
+    rmtCoordinator: string;
+    rmtMenu: HemRmtMenuItem[];
+    bapTitle: string;
+    bapDescription: string;
+    bapDetails: string[];
+  };
+  program3k: {
+    safetyTitle: string;
+    safetyDescription: string;
+    safetyPoints: string[];
+    healthTitle: string;
+    healthDescription: string;
+    healthPoints: string[];
+    cleanlinessTitle: string;
+    cleanlinessDescription: string;
+    cleanlinessPoints: string[];
+    coordinator3k: string;
+  };
+  committee: HemOfficer[];
+}
+
 export interface FacebookPost {
   id: string;
   author: string;
@@ -167,7 +237,7 @@ export interface FacebookPost {
 }
 
 export interface SearchResultItem {
-  type: 'berita' | 'staf' | 'dokumen' | 'acara' | 'anugerah';
+  type: 'berita' | 'staf' | 'dokumen' | 'acara' | 'anugerah' | 'hem' | 'pengumuman';
   title: string;
   subtitle: string;
   linkTab: string;
