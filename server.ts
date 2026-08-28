@@ -679,12 +679,11 @@ KEUPAYAAN ILMU & JAWAPAN MENYELURUH (GEMINI OMNISCIENCE):
         return res.status(400).send("Teks kosong.");
       }
 
-      // Senarai sumber Google TTS Bahasa Melayu (ms / ms-MY / id)
+      // Sumber audio rasmi Bahasa Melayu Malaysia (ms-MY / ms)
       const ttsUrls = [
-        `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=ms&client=gtx&q=${encodeURIComponent(cleanText)}`,
-        `https://translate.google.com/translate_tts?ie=UTF-8&tl=ms&client=tw-ob&q=${encodeURIComponent(cleanText)}`,
         `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=ms-MY&client=gtx&q=${encodeURIComponent(cleanText)}`,
-        `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=id&client=gtx&q=${encodeURIComponent(cleanText)}`
+        `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=ms&client=gtx&q=${encodeURIComponent(cleanText)}`,
+        `https://translate.google.com/translate_tts?ie=UTF-8&tl=ms&client=tw-ob&q=${encodeURIComponent(cleanText)}`
       ];
 
       let audioBuffer: Buffer | null = null;

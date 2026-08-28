@@ -93,45 +93,60 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
   const audioQueueRef = useRef<string[]>([]);
   const isPlayingAudioRef = useRef<boolean>(false);
 
-  // Cari profil suara rasmi Bahasa Melayu Malaysia (ms-MY) atau Nusantara dalam pelayar pengguna
+  // Cari profil suara rasmi Bahasa Melayu Malaysia (ms-MY) dalam pelayar pengguna
   const getBestMalayVoice = (): SpeechSynthesisVoice | null => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
     const voices = window.speechSynthesis.getVoices();
     if (!voices || voices.length === 0) return null;
 
-    // 1. Cari suara khusus Bahasa Melayu Malaysia (ms-MY / Malaysia)
-    const msVoice = voices.find((v) => {
+    // 1. Keutamaan Mutlak: Suara Rasmi Bahasa Melayu Malaysia (ms-MY / ms_MY / Malay Malaysia)
+    // DILARANG SAMA SEKALI suara Indonesia (id / id-ID / Indonesia) atau suara luar
+    const priorityMalayVoice = voices.find((v) => {
       const name = v.name.toLowerCase();
-      const lang = v.lang.toLowerCase();
+      const lang = v.lang.toLowerCase().replace('_', '-');
+
+      // Sekat suara Indonesia dan dialek luar
+      if (
+        lang.includes('id') ||
+        name.includes('indonesia') ||
+        name.includes('gadis') ||
+        name.includes('ardi') ||
+        name.includes('jawa') ||
+        name.includes('sunda')
+      ) {
+        return false;
+      }
 
       return (
         lang === 'ms-my' ||
-        lang === 'ms_my' ||
-        lang.startsWith('ms') ||
-        name.includes('malay (malaysia)') ||
-        name.includes('bahasa melayu') ||
-        name.includes('bahasa malaysia') ||
-        name.includes('melayu') ||
         name.includes('yasmin') ||
         name.includes('osman') ||
-        name.includes('amira')
+        name.includes('amira') ||
+        name.includes('malay (malaysia)') ||
+        name.includes('bahasa melayu (malaysia)') ||
+        name.includes('bahasa malaysia') ||
+        name.includes('malay')
       );
     });
-    if (msVoice) return msVoice;
+    if (priorityMalayVoice) return priorityMalayVoice;
 
-    // 2. Jika tiada ms-MY, cari suara Nusantara / Bahasa Indonesia (sebutan fonetik vokal & konsonan 100% sama dengan Melayu)
-    const nusantaraVoice = voices.find((v) => {
-      const lang = v.lang.toLowerCase();
+    // 2. Keutamaan Kedua: Mana-mana suara bertag 'ms' (Bahasa Melayu) TANPA Indonesia
+    const generalMalayVoice = voices.find((v) => {
       const name = v.name.toLowerCase();
-      return (
-        lang.startsWith('id') ||
-        lang === 'id-id' ||
+      const lang = v.lang.toLowerCase().replace('_', '-');
+
+      if (
+        lang.includes('id') ||
         name.includes('indonesia') ||
         name.includes('gadis') ||
         name.includes('ardi')
-      );
+      ) {
+        return false;
+      }
+
+      return lang.startsWith('ms') || name.includes('melayu');
     });
-    if (nusantaraVoice) return nusantaraVoice;
+    if (generalMalayVoice) return generalMalayVoice;
 
     return null;
   };
@@ -183,7 +198,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
     }
   }, [isOpen, isMinimized]);
 
-  // Pembersihan teks sebelum dibaca agar berbunyi Bahasa Melayu Asli & Baku
+  // Pembersihan teks sebelum dibaca agar berbunyi Bahasa Melayu Malaysia Asli & Baku
   const cleanTextForMalaySpeech = (rawText: string): string => {
     let text = rawText;
     // Buang pautan markdown dan format tanda baca
@@ -192,16 +207,39 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
     // Buang emoji dan simbol khas
     text = text.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '');
     
-    // Gantikan akronim kepada sebutan Bahasa Melayu yang jelas
+    // Gantikan akronim rasmi KPM & sekolah kepada sebutan penuh Bahasa Melayu Malaysia
     const replacements: Record<string, string> = {
       'SKMP': 'Sekolah Kebangsaan Merbau Pulas',
       'SK Merbau Pulas': 'Sekolah Kebangsaan Merbau Pulas',
       'KPM': 'Kementerian Pendidikan Malaysia',
       'HEM': 'Hal Ehwal Murid',
+      'PKP': 'Penolong Kanan Pentadbiran',
+      'PK 1': 'Penolong Kanan Pentadbiran',
+      'PK1': 'Penolong Kanan Pentadbiran',
+      'PK HEM': 'Penolong Kanan Hal Ehwal Murid',
+      'PKHEM': 'Penolong Kanan Hal Ehwal Murid',
+      'PK Kokurikulum': 'Penolong Kanan Kokurikulum',
+      'PKKO': 'Penolong Kanan Kokurikulum',
+      'PK Koko': 'Penolong Kanan Kokurikulum',
       'PK': 'Penolong Kanan',
       'GB': 'Guru Besar',
+      'GBK': 'Guru Bimbingan dan Kaunseling',
+      'UBK': 'Unit Bimbingan dan Kaunseling',
+      'PPKI': 'Program Pendidikan Khas Integrasi',
+      'PIBG': 'Persatuan Ibu Bapa dan Guru',
+      'YDP': 'Yang Dipertua',
+      'NYDP': 'Naib Yang Dipertua',
+      'AKP': 'Anggota Kumpulan Pelaksana',
+      'KPT': 'Ketua Pembantu Tadbir',
       'PBS': 'Pentaksiran Berasaskan Sekolah',
       'PBD': 'Pentaksiran Bilik Darjah',
+      'UASA': 'Ujian Akhir Sesi Akademik',
+      'APDM': 'Aplikasi Pangkalan Data Murid',
+      'SSDM': 'Sistem Sahsiah Diri Murid',
+      'SPBT': 'Skim Pinjaman Buku Teks',
+      'RMT': 'Rancangan Makanan Tambahan',
+      'BAP': 'Bantuan Awal Persekolahan',
+      'KWAPM': 'Kumpulan Wang Amanah Pelajar Miskin',
       'NILAM': 'Nilam',
       'STEM': 'S T E M',
       'idMe': 'Aydi Me',
@@ -230,7 +268,6 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
   const unlockAudioContext = () => {
     try {
       if (typeof window !== 'undefined') {
-        // Mainkan silent audio seketika untuk unlock autoplay policy pada mobile browser
         const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
         silentAudio.volume = 0.01;
         silentAudio.play().then(() => {
@@ -244,7 +281,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
     } catch (e) {}
   };
 
-  // Sandaran Web Speech API Asal Peranti jika audio stream disekat atau tiada sambungan
+  // Sebutan Suara Asli Bahasa Melayu Malaysia (ms-MY) menggunakan Enjin Web Speech (hanya jika profil ms-MY disahkan wujud)
   const speakWithWebSpeech = (cleanText: string, msgId?: string) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       isPlayingAudioRef.current = false;
@@ -252,10 +289,10 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
       return;
     }
 
-    const voice = getBestMalayVoice();
-    if (!voice) {
-      // JANGAN sesekali benarkan suara Inggeris membaca teks Bahasa Melayu kerana akan menghasilkan sebutan slang Inggeris
-      console.warn('Tiada profil suara Bahasa Melayu/Nusantara dalam Web Speech pelayar ini.');
+    const malayVoice = getBestMalayVoice();
+    // JANGAN SESEKALI jalankan jika tiada suara Bahasa Melayu pada peranti (untuk elak suara Inggeris peranti membaca teks Melayu)
+    if (!malayVoice) {
+      console.warn('Tiada profil suara Bahasa Melayu pada peranti, audio pelayan digunakan.');
       isPlayingAudioRef.current = false;
       setCurrentlySpeakingId(null);
       return;
@@ -268,9 +305,9 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
       }
 
       const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.voice = voice;
-      utterance.lang = voice.lang || 'ms-MY';
-      utterance.rate = 1.0;
+      utterance.voice = malayVoice;
+      utterance.lang = malayVoice.lang || 'ms-MY';
+      utterance.rate = 0.95;
       utterance.pitch = 1.0;
 
       utterance.onstart = () => {
@@ -284,7 +321,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
       };
 
       utterance.onerror = (err) => {
-        console.warn('Web Speech error:', err);
+        console.warn('Web Speech event notice:', err);
         isPlayingAudioRef.current = false;
         setCurrentlySpeakingId(null);
       };
@@ -297,8 +334,8 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
     }
   };
 
-  // Fungsi memainkan barisan audio Bahasa Melayu secara berturutan
-  const playNextAudioChunk = (msgId?: string, originalFullText?: string) => {
+  // Fungsi memainkan barisan audio Bahasa Melayu secara berturutan melalui Google TTS Stream Rasmi (ms-MY)
+  const playNextAudioChunk = (msgId?: string) => {
     if (audioQueueRef.current.length === 0) {
       isPlayingAudioRef.current = false;
       setCurrentlySpeakingId(null);
@@ -307,7 +344,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
 
     const nextChunk = audioQueueRef.current.shift();
     if (!nextChunk || !nextChunk.trim()) {
-      playNextAudioChunk(msgId, originalFullText);
+      playNextAudioChunk(msgId);
       return;
     }
 
@@ -317,27 +354,26 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
       activeAudioRef.current = audio;
 
       audio.onended = () => {
-        playNextAudioChunk(msgId, originalFullText);
+        playNextAudioChunk(msgId);
       };
 
-      audio.onerror = () => {
-        console.warn('Audio stream error for chunk, falling back to Web Speech API');
-        // Jika stream audio pelayan gagal, gunakan Web Speech API peranti
-        if (originalFullText) {
-          speakWithWebSpeech(originalFullText, msgId);
+      audio.onerror = (err) => {
+        console.warn('Audio stream error, checking device Malay voice:', err);
+        const malayVoice = getBestMalayVoice();
+        if (malayVoice) {
+          speakWithWebSpeech(nextChunk, msgId);
         } else {
-          playNextAudioChunk(msgId, originalFullText);
+          // Teruskan ke ayat seterusnya
+          playNextAudioChunk(msgId);
         }
       };
 
       const playPromise = audio.play();
       if (playPromise !== undefined) {
         playPromise.catch((playErr) => {
-          console.warn('Audio stream play blocked by browser autoplay, activating Web Speech fallback:', playErr);
-          // Sekiranya pelayar peranti menyekat audio tanpa sentuhan langsung, gunakan Web Speech API peranti
-          if (originalFullText) {
-            speakWithWebSpeech(originalFullText, msgId);
-          } else if (nextChunk) {
+          console.warn('Autoplay restricted by browser, activating playback fallback:', playErr);
+          const malayVoice = getBestMalayVoice();
+          if (malayVoice) {
             speakWithWebSpeech(nextChunk, msgId);
           } else {
             isPlayingAudioRef.current = false;
@@ -346,19 +382,16 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
         });
       }
     } catch (e) {
-      if (originalFullText) {
-        speakWithWebSpeech(originalFullText, msgId);
-      } else {
-        playNextAudioChunk(msgId, originalFullText);
-      }
+      console.warn('TTS playback error:', e);
+      playNextAudioChunk(msgId);
     }
   };
 
-  // Text-To-Speech Bahasa Melayu / Bahasa Malaysia Tulen
+  // Text-To-Speech Rasmi Bahasa Melayu Malaysia (100% Sebutan Asli Malaysia, Tiada Slang Inggeris/Indonesia)
   const speakText = (text: string, msgId?: string) => {
     if (!speechEnabled) return;
     
-    // Buka kunci audio untuk mobile
+    // Buka kunci audio untuk mobile / Safari
     unlockAudioContext();
 
     // Hentikan sebarang pertuturan semasa serta-merta
@@ -372,8 +405,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
     const cleanText = cleanTextForMalaySpeech(text);
     if (!cleanText) return;
 
-    // Pecahkan teks mengikut ayat Bahasa Melayu (tanda noktah, koma, tanda soal, seru atau baris baru)
-    // Hadkan setiap ketulan kepada maksimum ~150 aksara untuk sebutan audio yang lancar dan pantas
+    // Pecahkan teks kepada klausa/ayat yang mesra sebutan audio rasmi Malaysia
     const sentences = cleanText
       .split(/(?<=[.?!;:\n])\s+/)
       .map((s) => s.trim())
@@ -381,10 +413,9 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
 
     const chunks: string[] = [];
     for (const sentence of sentences) {
-      if (sentence.length <= 150) {
+      if (sentence.length <= 140) {
         chunks.push(sentence);
       } else {
-        // Pecahkan ayat panjang kepada klausa
         const subClauses = sentence.split(/,\s+/);
         for (const sub of subClauses) {
           if (sub.trim()) chunks.push(sub.trim());
@@ -398,7 +429,8 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
     isPlayingAudioRef.current = true;
     if (msgId) setCurrentlySpeakingId(msgId);
 
-    playNextAudioChunk(msgId, cleanText);
+    // Mainkan aliran audio rasmi Bahasa Melayu Malaysia (/api/tts)
+    playNextAudioChunk(msgId);
   };
 
   const stopSpeaking = () => {
