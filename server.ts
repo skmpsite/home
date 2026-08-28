@@ -667,7 +667,7 @@ KEUPAYAAN ILMU & JAWAPAN MENYELURUH (GEMINI OMNISCIENCE):
         return res.status(400).send("Teks diperlukan.");
       }
 
-      // Potong ke had munasabah setiap ayat
+      // Bersihkan teks daripada simbol dan hadkan aksara
       const cleanText = text
         .replace(/[*#_`~>•]/g, " ")
         .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, "")
@@ -679,21 +679,42 @@ KEUPAYAAN ILMU & JAWAPAN MENYELURUH (GEMINI OMNISCIENCE):
         return res.status(400).send("Teks kosong.");
       }
 
-      const googleTtsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ms&client=tw-ob&q=${encodeURIComponent(cleanText)}`;
-      const response = await fetch(googleTtsUrl, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        }
-      });
+      // Senarai sumber Google TTS Bahasa Melayu (ms / ms-MY / id)
+      const ttsUrls = [
+        `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=ms&client=gtx&q=${encodeURIComponent(cleanText)}`,
+        `https://translate.google.com/translate_tts?ie=UTF-8&tl=ms&client=tw-ob&q=${encodeURIComponent(cleanText)}`,
+        `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=ms-MY&client=gtx&q=${encodeURIComponent(cleanText)}`,
+        `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=id&client=gtx&q=${encodeURIComponent(cleanText)}`
+      ];
 
-      if (!response.ok) {
-        return res.status(502).send("Gagal menjana audio.");
+      let audioBuffer: Buffer | null = null;
+      for (const ttsUrl of ttsUrls) {
+        try {
+          const response = await fetch(ttsUrl, {
+            headers: {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+              "Referer": "https://translate.google.com/"
+            }
+          });
+          if (response.ok) {
+            const arrayBuffer = await response.arrayBuffer();
+            if (arrayBuffer.byteLength > 100) {
+              audioBuffer = Buffer.from(arrayBuffer);
+              break;
+            }
+          }
+        } catch (fetchErr) {
+          console.warn("[TTS FETCH RETRY]", fetchErr);
+        }
       }
 
-      const arrayBuffer = await response.arrayBuffer();
+      if (!audioBuffer) {
+        return res.status(502).send("Gagal menjana audio Bahasa Melayu.");
+      }
+
       res.setHeader("Content-Type", "audio/mpeg");
       res.setHeader("Cache-Control", "public, max-age=86400");
-      res.send(Buffer.from(arrayBuffer));
+      res.send(audioBuffer);
     } catch (err: any) {
       console.error("[TTS ERROR]", err);
       res.status(500).send("Ralat TTS.");

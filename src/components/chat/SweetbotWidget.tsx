@@ -93,7 +93,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
   const audioQueueRef = useRef<string[]>([]);
   const isPlayingAudioRef = useRef<boolean>(false);
 
-  // Cari profil suara rasmi Bahasa Melayu Malaysia (ms-MY) dalam pelayar pengguna
+  // Cari profil suara rasmi Bahasa Melayu Malaysia (ms-MY) atau Nusantara dalam pelayar pengguna
   const getBestMalayVoice = (): SpeechSynthesisVoice | null => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
     const voices = window.speechSynthesis.getVoices();
@@ -103,8 +103,6 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
     const msVoice = voices.find((v) => {
       const name = v.name.toLowerCase();
       const lang = v.lang.toLowerCase();
-      // Jangan benarkan Bahasa Indonesia
-      if (lang.includes('id') || name.includes('indonesia')) return false;
 
       return (
         lang === 'ms-my' ||
@@ -115,19 +113,25 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
         name.includes('bahasa malaysia') ||
         name.includes('melayu') ||
         name.includes('yasmin') ||
-        name.includes('osman')
+        name.includes('osman') ||
+        name.includes('amira')
       );
     });
     if (msVoice) return msVoice;
 
-    // 2. Cari suara dengan kod bahasa 'ms'
-    const anyMs = voices.find((v) => {
+    // 2. Jika tiada ms-MY, cari suara Nusantara / Bahasa Indonesia (sebutan fonetik vokal & konsonan 100% sama dengan Melayu)
+    const nusantaraVoice = voices.find((v) => {
       const lang = v.lang.toLowerCase();
       const name = v.name.toLowerCase();
-      if (lang.includes('id') || name.includes('indonesia')) return false;
-      return lang.startsWith('ms') || name.includes('malay');
+      return (
+        lang.startsWith('id') ||
+        lang === 'id-id' ||
+        name.includes('indonesia') ||
+        name.includes('gadis') ||
+        name.includes('ardi')
+      );
     });
-    if (anyMs) return anyMs;
+    if (nusantaraVoice) return nusantaraVoice;
 
     return null;
   };
@@ -248,6 +252,15 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
       return;
     }
 
+    const voice = getBestMalayVoice();
+    if (!voice) {
+      // JANGAN sesekali benarkan suara Inggeris membaca teks Bahasa Melayu kerana akan menghasilkan sebutan slang Inggeris
+      console.warn('Tiada profil suara Bahasa Melayu/Nusantara dalam Web Speech pelayar ini.');
+      isPlayingAudioRef.current = false;
+      setCurrentlySpeakingId(null);
+      return;
+    }
+
     try {
       window.speechSynthesis.cancel();
       if (window.speechSynthesis.paused) {
@@ -255,14 +268,10 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
       }
 
       const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.lang = 'ms-MY';
+      utterance.voice = voice;
+      utterance.lang = voice.lang || 'ms-MY';
       utterance.rate = 1.0;
-      utterance.pitch = 1.05;
-
-      const voice = getBestMalayVoice();
-      if (voice) {
-        utterance.voice = voice;
-      }
+      utterance.pitch = 1.0;
 
       utterance.onstart = () => {
         isPlayingAudioRef.current = true;
