@@ -25,7 +25,17 @@ import {
   HelpCircle,
   School
 } from 'lucide-react';
-import { SchoolProfile, CalendarEvent, NewsItem, Staff } from '../../types';
+import {
+  SchoolProfile,
+  CalendarEvent,
+  NewsItem,
+  Staff,
+  AwardItem,
+  PibgCommittee,
+  PibgActivity,
+  CoCurriculumUnit,
+  DownloadDocument
+} from '../../types';
 
 interface Message {
   id: string;
@@ -40,6 +50,11 @@ interface SweetbotWidgetProps {
   events?: CalendarEvent[];
   newsList?: NewsItem[];
   staffList?: Staff[];
+  awards?: AwardItem[];
+  pibgCommittee?: PibgCommittee[];
+  pibgActivities?: PibgActivity[];
+  coCurriculumUnits?: CoCurriculumUnit[];
+  documents?: DownloadDocument[];
   onNavigateSection?: (sectionId: string) => void;
 }
 
@@ -48,6 +63,11 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
   events = [],
   newsList = [],
   staffList = [],
+  awards = [],
+  pibgCommittee = [],
+  pibgActivities = [],
+  coCurriculumUnits = [],
+  documents = [],
   onNavigateSection
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -196,8 +216,74 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
     return text.replace(/\s+/g, ' ').trim();
   };
 
+  // Buka kunci AudioContext/HTML5 Audio pada peranti mudah alih (iOS/Android) bila pengguna menekan butang
+  const unlockAudioContext = () => {
+    try {
+      if (typeof window !== 'undefined') {
+        // Mainkan silent audio seketika untuk unlock autoplay policy pada mobile browser
+        const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
+        silentAudio.volume = 0.01;
+        silentAudio.play().then(() => {
+          silentAudio.pause();
+        }).catch(() => {});
+
+        if ('speechSynthesis' in window && window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+      }
+    } catch (e) {}
+  };
+
+  // Sandaran Web Speech API Asal Peranti jika audio stream disekat atau tiada sambungan
+  const speakWithWebSpeech = (cleanText: string, msgId?: string) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      isPlayingAudioRef.current = false;
+      setCurrentlySpeakingId(null);
+      return;
+    }
+
+    try {
+      window.speechSynthesis.cancel();
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.lang = 'ms-MY';
+      utterance.rate = 1.0;
+      utterance.pitch = 1.05;
+
+      const voice = getBestMalayVoice();
+      if (voice) {
+        utterance.voice = voice;
+      }
+
+      utterance.onstart = () => {
+        isPlayingAudioRef.current = true;
+        if (msgId) setCurrentlySpeakingId(msgId);
+      };
+
+      utterance.onend = () => {
+        isPlayingAudioRef.current = false;
+        setCurrentlySpeakingId(null);
+      };
+
+      utterance.onerror = (err) => {
+        console.warn('Web Speech error:', err);
+        isPlayingAudioRef.current = false;
+        setCurrentlySpeakingId(null);
+      };
+
+      window.speechSynthesis.speak(utterance);
+    } catch (err) {
+      console.warn('Web speech execution failed:', err);
+      isPlayingAudioRef.current = false;
+      setCurrentlySpeakingId(null);
+    }
+  };
+
   // Fungsi memainkan barisan audio Bahasa Melayu secara berturutan
-  const playNextAudioChunk = (msgId?: string) => {
+  const playNextAudioChunk = (msgId?: string, originalFullText?: string) => {
     if (audioQueueRef.current.length === 0) {
       isPlayingAudioRef.current = false;
       setCurrentlySpeakingId(null);
@@ -206,7 +292,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
 
     const nextChunk = audioQueueRef.current.shift();
     if (!nextChunk || !nextChunk.trim()) {
-      playNextAudioChunk(msgId);
+      playNextAudioChunk(msgId, originalFullText);
       return;
     }
 
@@ -216,23 +302,40 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
       activeAudioRef.current = audio;
 
       audio.onended = () => {
-        playNextAudioChunk(msgId);
+        playNextAudioChunk(msgId, originalFullText);
       };
 
       audio.onerror = () => {
-        console.warn('Audio stream error for chunk:', nextChunk);
-        // Teruskan ke chunk seterusnya tanpa menduplikasi panggilan web speech
-        playNextAudioChunk(msgId);
+        console.warn('Audio stream error for chunk, falling back to Web Speech API');
+        // Jika stream audio pelayan gagal, gunakan Web Speech API peranti
+        if (originalFullText) {
+          speakWithWebSpeech(originalFullText, msgId);
+        } else {
+          playNextAudioChunk(msgId, originalFullText);
+        }
       };
 
-      audio.play().catch((playErr) => {
-        console.warn('Audio play failed (maybe autoplay restriction):', playErr);
-        // Jika autoplay disekat pelayar, hentikan barisan dan elakkan percakapan berganda
-        isPlayingAudioRef.current = false;
-        setCurrentlySpeakingId(null);
-      });
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((playErr) => {
+          console.warn('Audio stream play blocked by browser autoplay, activating Web Speech fallback:', playErr);
+          // Sekiranya pelayar peranti menyekat audio tanpa sentuhan langsung, gunakan Web Speech API peranti
+          if (originalFullText) {
+            speakWithWebSpeech(originalFullText, msgId);
+          } else if (nextChunk) {
+            speakWithWebSpeech(nextChunk, msgId);
+          } else {
+            isPlayingAudioRef.current = false;
+            setCurrentlySpeakingId(null);
+          }
+        });
+      }
     } catch (e) {
-      playNextAudioChunk(msgId);
+      if (originalFullText) {
+        speakWithWebSpeech(originalFullText, msgId);
+      } else {
+        playNextAudioChunk(msgId, originalFullText);
+      }
     }
   };
 
@@ -240,6 +343,9 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
   const speakText = (text: string, msgId?: string) => {
     if (!speechEnabled) return;
     
+    // Buka kunci audio untuk mobile
+    unlockAudioContext();
+
     // Hentikan sebarang pertuturan semasa serta-merta
     stopSpeaking();
 
@@ -277,7 +383,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
     isPlayingAudioRef.current = true;
     if (msgId) setCurrentlySpeakingId(msgId);
 
-    playNextAudioChunk(msgId);
+    playNextAudioChunk(msgId, cleanText);
   };
 
   const stopSpeaking = () => {
@@ -344,6 +450,9 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
     const textToSend = (customText || inputText).trim();
     if (!textToSend || isTyping) return;
 
+    // Buka kunci audio pelayar segera semasa pengguna menekan butang/enter
+    unlockAudioContext();
+
     const userMessage: Message = {
       id: 'user-' + Date.now(),
       sender: 'user',
@@ -356,15 +465,57 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
     setIsTyping(true);
 
     try {
-      // Sediakan konteks sekolah
+      // Sediakan konteks sekolah lengkap, dinamik & terkini dari portal
+      const gbFromStaff = staffList.find(
+        (s) =>
+          s.position.toLowerCase().includes('guru besar') ||
+          s.position.toLowerCase().includes('pengetua') ||
+          s.category === 'pentadbir' && s.position.toLowerCase().includes('besar')
+      );
+      const gbName = profile?.principalName || gbFromStaff?.name || 'Puan Norhafiza Binti Dolah';
+      const gbTitle = profile?.principalTitle || gbFromStaff?.position || 'Guru Besar (DG48)';
+
+      const pentadbirList = staffList
+        .filter((s) => s.category === 'pentadbir')
+        .map((s) => `${s.position}: ${s.name} (${s.grade || ''})`);
+
+      const teachersList = staffList
+        .filter((s) => s.category === 'guru')
+        .map((s) => `${s.name} (${s.position}, Gred ${s.grade || '-'})`);
+
+      const akpList = staffList
+        .filter((s) => s.category === 'akp')
+        .map((s) => `${s.name} (${s.position}, Gred ${s.grade || '-'})`);
+
       const schoolContext = {
         name: profile?.name || 'Sekolah Kebangsaan Merbau Pulas',
         code: profile?.code || 'KBA5012',
         motto: profile?.motto || 'Berilmu, Beramal, Berbakti',
-        principalName: profile?.principalName,
-        totalEvents: events.length,
-        totalNews: newsList.length,
-        totalStaff: staffList.length
+        vision: profile?.vision || 'Pendidikan Berkualiti Insan Terdidik Negara Sejahtera',
+        mission: profile?.mission || 'Melestarikan Sistem Pendidikan Yang Berkualiti Untuk Membangunkan Potensi Individu Bagi Memenuhi Aspirasi Negara',
+        principalName: gbName,
+        principalTitle: gbTitle,
+        principalSpeech: profile?.principalSpeech || '',
+        address: `${profile?.address || 'Jalan Baling, Kampong Merbau Pulas'}, ${profile?.postcode || '09300'} ${profile?.city || 'Kuala Ketil'}, ${profile?.state || 'Kedah'}`,
+        phone: profile?.phone || '04-403 1200',
+        fax: profile?.fax || '04-403 1201',
+        email: profile?.email || 'KBA5012@moe.edu.my',
+        administrators: pentadbirList.length > 0 ? pentadbirList : [
+          `Guru Besar: ${gbName} (${gbTitle})`,
+          'Penolong Kanan Pentadbiran: Puan Noraini binti Yusof (DG44)',
+          'Penolong Kanan Hal Ehwal Murid: Encik Mohd Ridzuan bin Osman (DG44)',
+          'Penolong Kanan Kokurikulum: Puan Siti Hajar binti Abdul Rahman (DG44)'
+        ],
+        teachers: teachersList,
+        akp: akpList,
+        totalStaff: staffList.length,
+        upcomingEvents: events.map((e) => `${e.date} (${e.time || 'Sepanjang Hari'}): ${e.title} - ${e.location || 'SKMP'} [${e.category}]`),
+        latestNews: newsList.slice(0, 8).map((n) => `${n.date}: ${n.title} - ${n.summary || ''}`),
+        recentAwards: awards.slice(0, 8).map((a) => `${a.year} - ${a.rank} (${a.competition}) oleh ${a.recipient}`),
+        pibgCommittee: pibgCommittee.map((p) => `${p.role}: ${p.name}`),
+        pibgActivities: pibgActivities.slice(0, 5).map((act) => `${act.date}: ${act.title}`),
+        coCurriculumUnits: coCurriculumUnits.map((c) => `${c.name} (${c.type}) - Penasihat: ${c.teacherInCharge || '-'}`),
+        downloadDocuments: documents.slice(0, 8).map((d) => `${d.title} (${d.category})`)
       };
 
       // Bina riwayat mesej untuk API
@@ -402,12 +553,56 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
       setMessages((prev) => [...prev, botMessage]);
       speakText(botReply, botMessage.id);
     } catch (err) {
-      console.warn('Chat API error, fallback response:', err);
-      // Fallback mesra
+      console.warn('Chat API error, using dynamic live fallback response:', err);
+      const lower = textToSend.toLowerCase();
+
+      // Dapatkan data dinamik terkini untuk fallback tempatan
+      const currentGb = profile?.principalName || staffList.find((s) => s.category === 'pentadbir' && (s.position.toLowerCase().includes('besar') || s.position.toLowerCase().includes('pengetua')))?.name || 'Puan Norhafiza Binti Dolah';
+      const currentGbTitle = profile?.principalTitle || 'Guru Besar (DG48)';
+      const pentadbir = staffList.filter((s) => s.category === 'pentadbir');
+
+      let fallbackText = `Hai! Saya **Sweetbot** 🤖✨, Pembantu Maya Rasmi SK Merbau Pulas.\n\nSekolah sentiasa mengutamakan kecemerlangan modal insan berteraskan motto *"Berilmu, Beramal, Berbakti"*. Sila layari menu utama portal untuk maklumat lanjut! 🌟🎒`;
+
+      if (
+        lower.includes('guru besar') ||
+        lower.includes('nama guru besar') ||
+        lower.includes('siapa guru besar') ||
+        lower.includes('siapakah guru besar') ||
+        lower.includes('pengetua') ||
+        lower.includes('pentadbir') ||
+        lower.includes('penolong kanan')
+      ) {
+        let pListStr = '';
+        if (pentadbir.length > 0) {
+          pListStr = pentadbir.map((p, i) => `${i + 1}. **${p.name}** - ${p.position} (${p.grade || 'DG44'})`).join('\n');
+        } else {
+          pListStr = `1. **${currentGb}** - ${currentGbTitle}\n2. **Puan Noraini binti Yusof** - Penolong Kanan Pentadbiran\n3. **Encik Mohd Ridzuan bin Osman** - Penolong Kanan HEM\n4. **Puan Siti Hajar binti Abdul Rahman** - Penolong Kanan Kokurikulum`;
+        }
+        fallbackText = `Guru Besar Sekolah Kebangsaan Merbau Pulas (SKMP) terkini ialah **${currentGb}** (${currentGbTitle}) 👩‍🏫✨.\n\nBarisan Pentadbir Rasmi SKMP:\n${pListStr}\n\nSila layari tab **Warga Sekolah** untuk melihat senarai penuh pentadbir, guru akademik dan staf sokongan!`;
+      } else if (lower.includes('takwim') || lower.includes('acara') || lower.includes('program') || lower.includes('tarikh') || lower.includes('aktiviti')) {
+        if (events.length > 0) {
+          const evStr = events.slice(0, 5).map((e) => `• **${e.date}**: ${e.title} (${e.location || 'SKMP'})`).join('\n');
+          fallbackText = `📅 **Takwim & Acara Terkini SKMP:**\n\n${evStr}\n\nAnda boleh melihat senarai penuh dan menapis mengikut kategori di bahagian **Takwim & Acara**!`;
+        }
+      } else if (lower.includes('berita') || lower.includes('pengumuman') || lower.includes('hebahan')) {
+        if (newsList.length > 0) {
+          const newsStr = newsList.slice(0, 3).map((n) => `• **${n.title}** (${n.date})\n  ${n.summary}`).join('\n\n');
+          fallbackText = `📰 **Berita & Pengumuman Terkini SKMP:**\n\n${newsStr}`;
+        }
+      } else if (lower.includes('pibg') || lower.includes('ydp') || lower.includes('persatuan ibu bapa')) {
+        const ydp = pibgCommittee.find((p) => p.role.toLowerCase().includes('ydp') || p.role.toLowerCase().includes('yang dipertua'));
+        fallbackText = `🤝 **Persatuan Ibu Bapa & Guru (PIBG) SKMP:**\n\n• **Penasihat:** ${currentGb} (Guru Besar)\n• **Yang Dipertua (YDP) PIBG:** ${ydp ? ydp.name : 'Tuan Haji Azmi bin Ahmad'}\n\nUntuk senarai penuh AJK dan aktiviti PIBG, sila layari tab **Warga Sekolah** bahagian PIBG!`;
+      } else if (lower.includes('anugerah') || lower.includes('pencapaian') || lower.includes('kejayaan') || lower.includes('johan')) {
+        if (awards.length > 0) {
+          const awStr = awards.slice(0, 4).map((a) => `🏆 **${a.rank}** - ${a.competition} (${a.recipient})`).join('\n');
+          fallbackText = `🎉 **Pencapaian & Anugerah Terkini SKMP:**\n\n${awStr}`;
+        }
+      }
+
       const fallbackMsg: Message = {
         id: 'bot-' + Date.now(),
         sender: 'bot',
-        text: `Terima kasih atas soalan anda! SK Merbau Pulas sentiasa komited memberikan pendidikan berkualiti berteraskan motto *"Berilmu, Beramal, Berbakti"*. Anda juga boleh merujuk menu utama portal untuk maklumat lanjut! 🌟🎒`,
+        text: fallbackText,
         timestamp: new Date().toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })
       };
       setMessages((prev) => [...prev, fallbackMsg]);

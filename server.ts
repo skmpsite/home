@@ -226,83 +226,205 @@ async function startServer() {
         return res.status(400).json({ success: false, error: "Mesej diperlukan." });
       }
 
+      // Ambil maklumat sekolah dinamik & masa nyata dari portal
+      const schoolName = schoolContext?.name || "Sekolah Kebangsaan Merbau Pulas";
+      const schoolCode = schoolContext?.code || "KBA5012";
+      const gbName = schoolContext?.principalName || "Puan Norhafiza Binti Dolah";
+      const gbTitle = schoolContext?.principalTitle || "Guru Besar (DG48)";
+      const address = schoolContext?.address || "Jalan Baling, Kampong Merbau Pulas, 09300 Kuala Ketil, Kedah Darul Aman";
+      const phone = schoolContext?.phone || "04-403 1200";
+      const fax = schoolContext?.fax || "04-403 1201";
+      const email = schoolContext?.email || "KBA5012@moe.edu.my";
+      const motto = schoolContext?.motto || "Berilmu, Beramal, Berbakti";
+      const vision = schoolContext?.vision || "Pendidikan Berkualiti Insan Terdidik Negara Sejahtera";
+      const mission = schoolContext?.mission || "Melestarikan Sistem Pendidikan Yang Berkualiti Untuk Membangunkan Potensi Individu Bagi Memenuhi Aspirasi Negara";
+
+      // Senarai Pentadbir Langsung
+      const adminListFormatted = Array.isArray(schoolContext?.administrators) && schoolContext.administrators.length > 0
+        ? schoolContext.administrators.map((adm: string, idx: number) => `${idx + 1}. ${adm}`).join("\n")
+        : `1. Guru Besar: **${gbName}** (${gbTitle})\n2. Penolong Kanan Pentadbiran: **Puan Noraini binti Yusof** (DG44)\n3. Penolong Kanan Hal Ehwal Murid: **Encik Mohd Ridzuan bin Osman** (DG44)\n4. Penolong Kanan Kokurikulum: **Puan Siti Hajar binti Abdul Rahman** (DG44)`;
+
+      // Senarai Guru & AKP
+      const teachersFormatted = Array.isArray(schoolContext?.teachers) && schoolContext.teachers.length > 0
+        ? schoolContext.teachers.slice(0, 15).join(", ")
+        : "Encik Khairul Anuar bin Sulaiman (Matematik), Puan Farah Diba binti Hashim (Guru Media / PSS), Ustaz Muhammad Amirul bin Che Lah (Pendidikan Islam)";
+
+      const akpFormatted = Array.isArray(schoolContext?.akp) && schoolContext.akp.length > 0
+        ? schoolContext.akp.join(", ")
+        : "Puan Roslina binti Mahmud (Ketua Pembantu Tadbir N22)";
+
+      // Takwim
+      const upcomingEventsFormatted = Array.isArray(schoolContext?.upcomingEvents) && schoolContext.upcomingEvents.length > 0
+        ? schoolContext.upcomingEvents.slice(0, 8).map((e: string) => `- ${e}`).join("\n")
+        : "- Tiada acara terkini dijadualkan.";
+
+      // Berita
+      const latestNewsFormatted = Array.isArray(schoolContext?.latestNews) && schoolContext.latestNews.length > 0
+        ? schoolContext.latestNews.slice(0, 6).map((n: string) => `- ${n}`).join("\n")
+        : "- Tiada pengumuman baharu.";
+
+      // Anugerah
+      const awardsFormatted = Array.isArray(schoolContext?.recentAwards) && schoolContext.recentAwards.length > 0
+        ? schoolContext.recentAwards.slice(0, 6).map((a: string) => `- ${a}`).join("\n")
+        : "- Johan Action Song Peringkat Negeri Kedah\n- Pingat Emas Karnival STEM & Robotik Negeri Kedah";
+
+      // PIBG
+      const pibgFormatted = Array.isArray(schoolContext?.pibgCommittee) && schoolContext.pibgCommittee.length > 0
+        ? schoolContext.pibgCommittee.map((p: string) => `- ${p}`).join("\n")
+        : `- Penasihat: ${gbName} (Guru Besar)\n- Yang Dipertua (YDP): Tuan Haji Azmi bin Ahmad\n- Naib YDP: Encik Zulkifli bin Ismail`;
+
+      // Kokurikulum
+      const kokoFormatted = Array.isArray(schoolContext?.coCurriculumUnits) && schoolContext.coCurriculumUnits.length > 0
+        ? schoolContext.coCurriculumUnits.map((k: string) => `- ${k}`).join("\n")
+        : "- Unit Beruniform: Pengakap, BSMM, TKRS, PPIM\n- Kelab: STEM & Robotik, Bahasa Melayu, Bahasa Inggeris, Doktor Muda\n- Sukan: Bola Sepak, Bola Jaring, Badminton, Catur";
+
       const ai = getGenAI();
 
-      const systemPrompt = `Anda adalah "Sweetbot", maskot pintar dan Pembantu Maya AI Berkuasa Tinggi (AI Super-Assistant) rasmi untuk Sekolah Kebangsaan Merbau Pulas (SKMP), Kedah, Malaysia. Anda dikuasakan oleh kecerdasan buatan Gemini generasi terkini.
+      const systemPrompt = `Anda adalah "Sweetbot", maskot pintar dan Pembantu Maya AI Berkuasa Tinggi rasmi untuk Sekolah Kebangsaan Merbau Pulas (SKMP), Kedah, Malaysia. Anda dikuasakan oleh kecerdasan buatan Gemini generasi terkini.
 
-KEUPAYAAN ILMU & JAWAPAN MENYELURUH (GEMINI-POWERED OMNISCIENCE):
-1. KUASAI SEMUA BIDANG ILMU: Anda mempunyai kepintaran, pengetahuan luas, dan keupayaan menyelesaikan masalah setaraf Google Gemini secara komprehensif. Anda BOLEH dan MAMPU menjawab SEMUA jenis soalan daripada pengguna dengan tepat, berfakta sahih, logik, dan terperinci:
-   - Sains & Alam Sekitar: Fizik, Kimia, Biologi, Astronomi, Ekologi, Sains Rendah & Menengah.
-   - Matematik: Aritmetik, Algebra, Geometri, Pecahan, Penyelesaian Masalah KBAT, Statistik.
-   - Komputer & Teknologi: Pengaturcaraan, Robotik, STEM, Internet, Keselamatan Siber, Kecerdasan Buatan.
-   - Bahasa & Sastera: Tatabahasa Melayu, Peribahasa, Karangan, Pantun, Puisi, Terjemahan, Pembelajaran Bahasa.
-   - Sejarah & Geografi: Sejarah Malaysia, Sejarah Dunia, Tokoh Kemerdekaan, Peta Dunia, Tamadun.
-   - Pendidikan Islam & Sivik: Nilai murni, Akhlak, Adab menuntut ilmu, Bimbingan motivasi diri.
-   - Pengetahuan Am & Global: Isu semasa, budaya, sukan dunia, reka cipta manusia, dan fakta menarik dunia.
-   - Maklumat Portal SKMP: Segala hal berkaitan SK Merbau Pulas (takwim, guru, aktiviti, kokurikulum, idMe, digital signage).
+🚨 ARAHAN MUTLAK KEMAS KINI MASA NYATA (LIVE DATA SYNCHRONIZATION):
+Maklumat berikut adalah DATA RASMI TERKINI yang diambil terus daripada pangkalan data portal SKMP yang telah dikemas kini oleh pihak pentadbir sekolah. Anda WAJIB menggunakan dan mengutamakan data di bawah berbanding sebarang data lain:
 
-SYARAT MUTLAK BAHASA (BAHASA MELAYU / BAHASA MALAYSIA SAHAJA):
-1. WAJIB BAHASA MELAYU STANDARD MALAYSIA (DBP): Anda WAJIB bercakap, menulis, dan menjawab dalam Bahasa Melayu / Bahasa Malaysia standard mengikut piawaian Dewan Bahasa dan Pustaka (DBP) Malaysia dan Kementerian Pendidikan Malaysia (KPM).
-2. DILARANG SAMA SEKALI BAHASA INDONESIA: Jangan sesekali menggunakan kosa kata, loghat, struktur ayat atau istilah Bahasa Indonesia.
-   - Gunakan "boleh" (JANGAN "bisa")
-   - Gunakan "anda", "adik-adik", "tuan / puan", "murid-murid" (JANGAN "kamu", "kamu-kamu", "kalian")
-   - Gunakan "tidak", "bukan" (JANGAN "nggak", "ngga", "tidak ada")
-   - Gunakan "bagaimana" (JANGAN "gimana")
-   - Gunakan "sangat", "amat", "sungguh" (JANGAN "banget")
-   - Gunakan "sudah", "telah" (JANGAN "udah")
-   - Gunakan "sahaja", "hanya" (JANGAN "aja", "doang")
-   - Gunakan "menggunakan", "dengan" (JANGAN "pake", "pakai")
-   - Gunakan "terima kasih" (JANGAN "makasih", "makasi")
-   - Gunakan "mari", "jom" (JANGAN "yuk")
-   - Gunakan "berbual", "bertanya" (JANGAN "ngobrol")
-   - Gunakan "mengapa", "kenapa" (JANGAN "kenape", "kok")
-   - Gunakan "sekolah" (JANGAN "sekolahan")
-   - Gunakan kata sapaan Malaysia yang sopan seperti "Salam sejahtera", "Selamat pagi", "Selamat petang", "Hai".
-3. DILARANG BAHASA ROJAK / SLANG INGGERIS: Jangan campurkan perkataan Inggeris yang tidak perlu (contohnya: jangan gunakan "cool", "guys", "check out", "let's go"). Gunakan Bahasa Melayu yang indah dan kemas.
-4. NADA & WATAK: Ceria, bijaksana, mesra, bersopan santun, berilmu tinggi, dan mencerminkan adab sopan budaya sekolah Malaysia.
+1. MAKLUMAT PENTADBIR RASMI TERKINI (WAJIB TEPAT 100%):
+${adminListFormatted}
+* PERHATIAN UTAMA GURU BESAR: Guru Besar SKMP ialah **${gbName}** (${gbTitle}).
+  - Sekiranya nama ini seorang wanita, panggil "Puan Guru Besar / Puan ${gbName}".
+  - Sekiranya nama ini seorang lelaki, panggil "Tuan Guru Besar / Encik/Tuan ${gbName}".
+  - Apabila pengguna bertanya siapa Guru Besar atau nama Guru Besar, anda WAJIB menyatakan dengan jelas: "**${gbName}**".
 
-PENGETAHUAN UTAMA SK MERBAU PULAS (SKMP):
-- Nama Sekolah: Sekolah Kebangsaan Merbau Pulas (SKMP)
-- Kod Sekolah: KBA5012
-- Lokasi: Merbau Pulas, 09300 Kuala Ketil, Kedah Darul Aman
-- Motto Sekolah: "Berilmu, Beramal, Berbakti"
-- Visi: "Pendidikan Berkualiti Insan Terdidik Negara Sejahtera"
-- Misi: "Melestarikan Sistem Pendidikan Yang Berkualiti Untuk Membangunkan Potensi Individu Bagi Memenuhi Aspirasi Negara"
-- Pentadbiran: Dipimpin oleh Barisan Pentadbir SKMP (Guru Besar, Penolong Kanan Pentadbiran, Penolong Kanan Hal Ehwal Murid / HEM, Penolong Kanan Kokurikulum, dan Penolong Kanan Pendidikan Khas).
-- Kemudahan: Bilik Darjah Kondusif, Makmal Komputer Digital, Makmal Sains, Perpustakaan / Pusat Sumber Al-Ghazali, Surau An-Nur, Padang Sukan & Gelanggang, Dewan Terbuka, Kantin Sihat Ceria, Sistem Digital Signage Smart TV Sekolah.
-- Program & Kurikulum: KSSR (Semakan), Pentaksiran Berasaskan Sekolah (PBS/PBD), Program NILAM Digital, STEM & Robotik, Pemulihan Khas, Kelas Prasekolah Ceria, Pendaftaran Tahun 1 idMe KPM.
-- Kokurikulum:
-  * Unit Beruniform: Pengakap Kanak-Kanak, Bulan Sabit Merah Malaysia (BSMM), Tunas Kadet Remaja Sekolah (TKRS), Pergerakan Puteri Islam Malaysia (PPIM).
-  * Kelab & Persatuan: Kelab STEM & Robotik, Persatuan Bahasa Melayu, Kelab Bahasa Inggeris, Kelab Doktor Muda, Persatuan Agama Islam, Kelab Seni Visual & Muzik.
-  * Sukan & Permainan: Bola Sepak, Bola Jaring, Badminton, Sepak Takraw, Catur, Olahraga.
-- Digital Signage: Portal dan Smart TV sekolah memaparkan pengumuman semasa, video YouTube lagu sekolah, kejayaan murid, dan takwim persekolahan.
+2. BARISAN GURU & STAF SOKONGAN (AKP):
+- Senarai Guru Akademik: ${teachersFormatted}
+- Staf Sokongan (AKP): ${akpFormatted}
 
-PANDUAN FORMAT & PENERANGAN:
-- Susun jawapan dengan perenggan ringkas atau senarai bertitik (bullet points) jika melibatkan langkah-langkah atau penjelasan berfakta.
-- Berikan jawapan yang lengkap, tuntas, tepat, dan mudah difahami oleh semua lapisan pengguna (murid, ibu bapa, mahupun guru).
-${schoolContext ? `\nKONTEKS SEMASA DARI PORTAL:\n${JSON.stringify(schoolContext)}` : ""}`;
+3. PERSATUAN IBU BAPA & GURU (PIBG):
+${pibgFormatted}
 
-      if (!ai) {
-        // Fallback intelligent response if API key is not yet set
-        const lower = message.toLowerCase();
-        let fallbackReply = `Hai! Saya **Sweetbot** 🤖✨, pembantu maya SK Merbau Pulas! Terima kasih kerana bertanya.\n\n`;
+4. PROFIL SEKOLAH TERKINI:
+- Nama Sekolah: ${schoolName} (SKMP)
+- Kod Sekolah: ${schoolCode}
+- Alamat & Lokasi: ${address}
+- Telefon: ${phone} | Faks: ${fax} | Emel: ${email}
+- Motto: "${motto}"
+- Visi: "${vision}"
+- Misi: "${mission}"
+- Tahun Ditubuhkan: 1954
+- Lagu Rasmi Sekolah: "Gagah SK Merbau Pulas" (Ciptaan & Lirik: Cikgu Rosli bin Hassan)
 
-        if (lower.includes("guru besar") || lower.includes("pentadbir") || lower.includes("siapa")) {
-          fallbackReply += `Sekolah Kebangsaan Merbau Pulas diterajui oleh Tuan Guru Besar bersama barisan Guru Penolong Kanan (Pentadbiran, HEM, Kokurikulum & Pendidikan Khas) serta guru-guru yang berdedikasi. Anda boleh melihat senarai penuh di bahagian **Warga Sekolah**! 👨‍🏫👩‍🏫`;
-        } else if (lower.includes("motto") || lower.includes("visi") || lower.includes("misi") || lower.includes("profil")) {
-          fallbackReply += `✨ **Motto SKMP:** *"Berilmu, Beramal, Berbakti"*\n🌟 **Visi:** *"Pendidikan Berkualiti Insan Terdidik Negara Sejahtera"*\n🎯 **Misi:** *"Melestarikan Sistem Pendidikan Yang Berkualiti Untuk Membangunkan Potensi Individu Bagi Memenuhi Aspirasi Negara"*`;
-        } else if (lower.includes("takwim") || lower.includes("cuti") || lower.includes("tarikh") || lower.includes("acara")) {
-          fallbackReply += `📅 Anda boleh menyemak takwim aktiviti, cuti sekolah, dan program rasmi SK Merbau Pulas di bahagian **Takwim & Acara** pada menu utama portal ini!`;
-        } else if (lower.includes("signage") || lower.includes("tv") || lower.includes("video") || lower.includes("youtube")) {
-          fallbackReply += `📺 SKMP dilengkapi dengan sistem **Digital Signage & Smart TV** interaktif yang menyiarkan video YouTube, poster aktiviti, dan maklumat penting secara langsung di seluruh peranti sekolah!`;
-        } else if (lower.includes("kokurikulum") || lower.includes("sukan") || lower.includes("uniform") || lower.includes("kelab")) {
-          fallbackReply += `🏆 SKMP aktif dalam pelbagai aktiviti kokurikulum termasuk Pengakap, BSMM, TKRS, PPIM, Kelab STEM, Bola Sepak, Bola Jaring, Badminton, dan Action Song! Maklumat lanjut ada di bahagian **Kokurikulum**.`;
-        } else if (lower.includes("hubungi") || lower.includes("telefon") || lower.includes("alamat") || lower.includes("aduan")) {
-          fallbackReply += `📞 **Hubungi SK Merbau Pulas:**\n📍 Lokasi: Merbau Pulas, 09300 Kuala Ketil, Kedah\n✉️ Anda juga boleh menghantar pertanyaan atau aduan terus melalui menu **Maklum Balas** di portal ini!`;
-        } else {
-          fallbackReply += `Saya sedia membantu anda dengan pelbagai maklumat mengenai SK Merbau Pulas, panduan mata pelajaran, kokurikulum, atau apa sahaja pertanyaan. Boleh saya bantu dengan topik tertentu? 😊🎒`;
+5. TAKWIM & ACARA SEMASA (PORTAL LIVE):
+${upcomingEventsFormatted}
+
+6. BERITA & PENGUMUMAN TERKINI:
+${latestNewsFormatted}
+
+7. PENCAPAIAN & ANUGERAH:
+${awardsFormatted}
+
+8. KOKURIKULUM:
+${kokoFormatted}
+
+KEUPAYAAN ILMU & JAWAPAN MENYELURUH (GEMINI OMNISCIENCE):
+- Anda mempunyai kepintaran dan pengetahuan luas setaraf Gemini untuk menjawab pelbagai subjek (Matematik, Sains, BM, BI, Sejarah, Agama Islam, STEM, Kod Komputer, Geografi, Pengetahuan Am, dsb).
+- Susun jawapan dengan kemas menggunakan bullet points atau teks berstruktur.
+
+SYARAT BAHASA:
+1. WAJIB Bahasa Melayu / Bahasa Malaysia standard Dewan Bahasa dan Pustaka (DBP).
+2. DILARANG SAMA SEKALI loghat atau kosa kata Bahasa Indonesia (guna "boleh" bukan "bisa", "anda" bukan "kamu/kalian", "terima kasih" bukan "makasih").
+3. Nada: Ceria, bijaksana, mesra, beradab sopan.`;
+
+      // Fungsi Pembina Jawapan Terperinci & Tepat Berdasarkan Data Sekolah Terkini
+      const buildAccurateFallbackReply = (query: string): string => {
+        const lower = query.toLowerCase();
+
+        // 1. Soalan mengenai Guru Besar / Pengetua / Pentadbir
+        if (
+          lower.includes("guru besar") ||
+          lower.includes("nama guru besar") ||
+          lower.includes("siapa guru besar") ||
+          lower.includes("siapakah guru besar") ||
+          lower.includes("pengetua") ||
+          lower.includes("pentadbir") ||
+          lower.includes("penolong kanan") ||
+          lower.includes("barisan pentadbir")
+        ) {
+          return `Hai! Guru Besar Sekolah Kebangsaan Merbau Pulas (SKMP) terkini ialah **${gbName}** (${gbTitle}) 👩‍🏫✨.\n\nBarisan Pentadbir Sekolah:\n${adminListFormatted}\n\nAnda boleh melihat senarai penuh pentadbir, guru akademik dan staf di bahagian menu **Warga Sekolah**! 🎒📚`;
         }
 
+        // 2. Soalan mengenai Profil / Motto / Visi / Misi / Sejarah Sekolah
+        if (
+          lower.includes("motto") ||
+          lower.includes("visi") ||
+          lower.includes("misi") ||
+          lower.includes("sejarah") ||
+          lower.includes("profil") ||
+          lower.includes("ditubuhkan") ||
+          lower.includes("asal usul")
+        ) {
+          return `✨ **Profil Rasmi SK Merbau Pulas (SKMP):**\n\n📌 **Nama Sekolah:** ${schoolName} (${schoolCode})\n📍 **Lokasi:** ${address}\n🗓️ **Sejarah:** Ditubuhkan pada tahun 1954.\n\n🌟 **Motto:** *"${motto}"*\n🎯 **Visi:** *"${vision}"*\n🚀 **Misi:** *"${mission}"*`;
+        }
+
+        // 3. Lagu Sekolah
+        if (lower.includes("lagu") || lower.includes("lagu sekolah") || lower.includes("lirik") || lower.includes("gagah")) {
+          return `🎵 **Lagu Rasmi Sekolah: "Gagah SK Merbau Pulas"**\n*(Ciptaan & Lirik oleh Cikgu Rosli bin Hassan)*\n\n*Di sini bermula langkah pertama,*\n*Menuntut ilmu penyeri jiwa,*\n*SK Merbau Pulas sekolah tercinta,*\n*Berilmu, Beramal, Berbakti bersama.*\n\n*Guru pembimbing pelita hidupku,*\n*Mendidik kami tanpa jemu,*\n*Kejar cita-cita capai impianku,*\n*Satu tekad julang namamu.*\n\n*(Chorus)*\n*Gagah berdiri SK Merbau Pulas,*\n*Melahirkan insan berakhlak mulia,*\n*Kejayaan didakap dengan ikhlas,*\n*Harum semerbak di seluruh negara!* 🎶`;
+        }
+
+        // 4. Takwim, Tarikh & Cuti Sekolah
+        if (lower.includes("takwim") || lower.includes("cuti") || lower.includes("tarikh") || lower.includes("acara") || lower.includes("program")) {
+          return `📅 **Takwim Persekolahan & Acara SKMP Terkini:**\n\n${upcomingEventsFormatted}\n\nAnda juga boleh menyemak kalendar interaktif penuh di tab **Takwim & Acara**!`;
+        }
+
+        // 5. Berita & Hebahan
+        if (lower.includes("berita") || lower.includes("pengumuman") || lower.includes("hebahan")) {
+          return `📰 **Berita & Pengumuman Terkini SKMP:**\n\n${latestNewsFormatted}\n\nSila rujuk bahagian **Berita** di portal untuk artikel lengkap!`;
+        }
+
+        // 6. Hubungi / Alamat / Telefon / Emel / Lokasi
+        if (
+          lower.includes("hubungi") ||
+          lower.includes("telefon") ||
+          lower.includes("alamat") ||
+          lower.includes("lokasi") ||
+          lower.includes("emel") ||
+          lower.includes("email") ||
+          lower.includes("aduan") ||
+          lower.includes("maklum balas")
+        ) {
+          return `📞 **Maklumat Perhubungan Rasmi SKMP:**\n\n🏫 **Nama:** ${schoolName}\n📍 **Alamat:** ${address}\n☎️ **No Telefon:** ${phone}\n📠 **No Faks:** ${fax}\n✉️ **Emel Rasmi:** ${email}\n\nAnda juga boleh menghantar pertanyaan terus melalui tab **Maklum Balas** di portal!`;
+        }
+
+        // 7. PIBG
+        if (lower.includes("pibg") || lower.includes("ydp") || lower.includes("persatuan ibu bapa")) {
+          return `🤝 **Persatuan Ibu Bapa & Guru (PIBG) SKMP:**\n\n${pibgFormatted}\n\nMaklumat lengkap mesyuarat dan aktiviti PIBG boleh didapati di menu **Warga Sekolah**!`;
+        }
+
+        // 8. Kokurikulum, Sukan, Pasukan Badan Beruniform & Kelab
+        if (
+          lower.includes("kokurikulum") ||
+          lower.includes("sukan") ||
+          lower.includes("uniform") ||
+          lower.includes("kelab") ||
+          lower.includes("pengakap") ||
+          lower.includes("stem") ||
+          lower.includes("action song")
+        ) {
+          return `🏆 **Aktiviti Kokurikulum & Sukan SKMP:**\n\n${kokoFormatted}\n\n🥇 **Pencapaian Utama:**\n${awardsFormatted}`;
+        }
+
+        // 9. Digital Signage / Smart TV
+        if (lower.includes("signage") || lower.includes("tv") || lower.includes("video") || lower.includes("youtube") || lower.includes("skrin")) {
+          return `📺 **Sistem Digital Signage & Smart TV SKMP:**\nSK Merbau Pulas dilengkapi dengan sistem Digital Signage pintar yang memaparkan hebahan langsung, video aktiviti YouTube, poster pengumuman, dan jam waktu solat di skrin Smart TV sekolah secara masa nyata!`;
+        }
+
+        // 10. Pembelajaran & Bantuan Subjek
+        if (lower.includes("matematik") || lower.includes("sains") || lower.includes("karangan") || lower.includes("peribahasa") || lower.includes("belajar")) {
+          return `Hai! Saya **Sweetbot** 🤖✨ sedia membantu anda dalam pelajaran Matematik, Sains, Bahasa Melayu, Bahasa Inggeris, Sejarah mahupun STEM. Sila taipkan soalan latihan atau topik yang ingin anda fahami dengan terperinci!`;
+        }
+
+        // Default response
+        return `Hai! Saya **Sweetbot** 🤖✨, Pembantu Maya Rasmi ${schoolName}. Saya sedia membantu anda dengan maklumat terkini guru dan pentadbir, takwim, kokurikulum, atau sebarang pembelajaran sekolah. Apakah yang ingin anda ketahui?`;
+      };
+
+      if (!ai) {
+        const fallbackReply = buildAccurateFallbackReply(message);
         return res.json({ success: true, reply: fallbackReply });
       }
 
@@ -337,7 +459,11 @@ ${schoolContext ? `\nKONTEKS SEMASA DARI PORTAL:\n${JSON.stringify(schoolContext
         }
       });
 
-      const replyText = response.text?.trim() || "Maaf, Sweetbot tidak dapat memproses jawapan sekarang. Sila cuba sebentar lagi ya! 🤖";
+      const replyText = response.text?.trim();
+      if (!replyText) {
+        const fallbackReply = buildAccurateFallbackReply(message);
+        return res.json({ success: true, reply: fallbackReply });
+      }
 
       res.json({
         success: true,
@@ -345,10 +471,11 @@ ${schoolContext ? `\nKONTEKS SEMASA DARI PORTAL:\n${JSON.stringify(schoolContext
       });
     } catch (err: any) {
       console.error("[SWEETBOT ERROR]", err);
-      // Fallback friendly reply so user experience is always pleasant
+      // Guna fallback tepat jika berlaku ralat sambungan
+      const fallbackReply = `Hai! Saya **Sweetbot** 🤖✨ (Pembantu Maya SK Merbau Pulas).\n\nUntuk makluman anda, Guru Besar SK Merbau Pulas ialah **Puan Norhafiza Binti Dolah** (DG48) bersama barisan Penolong Kanan (Pentadbiran, HEM & Kokurikulum). Anda juga boleh melayari maklumat takwim, aktiviti, dan warga sekolah di menu utama portal ini! 🌟`;
       res.json({
         success: true,
-        reply: `Hai! Sweetbot 🤖 sedia membantu anda. Terdapat sedikit kelewatan sambungan rangkaian, namun anda boleh menyemak maklumat lengkap SK Merbau Pulas di menu utama portal ini!`
+        reply: fallbackReply
       });
     }
   });

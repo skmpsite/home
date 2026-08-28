@@ -623,6 +623,11 @@ export default function App() {
         events={events}
         newsList={newsList}
         staffList={staffList}
+        awards={awards}
+        pibgCommittee={pibgCommittee}
+        pibgActivities={pibgActivities}
+        coCurriculumUnits={coCurriculumUnits}
+        documents={documents}
         onNavigateSection={(sectionId) => {
           setActiveTab(sectionId as any);
           window.scrollTo({ top: 0, behavior: 'smooth' });
