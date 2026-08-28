@@ -604,6 +604,9 @@ KEUPAYAAN ILMU & JAWAPAN MENYELURUH (GEMINI OMNISCIENCE):
         return res.json({ success: true, reply: fallbackReply });
       }
 
+      // Pastikan arahan bahasa Melayu Malaysia sentiasa diterapkan secara ketat pada mesej pengguna
+      const userMessageWithEnforcement = `[PERATURAN: Jawab secara langsung, tepat, dan 100% dalam BAHASA MELAYU MALAYSIA (Dewan Bahasa dan Pustaka), tiada Bahasa Inggeris atau Bahasa Indonesia]:\n${message}`;
+
       // Format conversation history for Gemini
       const formattedContents: any[] = [];
 
@@ -620,10 +623,10 @@ KEUPAYAAN ILMU & JAWAPAN MENYELURUH (GEMINI OMNISCIENCE):
         }
       }
 
-      // Add current user message
+      // Add current user message with enforcement
       formattedContents.push({
         role: "user",
-        parts: [{ text: message }]
+        parts: [{ text: userMessageWithEnforcement }]
       });
 
       const response = await ai.models.generateContent({
@@ -631,7 +634,7 @@ KEUPAYAAN ILMU & JAWAPAN MENYELURUH (GEMINI OMNISCIENCE):
         contents: formattedContents,
         config: {
           systemInstruction: systemPrompt,
-          temperature: 0.7,
+          temperature: 0.4,
         }
       });
 

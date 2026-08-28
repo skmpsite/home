@@ -565,7 +565,8 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
         body: JSON.stringify({
           message: textToSend,
           history: historyPayload,
-          schoolContext
+          schoolContext,
+          language: 'ms-MY'
         })
       });
 
