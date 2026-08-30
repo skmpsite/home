@@ -157,6 +157,7 @@ export default function App() {
   // UI States
   const [activeTab, setActiveTab] = useState<TabType>('utama');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState<'admin' | 'guru' | null>(null);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedNewsReader, setSelectedNewsReader] = useState<NewsItem | null>(null);
@@ -628,13 +629,21 @@ export default function App() {
         <Header
           profile={profile}
           isAdmin={isAdmin}
+          userRole={userRole}
           onOpenLogin={() => setLoginModalOpen(true)}
-          onLogout={() => setIsAdmin(false)}
+          onLogout={() => {
+            setIsAdmin(false);
+            setUserRole(null);
+            if (activeTab === 'admin_cms' || activeTab === 'guru') {
+              setActiveTab('utama');
+            }
+          }}
           searchResults={searchResults}
           onSearchChange={setSearchQuery}
           searchQuery={searchQuery}
           onSelectSearchResult={handleSelectSearchResult}
           onOpenAdminDashboard={() => setActiveTab('admin_cms')}
+          onOpenTeacherPortal={() => setActiveTab('guru')}
           isMobileMenuOpen={mobileMenuOpen}
           onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
         />
@@ -644,6 +653,8 @@ export default function App() {
           activeTab={activeTab}
           onTabChange={setActiveTab}
           isAdmin={isAdmin}
+          isTeacher={userRole === 'guru'}
+          userRole={userRole}
           unreadFeedbackCount={unreadFeedbackCount}
           navigationMenu={navigationMenu}
           mobileMenuOpen={mobileMenuOpen}
@@ -675,6 +686,8 @@ export default function App() {
             teacherLinks={teacherLinks}
             onSaveTeacherLinks={handleUpdateTeacherLinks}
             isAdmin={isAdmin}
+            isTeacher={userRole === 'guru'}
+            userRole={userRole}
             onOpenLogin={() => setLoginModalOpen(true)}
             onNavigate={setActiveTab}
           />
@@ -849,13 +862,19 @@ export default function App() {
         isAdmin={isAdmin}
       />
 
-      {/* Admin Login Modal */}
+      {/* Admin / Guru Login Modal */}
       <AdminLoginModal
         isOpen={loginModalOpen}
         onClose={() => setLoginModalOpen(false)}
-        onLoginSuccess={() => {
-          setIsAdmin(true);
-          setActiveTab('admin_cms');
+        onLoginSuccess={(role) => {
+          setUserRole(role);
+          if (role === 'admin') {
+            setIsAdmin(true);
+            setActiveTab('admin_cms');
+          } else {
+            setIsAdmin(false);
+            setActiveTab('guru');
+          }
         }}
       />
 

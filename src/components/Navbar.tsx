@@ -25,6 +25,8 @@ interface NavbarProps {
   activeTab: TabType;
   onTabChange: (tab: TabType) => void;
   isAdmin: boolean;
+  isTeacher?: boolean;
+  userRole?: 'admin' | 'guru' | null;
   unreadFeedbackCount: number;
   navigationMenu?: NavigationMenuItem[];
   mobileMenuOpen?: boolean;
@@ -36,6 +38,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   onTabChange,
   isAdmin,
+  isTeacher,
+  userRole,
   unreadFeedbackCount,
   navigationMenu,
   mobileMenuOpen: controlledMenuOpen,
@@ -44,6 +48,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [internalMenuOpen, setInternalMenuOpen] = useState(false);
   const isMenuOpen = controlledMenuOpen !== undefined ? controlledMenuOpen : internalMenuOpen;
+
+  const canAccessGuru = isAdmin || isTeacher || userRole === 'admin' || userRole === 'guru';
 
   const handleToggleMenu = () => {
     if (onToggleMobileMenu) {
@@ -67,10 +73,11 @@ export const Navbar: React.FC<NavbarProps> = ({
       ? [...navigationMenu].sort((a, b) => (a.order || 0) - (b.order || 0))
       : [...initialNavigationMenu];
 
-  // Tapis hanya item yang kelihatan dan padan dengan kebenaran admin
+  // Tapis hanya item yang kelihatan dan padan dengan kebenaran admin/guru
   const visibleNavItems = menuList.filter((item) => {
     if (!item.isVisible) return false;
-    if ((item.requiresAdmin || item.targetTab === 'guru' || item.id === 'guru') && !isAdmin) return false;
+    if (item.requiresAdmin && !isAdmin) return false;
+    if ((item.targetTab === 'guru' || item.id === 'guru') && !canAccessGuru) return false;
     return true;
   });
 

@@ -24,14 +24,15 @@ import {
   X,
   Save,
   CheckCircle2,
-  Bookmark,
-  Shield,
-  Laptop,
-  Users,
-  Activity,
-  Calendar,
-  FileText,
-  BookOpen
+  GripVertical,
+  ArrowUpToLine,
+  ArrowDownToLine,
+  ChevronUp,
+  ChevronDown,
+  ListOrdered,
+  Move,
+  Info,
+  ShieldCheck
 } from 'lucide-react';
 import { getNavIcon } from '../../utils/iconMap';
 import { initialTeacherLinks } from '../../data/initialData';
@@ -42,6 +43,8 @@ interface TeacherSectionProps {
   teacherLinks?: TeacherLinkItem[];
   onSaveTeacherLinks?: (links: TeacherLinkItem[]) => void;
   isAdmin: boolean;
+  isTeacher?: boolean;
+  userRole?: 'admin' | 'guru' | null;
   onOpenLogin?: () => void;
   onNavigate?: (tab: any) => void;
 }
@@ -97,12 +100,22 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
   teacherLinks: controlledLinks,
   onSaveTeacherLinks,
   isAdmin,
+  isTeacher,
+  userRole,
   onOpenLogin,
   onNavigate
 }) => {
   const [activeCategory, setActiveCategory] = useState<CategoryType>('semua');
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isReorderMode, setIsReorderMode] = useState(false);
+  const [orderToast, setOrderToast] = useState<string | null>(null);
+
+  // Drag and Drop States
+  const [draggedLinkId, setDraggedLinkId] = useState<string | null>(null);
+  const [dragOverLinkId, setDragOverLinkId] = useState<string | null>(null);
+
+  const canAccess = isAdmin || isTeacher || userRole === 'admin' || userRole === 'guru';
 
   // Link Management State
   const [links, setLinks] = useState<TeacherLinkItem[]>(() => {
@@ -137,6 +150,13 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
     badge: '',
     iconName: 'GraduationCap'
   });
+
+  const showToast = (msg: string) => {
+    setOrderToast(msg);
+    setTimeout(() => {
+      setOrderToast(null);
+    }, 2500);
+  };
 
   const handleCopy = (url: string, id: string) => {
     navigator.clipboard.writeText(url);
@@ -177,6 +197,7 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
       if (onSaveTeacherLinks) {
         onSaveTeacherLinks(updated);
       }
+      showToast('Pautan berjaya dipadam.');
     }
   };
 
@@ -186,6 +207,7 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
       if (onSaveTeacherLinks) {
         onSaveTeacherLinks(initialTeacherLinks);
       }
+      showToast('Pautan guru ditetapkan semula ke tetapan asal.');
     }
   };
 
@@ -228,6 +250,139 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
       onSaveTeacherLinks(updated);
     }
     setIsModalOpen(false);
+    showToast('Pautan guru berjaya disimpan.');
+  };
+
+  // --- REORDERING FUNCTIONS (Move to start, move to end, step up, step down, drag-and-drop) ---
+  
+  // Pindah ke paling Awal (First in Category)
+  const handleMoveToStart = (linkId: string, category: string, title?: string) => {
+    const targetLink = links.find((l) => l.id === linkId);
+    if (!targetLink) return;
+
+    const sameCat = links.filter((l) => l.category === category && l.id !== linkId);
+    const otherCat = links.filter((l) => l.category !== category);
+    const newCategoryList = [targetLink, ...sameCat];
+    const newLinks = [...otherCat, ...newCategoryList];
+
+    setLinks(newLinks);
+    if (onSaveTeacherLinks) onSaveTeacherLinks(newLinks);
+    showToast(`"${targetLink.title}" dipindahkan ke paling AWAL!`);
+  };
+
+  // Pindah ke paling Akhir (Last in Category)
+  const handleMoveToEnd = (linkId: string, category: string, title?: string) => {
+    const targetLink = links.find((l) => l.id === linkId);
+    if (!targetLink) return;
+
+    const sameCat = links.filter((l) => l.category === category && l.id !== linkId);
+    const otherCat = links.filter((l) => l.category !== category);
+    const newCategoryList = [...sameCat, targetLink];
+    const newLinks = [...otherCat, ...newCategoryList];
+
+    setLinks(newLinks);
+    if (onSaveTeacherLinks) onSaveTeacherLinks(newLinks);
+    showToast(`"${targetLink.title}" dipindahkan ke paling AKHIR!`);
+  };
+
+  // Naik 1 anak tangga
+  const handleMoveStepUp = (linkId: string, category: string) => {
+    const catLinks = links.filter((l) => l.category === category);
+    const idx = catLinks.findIndex((l) => l.id === linkId);
+    if (idx <= 0) return;
+
+    const reorderedCat = [...catLinks];
+    const temp = reorderedCat[idx - 1];
+    reorderedCat[idx - 1] = reorderedCat[idx];
+    reorderedCat[idx] = temp;
+
+    const otherCat = links.filter((l) => l.category !== category);
+    const newLinks = [...otherCat, ...reorderedCat];
+
+    setLinks(newLinks);
+    if (onSaveTeacherLinks) onSaveTeacherLinks(newLinks);
+    showToast('Kedudukan dinaikkan ke atas.');
+  };
+
+  // Turun 1 anak tangga
+  const handleMoveStepDown = (linkId: string, category: string) => {
+    const catLinks = links.filter((l) => l.category === category);
+    const idx = catLinks.findIndex((l) => l.id === linkId);
+    if (idx < 0 || idx >= catLinks.length - 1) return;
+
+    const reorderedCat = [...catLinks];
+    const temp = reorderedCat[idx + 1];
+    reorderedCat[idx + 1] = reorderedCat[idx];
+    reorderedCat[idx] = temp;
+
+    const otherCat = links.filter((l) => l.category !== category);
+    const newLinks = [...otherCat, ...reorderedCat];
+
+    setLinks(newLinks);
+    if (onSaveTeacherLinks) onSaveTeacherLinks(newLinks);
+    showToast('Kedudukan diturunkan ke bawah.');
+  };
+
+  // HTML5 Drag & Drop handlers
+  const handleDragStart = (e: React.DragEvent, linkId: string, category: string) => {
+    if (!isAdmin) return;
+    e.dataTransfer.setData('text/plain', JSON.stringify({ linkId, category }));
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggedLinkId(linkId);
+  };
+
+  const handleDragOver = (e: React.DragEvent, targetId: string) => {
+    if (!isAdmin) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverLinkId !== targetId) {
+      setDragOverLinkId(targetId);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverLinkId(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetId: string, targetCategory: string) => {
+    if (!isAdmin) return;
+    e.preventDefault();
+    setDraggedLinkId(null);
+    setDragOverLinkId(null);
+
+    try {
+      const raw = e.dataTransfer.getData('text/plain');
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const sourceId = parsed.linkId;
+      if (!sourceId || sourceId === targetId) return;
+
+      const sourceLink = links.find((l) => l.id === sourceId);
+      if (!sourceLink) return;
+
+      // Filter out dragged item
+      const remaining = links.filter((l) => l.id !== sourceId);
+      const targetIdx = remaining.findIndex((l) => l.id === targetId);
+
+      const updatedSource = { ...sourceLink, category: targetCategory as any };
+
+      let reordered: TeacherLinkItem[];
+      if (targetIdx >= 0) {
+        reordered = [
+          ...remaining.slice(0, targetIdx),
+          updatedSource,
+          ...remaining.slice(targetIdx)
+        ];
+      } else {
+        reordered = [...remaining, updatedSource];
+      }
+
+      setLinks(reordered);
+      if (onSaveTeacherLinks) onSaveTeacherLinks(reordered);
+      showToast(`Susunan kedudukan "${sourceLink.title}" berjaya dikemaskini!`);
+    } catch (err) {
+      console.error('Drag drop error:', err);
+    }
   };
 
   // Filtered links
@@ -256,34 +411,43 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
     };
   }, [links]);
 
-  // If user is not admin, show restricted notice
-  if (!isAdmin) {
+  // If user is neither Admin nor logged-in Guru, show restricted notice
+  if (!canAccess) {
     return (
       <div className="bg-slate-900/90 border border-red-500/30 rounded-3xl p-8 text-center max-w-2xl mx-auto my-12 shadow-2xl backdrop-blur-xl animate-fadeIn">
         <div className="w-16 h-16 bg-red-500/20 text-red-400 border border-red-500/40 rounded-2xl flex items-center justify-center mx-auto mb-4">
           <Lock className="w-8 h-8" />
         </div>
         <span className="text-xs font-black uppercase tracking-wider px-3 py-1 bg-red-500/20 text-red-300 rounded-full border border-red-500/30">
-          Akses Terhad
+          Akses Khas Guru & Pentadbir
         </span>
-        <h2 className="text-2xl font-black text-white mt-3">Menu Guru & Pentadbir</h2>
+        <h2 className="text-2xl font-black text-white mt-3">Portal Guru SKMP</h2>
         <p className="text-sm text-slate-300 mt-2 max-w-md mx-auto leading-relaxed">
-          Ruang portal ini mengandungi pautan-pautan sistem rasmi Kementerian Pendidikan Malaysia dan khas untuk kegunaan guru serta pentadbir sekolah yang telah log masuk.
+          Ruang portal ini mengandungi pautan rasmi portfolio guru Kementerian Pendidikan Malaysia (KPM). Sila log masuk untuk mengakses menu ini.
         </p>
+        <div className="mt-4 p-3.5 bg-slate-950/70 border border-white/10 rounded-2xl text-xs text-slate-300 max-w-md mx-auto">
+          <p className="text-yellow-300 font-bold mb-1">Panduan Log Masuk:</p>
+          <p>
+            • Untuk <strong>Guru</strong>: Masukkan kata laluan <span className="font-mono text-yellow-300 font-black bg-white/10 px-1.5 py-0.5 rounded">guru5012</span>
+          </p>
+          <p className="mt-1">
+            • Untuk <strong>Pentadbir</strong>: Masukkan <span className="font-mono text-blue-300">adminskmp</span> / <span className="font-mono text-blue-300">123456</span>
+          </p>
+        </div>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           {onOpenLogin && (
             <button
               onClick={onOpenLogin}
-              className="px-6 py-2.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-sm transition shadow-lg shadow-red-900/40 flex items-center gap-2"
+              className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-black rounded-xl text-xs sm:text-sm transition shadow-lg shadow-red-900/50 flex items-center gap-2 border border-red-400"
             >
               <Lock className="w-4 h-4" />
-              <span>Log Masuk Admin / Guru</span>
+              <span>Log Masuk (Kata Laluan: guru5012)</span>
             </button>
           )}
           {onNavigate && (
             <button
               onClick={() => onNavigate('utama')}
-              className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl text-sm transition border border-white/20"
+              className="px-5 py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl text-xs sm:text-sm transition border border-white/20"
             >
               Kembali ke Laman Utama
             </button>
@@ -294,7 +458,15 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
   }
 
   return (
-    <div className="space-y-8 animate-fadeIn">
+    <div className="space-y-8 animate-fadeIn relative">
+      {/* Toast Notification */}
+      {orderToast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-2xl border border-emerald-400 flex items-center gap-2.5 text-xs font-bold animate-fadeIn">
+          <CheckCircle2 className="w-4 h-4 text-yellow-300" />
+          <span>{orderToast}</span>
+        </div>
+      )}
+
       {/* Red-Themed Executive Title Banner */}
       <div className="bg-gradient-to-r from-red-950/90 via-slate-900/90 to-red-950/90 backdrop-blur-xl text-white rounded-3xl p-6 sm:p-8 shadow-2xl border-2 border-red-500/40 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-red-500/15 rounded-full blur-3xl pointer-events-none" />
@@ -305,12 +477,19 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1 bg-red-600 text-white font-black rounded-full text-xs border border-red-400 shadow-md shadow-red-900/50">
                 <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-                <span>Menu Guru & Pentadbiran</span>
+                <span>Portal Rasmi Portfolio Guru SKMP</span>
               </span>
-              <span className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-500/20 text-emerald-300 font-bold rounded-full text-xs border border-emerald-400/30">
-                <CheckCircle2 className="w-3 h-3" />
-                <span>Log Masuk Admin Aktif</span>
-              </span>
+              {isAdmin ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-600/30 text-blue-300 font-bold rounded-full text-xs border border-blue-400/40">
+                  <ShieldCheck className="w-3.5 h-3.5 text-yellow-300" />
+                  <span>Mod Pentadbir (Susunan Drag & Drop Aktif)</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/20 text-emerald-300 font-bold rounded-full text-xs border border-emerald-400/30">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Log Masuk Guru Aktif (guru5012)</span>
+                </span>
+              )}
             </div>
             <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
               Portal Guru & Pautan Pantas Sekolah
@@ -320,25 +499,56 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
             </p>
           </div>
 
-          {/* Quick Action Button Group */}
+          {/* Action Buttons */}
           <div className="flex flex-wrap items-center gap-2.5 flex-shrink-0">
-            <button
-              onClick={() => handleOpenAdd()}
-              className="px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-2xl text-xs sm:text-sm transition shadow-lg shadow-red-950/50 border border-red-400 flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Tambah Pautan</span>
-            </button>
-            <button
-              onClick={handleResetToDefault}
-              title="Tetapkan semula pautan asal"
-              className="p-2.5 bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white rounded-2xl text-xs transition border border-white/20 flex items-center gap-1.5"
-            >
-              <RotateCcw className="w-4 h-4" />
-              <span className="hidden sm:inline">Set Semula</span>
-            </button>
+            {isAdmin && (
+              <>
+                <button
+                  onClick={() => setIsReorderMode(!isReorderMode)}
+                  className={`px-3.5 py-2.5 rounded-2xl text-xs font-black transition flex items-center gap-1.5 border ${
+                    isReorderMode
+                      ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-lg shadow-amber-500/30'
+                      : 'bg-white/10 hover:bg-white/20 text-white border-white/20'
+                  }`}
+                  title="Togol Mod Susun Kedudukan Pantas"
+                >
+                  <ListOrdered className="w-4 h-4" />
+                  <span>{isReorderMode ? 'Tutup Mod Susun' : 'Susun Kedudukan'}</span>
+                </button>
+                <button
+                  onClick={() => handleOpenAdd()}
+                  className="px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-2xl text-xs sm:text-sm transition shadow-lg shadow-red-950/50 border border-red-400 flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Tambah Pautan</span>
+                </button>
+                <button
+                  onClick={handleResetToDefault}
+                  title="Tetapkan semula pautan asal"
+                  className="p-2.5 bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white rounded-2xl text-xs transition border border-white/20 flex items-center gap-1.5"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span className="hidden sm:inline">Set Semula</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
+
+        {/* Drag & Drop Guidance for Admin */}
+        {isAdmin && (
+          <div className="mt-4 pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs text-amber-200 bg-black/20 px-4 py-2.5 rounded-2xl">
+            <div className="flex items-center gap-2">
+              <Move className="w-4 h-4 text-amber-400 flex-shrink-0" />
+              <span>
+                <strong>Panduan Susun Pautan:</strong> Pegang & heret (<strong>Drag & Drop</strong>) kad pautan untuk ubah posisi, atau klik butang <span className="bg-white/20 px-1.5 py-0.5 rounded text-white font-bold">Ke Awal</span> / <span className="bg-white/20 px-1.5 py-0.5 rounded text-white font-bold">Ke Akhir</span>.
+              </span>
+            </div>
+            <span className="text-[11px] text-slate-300 font-mono">
+              Auto-Simpan Aktif
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Category Sub-Menu Pills & Search Bar */}
@@ -481,38 +691,141 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                 </div>
               </div>
 
-              <button
-                onClick={() => handleOpenAdd(catKey)}
-                className="self-start sm:self-auto text-xs px-3 py-1.5 bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white rounded-xl border border-white/10 flex items-center gap-1.5 transition"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Tambah Dalam {catMeta.label}</span>
-              </button>
+              {isAdmin && (
+                <button
+                  onClick={() => handleOpenAdd(catKey)}
+                  className="self-start sm:self-auto text-xs px-3 py-1.5 bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white rounded-xl border border-white/10 flex items-center gap-1.5 transition"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Tambah Dalam {catMeta.label}</span>
+                </button>
+              )}
             </div>
 
             {/* Links Cards Grid */}
             {sectionLinks.length === 0 ? (
               <div className="bg-slate-900/40 border border-dashed border-white/10 rounded-3xl p-8 text-center text-slate-400">
                 <p className="text-sm">Tiada pautan ditemui dalam bahagian ini.</p>
-                <button
-                  onClick={() => handleOpenAdd(catKey)}
-                  className="mt-2 text-xs text-red-400 hover:text-red-300 underline font-bold"
-                >
-                  Klik untuk tambah pautan baharu
-                </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => handleOpenAdd(catKey)}
+                    className="mt-2 text-xs text-red-400 hover:text-red-300 underline font-bold"
+                  >
+                    Klik untuk tambah pautan baharu
+                  </button>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {sectionLinks.map((link) => {
+                {sectionLinks.map((link, idx) => {
                   const IconComponent = getNavIcon(link.iconName || 'Globe');
                   const isCopied = copiedId === link.id;
+                  const isDraggingThis = draggedLinkId === link.id;
+                  const isDragOverThis = dragOverLinkId === link.id;
+                  const isFirst = idx === 0;
+                  const isLast = idx === sectionLinks.length - 1;
 
                   return (
                     <div
                       key={link.id}
-                      className="bg-slate-900/85 backdrop-blur-md rounded-3xl p-5 border border-white/15 hover:border-white/30 transition shadow-xl hover:shadow-2xl flex flex-col justify-between group space-y-4"
+                      draggable={isAdmin}
+                      onDragStart={(e) => handleDragStart(e, link.id, link.category)}
+                      onDragOver={(e) => handleDragOver(e, link.id)}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDrop(e, link.id, link.category)}
+                      className={`bg-slate-900/85 backdrop-blur-md rounded-3xl p-5 border transition-all duration-200 shadow-xl hover:shadow-2xl flex flex-col justify-between group space-y-4 relative ${
+                        isDraggingThis
+                          ? 'opacity-40 scale-95 border-dashed border-amber-400'
+                          : isDragOverThis
+                          ? 'border-2 border-amber-400 bg-amber-950/20 scale-[1.02] shadow-amber-500/20'
+                          : 'border-white/15 hover:border-white/30'
+                      }`}
                     >
-                      {/* Card Header */}
+                      {/* Drag handle & Order Controls for Admin */}
+                      {isAdmin && (
+                        <div className="flex items-center justify-between pb-2 border-b border-white/10 text-xs text-slate-400">
+                          {/* Drag Grip Handle */}
+                          <div
+                            className="flex items-center gap-1.5 cursor-grab active:cursor-grabbing text-slate-400 hover:text-amber-400 transition"
+                            title="Klik & heret (Drag & Drop) untuk susun kedudukan pautan ini"
+                          >
+                            <GripVertical className="w-4 h-4 text-amber-400" />
+                            <span className="text-[11px] font-black text-amber-400/90 font-mono bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-400/20">
+                              #{idx + 1}
+                            </span>
+                            <span className="text-[10px] text-slate-400 hidden sm:inline">
+                              Heret
+                            </span>
+                          </div>
+
+                          {/* Quick Position Reorder Buttons: Paling Awal, Naik, Turun, Paling Akhir */}
+                          <div className="flex items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-white/10">
+                            {/* Pindah ke Paling Awal */}
+                            <button
+                              type="button"
+                              onClick={() => handleMoveToStart(link.id, link.category, link.title)}
+                              disabled={isFirst}
+                              title="Pindah ke Paling Hadapan (Awal)"
+                              className={`p-1 rounded text-[10px] flex items-center gap-0.5 transition ${
+                                isFirst
+                                  ? 'opacity-30 cursor-not-allowed text-slate-600'
+                                  : 'hover:bg-amber-500 hover:text-slate-950 text-amber-400'
+                              }`}
+                            >
+                              <ArrowUpToLine className="w-3.5 h-3.5" />
+                              <span className="font-bold text-[9px] hidden xl:inline">Awal</span>
+                            </button>
+
+                            {/* Naik 1 Kedudukan */}
+                            <button
+                              type="button"
+                              onClick={() => handleMoveStepUp(link.id, link.category)}
+                              disabled={isFirst}
+                              title="Naik 1 Kedudukan"
+                              className={`p-1 rounded text-[10px] transition ${
+                                isFirst
+                                  ? 'opacity-30 cursor-not-allowed text-slate-600'
+                                  : 'hover:bg-white/15 text-slate-300 hover:text-white'
+                              }`}
+                            >
+                              <ChevronUp className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Turun 1 Kedudukan */}
+                            <button
+                              type="button"
+                              onClick={() => handleMoveStepDown(link.id, link.category)}
+                              disabled={isLast}
+                              title="Turun 1 Kedudukan"
+                              className={`p-1 rounded text-[10px] transition ${
+                                isLast
+                                  ? 'opacity-30 cursor-not-allowed text-slate-600'
+                                  : 'hover:bg-white/15 text-slate-300 hover:text-white'
+                              }`}
+                            >
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Pindah ke Paling Akhir */}
+                            <button
+                              type="button"
+                              onClick={() => handleMoveToEnd(link.id, link.category, link.title)}
+                              disabled={isLast}
+                              title="Pindah ke Paling Belakang (Akhir)"
+                              className={`p-1 rounded text-[10px] flex items-center gap-0.5 transition ${
+                                isLast
+                                  ? 'opacity-30 cursor-not-allowed text-slate-600'
+                                  : 'hover:bg-amber-500 hover:text-slate-950 text-amber-400'
+                              }`}
+                            >
+                              <ArrowDownToLine className="w-3.5 h-3.5" />
+                              <span className="font-bold text-[9px] hidden xl:inline">Akhir</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Card Header & Content */}
                       <div className="space-y-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-center gap-3">
@@ -527,22 +840,24 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                           </div>
 
                           {/* Edit / Delete for Admin */}
-                          <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition">
-                            <button
-                              onClick={() => handleOpenEdit(link)}
-                              title="Sunting Pautan"
-                              className="p-1.5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteLink(link.id)}
-                              title="Padam Pautan"
-                              className="p-1.5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                          {isAdmin && (
+                            <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition">
+                              <button
+                                onClick={() => handleOpenEdit(link)}
+                                title="Sunting Pautan"
+                                className="p-1.5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteLink(link.id)}
+                                title="Padam Pautan"
+                                className="p-1.5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
                         </div>
 
                         <div>

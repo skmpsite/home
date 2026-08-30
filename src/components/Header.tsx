@@ -5,6 +5,7 @@ import { Search, Lock, UserCheck, MapPin, Phone, Mail, LogOut, ChevronRight, X, 
 interface HeaderProps {
   profile: SchoolProfile;
   isAdmin: boolean;
+  userRole?: 'admin' | 'guru' | null;
   onOpenLogin: () => void;
   onLogout: () => void;
   searchResults: SearchResultItem[];
@@ -12,6 +13,7 @@ interface HeaderProps {
   searchQuery: string;
   onSelectSearchResult: (item: SearchResultItem) => void;
   onOpenAdminDashboard: () => void;
+  onOpenTeacherPortal?: () => void;
   isMobileMenuOpen?: boolean;
   onToggleMobileMenu?: () => void;
 }
@@ -19,6 +21,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   profile,
   isAdmin,
+  userRole,
   onOpenLogin,
   onLogout,
   searchResults,
@@ -26,6 +29,7 @@ export const Header: React.FC<HeaderProps> = ({
   searchQuery,
   onSelectSearchResult,
   onOpenAdminDashboard,
+  onOpenTeacherPortal,
   isMobileMenuOpen,
   onToggleMobileMenu
 }) => {
@@ -59,14 +63,34 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="flex items-center gap-2">
                 <button
                   onClick={onOpenAdminDashboard}
-                  className="inline-flex items-center gap-1 text-xs font-bold text-blue-950 hover:bg-yellow-400 bg-yellow-400/90 px-3 py-0.5 rounded-full border border-yellow-300 shadow-md transition"
+                  className="inline-flex items-center gap-1 text-xs font-bold text-blue-950 hover:bg-yellow-400 bg-yellow-400 px-3 py-0.5 rounded-full border border-yellow-300 shadow-md transition"
+                  title="Buka Papan Pemuka Pentadbir (CMS)"
                 >
                   <UserCheck className="w-3.5 h-3.5" />
-                  Admin SKMP Active
+                  <span>Admin Active</span>
                 </button>
                 <button
                   onClick={onLogout}
-                  className="text-xs text-rose-300 hover:text-rose-100 flex items-center gap-1 ml-1"
+                  className="text-xs text-rose-300 hover:text-rose-100 flex items-center gap-1 ml-1 font-semibold"
+                  title="Log Keluar"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Keluar</span>
+                </button>
+              </div>
+            ) : userRole === 'guru' ? (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={onOpenTeacherPortal}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-white hover:bg-rose-500 bg-rose-600 px-3 py-0.5 rounded-full border border-rose-400 shadow-md transition"
+                  title="Buka Portal Guru SKMP"
+                >
+                  <UserCheck className="w-3.5 h-3.5" />
+                  <span>Guru Active</span>
+                </button>
+                <button
+                  onClick={onLogout}
+                  className="text-xs text-rose-300 hover:text-rose-100 flex items-center gap-1 ml-1 font-semibold"
                   title="Log Keluar"
                 >
                   <LogOut className="w-3.5 h-3.5" />
@@ -76,10 +100,11 @@ export const Header: React.FC<HeaderProps> = ({
             ) : (
               <button
                 onClick={onOpenLogin}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-yellow-400 hover:text-yellow-300 transition px-2 py-0.5 rounded-md hover:bg-white/5"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-yellow-400 hover:text-yellow-300 transition px-2.5 py-1 rounded-lg hover:bg-white/10 border border-yellow-400/30"
+                title="Log Masuk Guru & Pentadbir"
               >
                 <Lock className="w-3.5 h-3.5 text-yellow-400" />
-                <span>Admin</span>
+                <span>Log Masuk</span>
               </button>
             )}
 
