@@ -13,7 +13,8 @@ import {
   CoCurriculumUnit,
   SignageSlide,
   SignageConfig,
-  HemData
+  HemData,
+  NavigationMenuItem
 } from '../types';
 import {
   LayoutDashboard,
@@ -42,16 +43,28 @@ import {
   RefreshCw,
   UserCheck,
   HeartHandshake,
-  Flame
+  Flame,
+  Compass,
+  Video,
+  Play,
+  Sparkles,
+  Eye,
+  EyeOff,
+  Quote,
+  Film,
+  ExternalLink,
+  Sliders
 } from 'lucide-react';
-import { initialSchoolProfile, initialHemData } from '../data/initialData';
+import { initialSchoolProfile, initialHemData, initialNavigationMenu } from '../data/initialData';
 import { GasScriptSection } from './sections/GasScriptSection';
 import { AdminSignageManager } from './admin/AdminSignageManager';
 import { AdminHemManager } from './admin/AdminHemManager';
 import { FirebaseManager } from './admin/FirebaseManager';
+import { AdminMenuManager } from './admin/AdminMenuManager';
 import { syncBulkDataToGoogleSheets } from '../utils/googleSheetsSync';
 import { syncAllDataToFirestore } from '../utils/firebaseRealtime';
 import { getSafeNewsImageUrl, compressAndResizeImage, compressStaffPhoto, OFFICIAL_NEWS_PHOTOS, SECONDARY_FALLBACK_PHOTOS } from '../utils/imageHelpers';
+import { getYouTubeEmbedUrl } from '../utils/videoHelpers';
 import { sortStaffBySeniority } from '../utils/staffHelpers';
 
 interface AdminDashboardProps {
@@ -83,6 +96,8 @@ interface AdminDashboardProps {
   onSaveSignageConfig: (config: SignageConfig) => void;
   hemData?: HemData;
   onSaveHemData?: (data: HemData) => void;
+  navigationMenu?: NavigationMenuItem[];
+  onSaveNavigationMenu?: (menu: NavigationMenuItem[]) => void;
   onResetAll: () => void;
 }
 
@@ -115,6 +130,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onSaveSignageConfig,
   hemData,
   onSaveHemData,
+  navigationMenu,
+  onSaveNavigationMenu,
   onResetAll
 }) => {
   const [activeTab, setActiveTab] = useState<
@@ -127,6 +144,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     | 'cocurriculum'
     | 'hem'
     | 'signage'
+    | 'menu'
     | 'profile'
     | 'feedback'
     | 'gas_code'
@@ -178,9 +196,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         pibgCommittee,
         cocurriculum: coCurriculumUnits,
         signageSlides,
-        signageConfig
+        signageConfig,
+        navigationMenu: navigationMenu || initialNavigationMenu
       });
-      showToast('🔥 Semua Data (Termasuk PKP & Warga Staf) Berjaya Disegerak Ke Firebase Firestore!');
+      showToast('🔥 Semua Data (Termasuk Menu & Tetapan) Berjaya Disegerak Ke Firebase Firestore!');
     } catch (err) {
       console.error('Firebase quick sync error:', err);
       showToast('Gagal menyegerak ke Firebase. Semak Rules di Firebase Console.');
@@ -861,7 +880,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           { id: 'cocurriculum', label: 'Kokurikulum & PIBG', icon: Trophy },
           { id: 'hem', label: 'Hal Ehwal Murid (HEM)', icon: HeartHandshake },
           { id: 'signage', label: 'Urus Signage TV', icon: Tv },
-          { id: 'profile', label: 'Profil Sekolah', icon: School },
+          { id: 'menu', label: 'Urus Menu Utama', icon: Compass },
+          { id: 'profile', label: 'Perutusan, Video & Profil', icon: School },
           { id: 'feedback', label: 'Peti Maklum Balas', icon: MessageSquare, badge: feedbackList.filter((f) => f.status === 'baru').length },
           { id: 'firebase', label: 'Google Firebase (Masa Nyata)', icon: Flame },
           { id: 'gas_code', label: 'Kod Google Apps Script', icon: Code2 }
@@ -2629,181 +2649,507 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       )}
 
-      {/* ==================== MODULE 8: PROFIL SEKOLAH ==================== */}
+      {/* ==================== MODULE 8: PROFIL SEKOLAH & PERUTUSAN / TAYANGAN VIDEO ==================== */}
       {activeTab === 'profile' && (
-        <div className="bg-white/10 backdrop-blur-md rounded-3xl border border-white/10 p-6 sm:p-8 shadow-lg space-y-6">
-          <h3 className="font-extrabold text-lg text-white border-b border-white/10 pb-2 flex items-center gap-2">
-            <Save className="w-5 h-5 text-yellow-400" /> Sunting Maklumat Rasmi & Profil Sekolah
-          </h3>
-
-          <form onSubmit={handleSaveProfileSubmit} className="space-y-4 text-xs">
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block font-bold text-slate-200 mb-1">Nama Sekolah</label>
-                <input
-                  type="text"
-                  value={editProfileData.name}
-                  onChange={(e) => setEditProfileData({ ...editProfileData, name: e.target.value })}
-                  className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-200 mb-1">Kod Sekolah</label>
-                <input
-                  type="text"
-                  value={editProfileData.code}
-                  onChange={(e) => setEditProfileData({ ...editProfileData, code: e.target.value })}
-                  className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
-                />
-              </div>
-            </div>
-
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block font-bold text-slate-200 mb-1">Nama Guru Besar</label>
-                <input
-                  type="text"
-                  value={editProfileData.principalName}
-                  onChange={(e) => setEditProfileData({ ...editProfileData, principalName: e.target.value })}
-                  className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-200 mb-1">Jawatan / Gelaran Guru Besar</label>
-                <input
-                  type="text"
-                  value={editProfileData.principalTitle}
-                  onChange={(e) => setEditProfileData({ ...editProfileData, principalTitle: e.target.value })}
-                  className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
-                />
-              </div>
-            </div>
-
+        <div className="space-y-6">
+          {/* Header Banner */}
+          <div className="bg-white/10 backdrop-blur-md rounded-3xl border border-white/10 p-6 sm:p-8 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
-              <label className="block font-bold text-slate-200 mb-1">Perutusan / Kata-kata Alu-aluan Guru Besar (Laman Utama)</label>
-              <textarea
-                rows={3}
-                value={editProfileData.principalSpeech || ''}
-                onChange={(e) => setEditProfileData({ ...editProfileData, principalSpeech: e.target.value })}
-                placeholder="Selamat datang ke laman web rasmi SK Merbau Pulas..."
-                className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400/50"
-              />
-            </div>
-
-            <div className="bg-white/5 p-4 rounded-2xl border border-white/10 space-y-3">
-              <label className="block font-bold text-yellow-300">Muat Naik / Kemaskini Gambar Rasmi Guru Besar</label>
-              <div className="flex flex-col sm:flex-row items-center gap-4">
-                <div className="w-16 h-20 rounded-xl overflow-hidden border border-yellow-400/50 flex-shrink-0 bg-slate-900 flex items-center justify-center">
-                  {(editProfileData.principalPhotoUrl || profile.principalPhotoUrl) ? (
-                    <img
-                      src={editProfileData.principalPhotoUrl || profile.principalPhotoUrl}
-                      alt="Guru Besar"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-slate-800 flex flex-col items-center justify-center text-slate-400 text-center p-1">
-                      <UserCheck className="w-6 h-6 mb-1 text-yellow-400 opacity-70" />
-                      <span className="text-[9px] leading-tight text-slate-400">Kosong</span>
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1 space-y-2 w-full">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          try {
-                            const compressed = await compressAndResizeImage(file, 360, 480, 0.72);
-                            setEditProfileData((prev) => ({ ...prev, principalPhotoUrl: compressed }));
-                          } catch (err) {
-                            console.warn('Ralat muat naik foto Guru Besar:', err);
-                          }
-                        }
-                      }}
-                      className="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-yellow-400 file:text-blue-950 hover:file:bg-yellow-300 cursor-pointer"
-                    />
-                    {(editProfileData.principalPhotoUrl || profile.principalPhotoUrl) && (
-                      <button
-                        type="button"
-                        onClick={() => setEditProfileData((prev) => ({ ...prev, principalPhotoUrl: '' }))}
-                        className="px-3 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-bold rounded-xl text-xs whitespace-nowrap transition border border-rose-500/30"
-                      >
-                        Padam Foto
-                      </button>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-slate-400">Muat naik fail foto Guru Besar baharu atau biarkan kosong jika belum ada gambar.</p>
-                </div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-500/20 text-yellow-300 font-bold rounded-full text-xs border border-yellow-400/30 mb-2">
+                <Sliders className="w-3.5 h-3.5 text-yellow-400" />
+                <span>Pengurusan Kandungan Laman Utama & Profil</span>
               </div>
-            </div>
-
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block font-bold text-slate-200 mb-1">No. Telefon</label>
-                <input
-                  type="text"
-                  value={editProfileData.phone}
-                  onChange={(e) => setEditProfileData({ ...editProfileData, phone: e.target.value })}
-                  className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-200 mb-1">E-mel Rasmi</label>
-                <input
-                  type="email"
-                  value={editProfileData.email}
-                  onChange={(e) => setEditProfileData({ ...editProfileData, email: e.target.value })}
-                  className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block font-bold text-slate-200 mb-1">Visi Sekolah</label>
-              <textarea
-                rows={2}
-                value={editProfileData.vision}
-                onChange={(e) => setEditProfileData({ ...editProfileData, vision: e.target.value })}
-                className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
-              />
-            </div>
-
-            <div>
-              <label className="block font-bold text-slate-200 mb-1">Misi Sekolah</label>
-              <textarea
-                rows={2}
-                value={editProfileData.mission}
-                onChange={(e) => setEditProfileData({ ...editProfileData, mission: e.target.value })}
-                className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
-              />
-            </div>
-
-            <div>
-              <label className="block font-bold text-slate-200 mb-1">Sejarah & Latar Belakang Sekolah</label>
-              <textarea
-                rows={4}
-                value={editProfileData.history}
-                onChange={(e) => setEditProfileData({ ...editProfileData, history: e.target.value })}
-                className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
-              />
+              <h3 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+                <School className="w-6 h-6 text-yellow-400" />
+                <span>Urus Perutusan, Tayangan Video & Profil Sekolah</span>
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-200 mt-1 max-w-2xl">
+                Kemas kini ucapan perutusan Guru Besar, pautan video YouTube tayangan rasmi sekolah, statistik ringkas, serta maklumat identiti sekolah.
+              </p>
             </div>
 
             <button
-              type="submit"
-              className="px-6 py-3 bg-yellow-400 text-blue-950 font-black rounded-xl text-xs flex items-center gap-2 hover:bg-yellow-300 transition shadow-lg shadow-yellow-400/20"
+              type="button"
+              onClick={handleSaveProfileSubmit}
+              className="px-6 py-3 bg-yellow-400 text-blue-950 font-black rounded-2xl text-xs sm:text-sm flex items-center gap-2 hover:bg-yellow-300 active:scale-95 transition shadow-xl shadow-yellow-400/20 flex-shrink-0"
             >
               <Save className="w-4 h-4" />
-              <span>Simpan Perubahan Profil</span>
+              <span>Simpan Semua Perubahan</span>
             </button>
+          </div>
+
+          <form onSubmit={handleSaveProfileSubmit} className="space-y-6 text-xs">
+            {/* SEKSYEN 1: PERUTUSAN & KATA ALU-ALUAN GURU BESAR */}
+            <div className="bg-white/10 backdrop-blur-md rounded-3xl border border-white/10 p-6 sm:p-8 shadow-lg space-y-5">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-yellow-400/20 border border-yellow-400/30 flex items-center justify-center text-yellow-300">
+                    <Quote className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-base font-extrabold text-white">1. Perutusan & Kata Alu-Aluan Guru Besar</h4>
+                    <p className="text-[11px] text-slate-300">Dipaparkan di bahagian atas Laman Utama sebagai sambutan rasmi sekolah.</p>
+                  </div>
+                </div>
+                <span className="hidden sm:inline-block px-3 py-1 bg-yellow-500/20 text-yellow-300 font-bold rounded-full text-[10px] border border-yellow-400/30">
+                  Laman Utama
+                </span>
+              </div>
+
+              <div className="grid sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">Lencana / Badge Seksyen</label>
+                  <input
+                    type="text"
+                    value={editProfileData.principalBadge || 'Perutusan & Kata Alu-Aluan'}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, principalBadge: e.target.value })}
+                    placeholder="Contoh: Perutusan & Kata Alu-Aluan"
+                    className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl focus:border-yellow-400/50"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">Nama Penuh Guru Besar / Pengetua</label>
+                  <input
+                    type="text"
+                    required
+                    value={editProfileData.principalName || ''}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, principalName: e.target.value })}
+                    placeholder="Contoh: Puan Norhafiza Binti Dolah"
+                    className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl focus:border-yellow-400/50 font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">Jawatan / Gelaran / Gred</label>
+                  <input
+                    type="text"
+                    required
+                    value={editProfileData.principalTitle || ''}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, principalTitle: e.target.value })}
+                    placeholder="Contoh: Guru Besar (DG48)"
+                    className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl focus:border-yellow-400/50"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-200 mb-1">Teks Perutusan & Ucapan Alu-Aluan Penuh</label>
+                <textarea
+                  rows={4}
+                  required
+                  value={editProfileData.principalSpeech || ''}
+                  onChange={(e) => setEditProfileData({ ...editProfileData, principalSpeech: e.target.value })}
+                  placeholder="Selamat datang ke laman web rasmi SK Merbau Pulas..."
+                  className="w-full p-3 bg-white/5 border border-white/20 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400/50 leading-relaxed font-light"
+                />
+              </div>
+
+              {/* Upload / Image Management for Principal */}
+              <div className="bg-white/5 p-4 sm:p-5 rounded-2xl border border-white/10 space-y-3">
+                <label className="block font-bold text-yellow-300">Gambar Rasmi Guru Besar</label>
+                <div className="flex flex-col sm:flex-row items-center gap-5">
+                  <div className="w-20 h-24 rounded-2xl overflow-hidden border-2 border-yellow-400/60 flex-shrink-0 bg-slate-900 shadow-xl flex items-center justify-center p-1">
+                    {(editProfileData.principalPhotoUrl || profile.principalPhotoUrl) ? (
+                      <img
+                        src={editProfileData.principalPhotoUrl || profile.principalPhotoUrl}
+                        alt="Guru Besar"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                        className="w-full h-full object-cover rounded-xl"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-slate-800 rounded-xl flex flex-col items-center justify-center text-slate-400 text-center p-1">
+                        <UserCheck className="w-8 h-8 mb-1 text-yellow-400 opacity-70" />
+                        <span className="text-[9px] leading-tight text-slate-400">Tiada Foto</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-2.5 w-full">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            try {
+                              const compressed = await compressAndResizeImage(file, 360, 480, 0.72);
+                              setEditProfileData((prev) => ({ ...prev, principalPhotoUrl: compressed }));
+                            } catch (err) {
+                              console.warn('Ralat muat naik foto Guru Besar:', err);
+                            }
+                          }
+                        }}
+                        className="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-yellow-400 file:text-blue-950 hover:file:bg-yellow-300 cursor-pointer"
+                      />
+                      {(editProfileData.principalPhotoUrl || profile.principalPhotoUrl) && (
+                        <button
+                          type="button"
+                          onClick={() => setEditProfileData((prev) => ({ ...prev, principalPhotoUrl: '' }))}
+                          className="px-3 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-bold rounded-xl text-xs whitespace-nowrap transition border border-rose-500/30"
+                        >
+                          Padam Foto
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder="Atau masukkan pautan URL imej luaran..."
+                        value={editProfileData.principalPhotoUrl || ''}
+                        onChange={(e) => setEditProfileData({ ...editProfileData, principalPhotoUrl: e.target.value })}
+                        className="w-full p-2 bg-white/5 border border-white/20 text-white rounded-xl text-[11px]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Preview Box */}
+              <div className="border border-white/10 rounded-2xl p-4 bg-slate-950/60 space-y-2">
+                <div className="flex items-center justify-between text-[11px] text-yellow-400 font-bold">
+                  <span className="flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5" /> Pratonton Langsung Kad Perutusan di Laman Utama:
+                  </span>
+                </div>
+                <div className="bg-slate-900/90 rounded-xl p-4 border border-white/10 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  <div className="w-16 h-16 rounded-xl bg-yellow-400 p-0.5 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                    {(editProfileData.principalPhotoUrl || profile.principalPhotoUrl) ? (
+                      <img
+                        src={editProfileData.principalPhotoUrl || profile.principalPhotoUrl}
+                        alt="GB Preview"
+                        className="w-full h-full object-cover rounded-lg"
+                      />
+                    ) : (
+                      <UserCheck className="w-7 h-7 text-blue-950" />
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <span className="inline-block px-2 py-0.5 bg-yellow-500/20 text-yellow-300 font-extrabold rounded-full text-[10px] border border-yellow-400/30">
+                      {editProfileData.principalBadge || 'Perutusan & Kata Alu-Aluan'}
+                    </span>
+                    <h5 className="font-extrabold text-white text-sm">
+                      {editProfileData.principalName || 'Nama Guru Besar'}
+                    </h5>
+                    <p className="text-[11px] text-slate-300">{editProfileData.principalTitle || 'Guru Besar (DG48)'}</p>
+                    <p className="text-xs text-slate-200 italic font-light pt-1 line-clamp-2">
+                      "{editProfileData.principalSpeech || 'Teks perutusan guru besar...'}"
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* SEKSYEN 2: TAYANGAN RASMI SEKOLAH & VIDEO PROFIL */}
+            <div className="bg-white/10 backdrop-blur-md rounded-3xl border border-white/10 p-6 sm:p-8 shadow-lg space-y-5">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-yellow-400/20 border border-yellow-400/30 flex items-center justify-center text-yellow-300">
+                    <Video className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-base font-extrabold text-white">2. Tayangan Rasmi Sekolah & Video Profil (YouTube)</h4>
+                    <p className="text-[11px] text-slate-300">Sematkan video montaj rasmi atau saluran YouTube sekolah di Laman Utama.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEditProfileData({
+                        ...editProfileData,
+                        officialVideoIsVisible: editProfileData.officialVideoIsVisible === false ? true : false
+                      })
+                    }
+                    className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition ${
+                      editProfileData.officialVideoIsVisible !== false
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40'
+                        : 'bg-rose-500/20 text-rose-300 border border-rose-400/40'
+                    }`}
+                  >
+                    {editProfileData.officialVideoIsVisible !== false ? (
+                      <>
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Papar Di Web</span>
+                      </>
+                    ) : (
+                      <>
+                        <EyeOff className="w-3.5 h-3.5" />
+                        <span>Disembunyikan</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">Tag / Lencana Video</label>
+                  <input
+                    type="text"
+                    value={editProfileData.officialVideoTag || 'Tayangan Rasmi Sekolah'}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, officialVideoTag: e.target.value })}
+                    placeholder="Contoh: Tayangan Rasmi Sekolah"
+                    className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl focus:border-yellow-400/50"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">Tajuk Video Rasmi</label>
+                  <input
+                    type="text"
+                    required
+                    value={editProfileData.officialVideoTitle || 'Video Alu-Aluan & Profil SK Merbau Pulas'}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, officialVideoTitle: e.target.value })}
+                    placeholder="Contoh: Video Alu-Aluan & Profil SK Merbau Pulas"
+                    className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl focus:border-yellow-400/50 font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-200 mb-1">Penerangan / Keterangan Ringkas Video</label>
+                <textarea
+                  rows={2}
+                  value={
+                    editProfileData.officialVideoDescription ||
+                    'Saksikan paparan montaj multimedia rasmi sekolah yang memaparkan keindahan persekitaran, keharmonian warga murid, serta aktiviti pembelajaran di SKMP.'
+                  }
+                  onChange={(e) => setEditProfileData({ ...editProfileData, officialVideoDescription: e.target.value })}
+                  placeholder="Saksikan paparan montaj multimedia..."
+                  className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl focus:border-yellow-400/50"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-slate-200">
+                    Pautan / URL Video YouTube
+                  </label>
+                  <span className="text-[11px] text-yellow-300 font-semibold">
+                    Menyokong sebarang format (Watch, Embed, Shorts, atau Video ID)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    required
+                    value={editProfileData.officialVideoUrl || 'https://www.youtube.com/watch?v=i8HoTEU3h_I'}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, officialVideoUrl: e.target.value })}
+                    placeholder="Contoh: https://www.youtube.com/watch?v=i8HoTEU3h_I"
+                    className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl focus:border-yellow-400/50 font-mono text-xs"
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  <span className="text-[11px] text-slate-400 font-medium">Contoh Video Tersedia:</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEditProfileData({
+                        ...editProfileData,
+                        officialVideoUrl: 'https://www.youtube.com/watch?v=i8HoTEU3h_I',
+                        officialVideoTitle: 'Video Alu-Aluan & Selamat Hari Guru SK Merbau Pulas',
+                        officialVideoTag: 'Tayangan Rasmi Sekolah'
+                      })
+                    }
+                    className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-yellow-300 font-semibold rounded-lg text-[11px] border border-white/10"
+                  >
+                    🎬 Video Selamat Hari Guru SKMP (i8HoTEU3h_I)
+                  </button>
+                </div>
+              </div>
+
+              {/* Interactive Video Player Live Preview */}
+              <div className="border border-white/10 rounded-2xl p-4 bg-slate-950/60 space-y-3">
+                <div className="flex items-center justify-between text-[11px] text-yellow-400 font-bold">
+                  <span className="flex items-center gap-1.5">
+                    <Play className="w-3.5 h-3.5 fill-yellow-400" /> Pratonton Langsung Pemain Video YouTube:
+                  </span>
+                  <span className="text-slate-400 font-normal">
+                    {editProfileData.officialVideoIsVisible !== false ? '✅ Aktif di Laman Utama' : '⚠️ Sembunyi'}
+                  </span>
+                </div>
+
+                <div className="relative rounded-2xl overflow-hidden border border-white/20 shadow-2xl aspect-video bg-slate-950 max-w-2xl mx-auto">
+                  <iframe
+                    src={getYouTubeEmbedUrl(editProfileData.officialVideoUrl || 'https://www.youtube.com/embed/i8HoTEU3h_I')}
+                    title={editProfileData.officialVideoTitle || 'Tayangan Video'}
+                    className="w-full h-full border-0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* SEKSYEN 3: STATISTIK RINGKAS LAMAN UTAMA */}
+            <div className="bg-white/10 backdrop-blur-md rounded-3xl border border-white/10 p-6 sm:p-8 shadow-lg space-y-4">
+              <div className="flex items-center gap-2.5 border-b border-white/10 pb-3">
+                <div className="w-9 h-9 rounded-xl bg-yellow-400/20 border border-yellow-400/30 flex items-center justify-center text-yellow-300">
+                  <Award className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-base font-extrabold text-white">3. Statistik Ringkas Laman Utama</h4>
+                  <p className="text-[11px] text-slate-300">4 angka statistik utama yang dipaparkan di bawah perutusan Guru Besar.</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-3 bg-white/5 border border-white/10 rounded-2xl space-y-1">
+                  <label className="block text-[11px] font-bold text-blue-300">Jumlah Murid Terdaftar</label>
+                  <input
+                    type="text"
+                    value={editProfileData.statsMurid || '485'}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, statsMurid: e.target.value })}
+                    placeholder="Contoh: 485"
+                    className="w-full p-2 bg-slate-900 border border-white/20 text-white font-black text-sm rounded-xl"
+                  />
+                </div>
+
+                <div className="p-3 bg-white/5 border border-white/10 rounded-2xl space-y-1">
+                  <label className="block text-[11px] font-bold text-yellow-300">Jumlah Guru Pendidik</label>
+                  <input
+                    type="text"
+                    value={editProfileData.statsGuru || '32'}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, statsGuru: e.target.value })}
+                    placeholder="Contoh: 32"
+                    className="w-full p-2 bg-slate-900 border border-white/20 text-white font-black text-sm rounded-xl"
+                  />
+                </div>
+
+                <div className="p-3 bg-white/5 border border-white/10 rounded-2xl space-y-1">
+                  <label className="block text-[11px] font-bold text-emerald-300">Anugerah Tertiari</label>
+                  <input
+                    type="text"
+                    value={editProfileData.statsAnugerah || '18'}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, statsAnugerah: e.target.value })}
+                    placeholder="Contoh: 18"
+                    className="w-full p-2 bg-slate-900 border border-white/20 text-white font-black text-sm rounded-xl"
+                  />
+                </div>
+
+                <div className="p-3 bg-white/5 border border-white/10 rounded-2xl space-y-1">
+                  <label className="block text-[11px] font-bold text-indigo-300">Dokumen & Borang</label>
+                  <input
+                    type="text"
+                    value={editProfileData.statsDokumen || '24+'}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, statsDokumen: e.target.value })}
+                    placeholder="Contoh: 24+"
+                    className="w-full p-2 bg-slate-900 border border-white/20 text-white font-black text-sm rounded-xl"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* SEKSYEN 4: PROFIL AM, VISI, MISI & SEJARAH SEKOLAH */}
+            <div className="bg-white/10 backdrop-blur-md rounded-3xl border border-white/10 p-6 sm:p-8 shadow-lg space-y-4">
+              <div className="flex items-center gap-2.5 border-b border-white/10 pb-3">
+                <div className="w-9 h-9 rounded-xl bg-yellow-400/20 border border-yellow-400/30 flex items-center justify-center text-yellow-300">
+                  <School className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-base font-extrabold text-white">4. Maklumat Am, Visi, Misi & Sejarah Sekolah</h4>
+                  <p className="text-[11px] text-slate-300">Maklumat rasmi pendaftaran, moto, visi, misi, dan latar belakang sejarah SKMP.</p>
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">Nama Sekolah</label>
+                  <input
+                    type="text"
+                    value={editProfileData.name}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, name: e.target.value })}
+                    className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">Kod Sekolah</label>
+                  <input
+                    type="text"
+                    value={editProfileData.code}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, code: e.target.value })}
+                    className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">No. Telefon</label>
+                  <input
+                    type="text"
+                    value={editProfileData.phone}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, phone: e.target.value })}
+                    className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">E-mel Rasmi</label>
+                  <input
+                    type="email"
+                    value={editProfileData.email}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, email: e.target.value })}
+                    className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">Moto Sekolah</label>
+                  <input
+                    type="text"
+                    value={editProfileData.motto || 'Berilmu, Beramal, Berbakti'}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, motto: e.target.value })}
+                    className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-200 mb-1">Visi Sekolah</label>
+                <textarea
+                  rows={2}
+                  value={editProfileData.vision}
+                  onChange={(e) => setEditProfileData({ ...editProfileData, vision: e.target.value })}
+                  className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-200 mb-1">Misi Sekolah</label>
+                <textarea
+                  rows={2}
+                  value={editProfileData.mission}
+                  onChange={(e) => setEditProfileData({ ...editProfileData, mission: e.target.value })}
+                  className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-200 mb-1">Sejarah & Latar Belakang Sekolah</label>
+                <textarea
+                  rows={4}
+                  value={editProfileData.history}
+                  onChange={(e) => setEditProfileData({ ...editProfileData, history: e.target.value })}
+                  className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="submit"
+                className="px-8 py-3.5 bg-yellow-400 text-blue-950 font-black rounded-2xl text-sm flex items-center gap-2 hover:bg-yellow-300 transition shadow-xl shadow-yellow-400/20 active:scale-95"
+              >
+                <Save className="w-5 h-5" />
+                <span>Simpan Semua Perubahan Profil & Laman Utama</span>
+              </button>
+            </div>
           </form>
         </div>
       )}
@@ -2878,6 +3224,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         />
       )}
 
+      {/* ==================== MODULE: URUS MENU UTAMA ==================== */}
+      {activeTab === 'menu' && (
+        <AdminMenuManager
+          menuItems={navigationMenu || initialNavigationMenu}
+          onSaveMenu={onSaveNavigationMenu || (() => {})}
+          showToast={showToast}
+        />
+      )}
+
       {/* ==================== MODULE 10: GOOGLE APPS SCRIPT CODE ==================== */}
       {activeTab === 'gas_code' && (
         <GasScriptSection
@@ -2908,7 +3263,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             pibgCommittee,
             cocurriculum: coCurriculumUnits,
             signageSlides,
-            signageConfig
+            signageConfig,
+            navigationMenu: navigationMenu || initialNavigationMenu
           }}
         />
       )}

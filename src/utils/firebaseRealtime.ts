@@ -19,7 +19,8 @@ import {
   CoCurriculumUnit,
   SignageSlide,
   SignageConfig,
-  HemData
+  HemData,
+  NavigationMenuItem
 } from '../types';
 
 /**
@@ -58,6 +59,7 @@ export async function syncAllDataToFirestore(data: {
   cocurriculum?: CoCurriculumUnit[];
   signageSlides?: SignageSlide[];
   signageConfig?: SignageConfig;
+  navigationMenu?: NavigationMenuItem[];
 }): Promise<boolean> {
   if (!isFirebaseEnabled()) return false;
   const db = getFirebaseDb();
@@ -97,6 +99,12 @@ export async function syncAllDataToFirestore(data: {
         updatedAt: new Date().toISOString()
       }, { merge: true }));
     }
+    if (data.navigationMenu) {
+      promises.push(setDoc(doc(db, 'school_data', 'navigation_menu'), {
+        items: data.navigationMenu,
+        updatedAt: new Date().toISOString()
+      }, { merge: true }));
+    }
 
     await Promise.all(promises);
     return true;
@@ -124,6 +132,7 @@ export function setupFirestoreRealtimeSync(callbacks: {
   onSignageSlidesChange?: (slides: SignageSlide[]) => void;
   onSignageConfigChange?: (config: SignageConfig) => void;
   onHemDataChange?: (hem: HemData) => void;
+  onNavigationMenuChange?: (menu: NavigationMenuItem[]) => void;
 }): () => void {
   if (!isFirebaseEnabled()) return () => {};
   const db = getFirebaseDb();
@@ -239,6 +248,19 @@ export function setupFirestoreRealtimeSync(callbacks: {
           }
         }
       }, (err) => console.warn('[FIRESTORE] Signage sync listener:', err));
+      unsubscribers.push(unsub);
+    }
+
+    // 9. Menu Utama (Navigation Menu)
+    if (callbacks.onNavigationMenuChange) {
+      const unsub = onSnapshot(doc(db, 'school_data', 'navigation_menu'), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data && Array.isArray(data.items)) {
+            callbacks.onNavigationMenuChange!(data.items as NavigationMenuItem[]);
+          }
+        }
+      }, (err) => console.warn('[FIRESTORE] Navigation Menu sync listener:', err));
       unsubscribers.push(unsub);
     }
 

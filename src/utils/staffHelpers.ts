@@ -228,3 +228,94 @@ export const sortStaffBySeniority = (staffList: Staff[], profile?: SchoolProfile
     return (a.name || '').localeCompare(b.name || '', 'ms');
   });
 };
+
+/**
+ * Helper to identify Penolong Kanan Hal Ehwal Murid (PK HEM) from staff list
+ */
+export const findPkHemStaff = (staffList: Staff[], profile?: SchoolProfile): Staff | undefined => {
+  if (!Array.isArray(staffList)) return undefined;
+
+  // 1. Match specific HEM keywords
+  const hemStaff = staffList.find((s) => {
+    const pos = cleanText(s.position || '');
+    return (
+      pos.includes('hal ehwal murid') ||
+      pos.includes('hem') ||
+      pos.includes('pk 2') ||
+      pos.includes('pk2') ||
+      pos.includes('gpk 2') ||
+      pos.includes('gpk2') ||
+      pos.includes('pk hem') ||
+      pos.includes('pkhem') ||
+      pos.includes('gpk hem') ||
+      pos.includes('gpkhem')
+    );
+  });
+  if (hemStaff) return hemStaff;
+
+  // 2. Staf ID staf-3 jika tergolong pentadbir
+  const staf3 = staffList.find((s) => s.id === 'staf-3');
+  if (staf3) return staf3;
+
+  return undefined;
+};
+
+/**
+ * Helper to identify Penolong Kanan Pentadbiran / Kurikulum (PK 1) from staff list
+ */
+export const findPkPentadbiranStaff = (staffList: Staff[], profile?: SchoolProfile): Staff | undefined => {
+  if (!Array.isArray(staffList)) return undefined;
+
+  const pk1 = staffList.find((s) => {
+    const pos = cleanText(s.position || '');
+    const isKoko = pos.includes('koko') || pos.includes('kokurikulum');
+    const isHem = pos.includes('hem') || pos.includes('hal ehwal murid');
+    return (
+      !isKoko &&
+      !isHem &&
+      (pos.includes('pentadbiran') ||
+        pos.includes('kurikulum') ||
+        pos.includes('akademik') ||
+        pos.includes('pk 1') ||
+        pos.includes('pk1') ||
+        pos.includes('gpk 1') ||
+        pos.includes('gpk1') ||
+        pos.includes('pk kurikulum') ||
+        pos.includes('pk pentadbiran'))
+    );
+  });
+  if (pk1) return pk1;
+
+  const staf2 = staffList.find((s) => s.id === 'staf-2');
+  if (staf2) return staf2;
+
+  return undefined;
+};
+
+/**
+ * Helper to identify Penolong Kanan Kokurikulum (PK Koko / PK 3) from staff list
+ */
+export const findPkKokurikulumStaff = (staffList: Staff[], profile?: SchoolProfile): Staff | undefined => {
+  if (!Array.isArray(staffList)) return undefined;
+
+  const pkKoko = staffList.find((s) => {
+    const pos = cleanText(s.position || '');
+    return (
+      pos.includes('kokurikulum') ||
+      pos.includes('koko') ||
+      pos.includes('ko kurikulum') ||
+      pos.includes('pk 3') ||
+      pos.includes('pk3') ||
+      pos.includes('gpk 3') ||
+      pos.includes('gpk3') ||
+      pos.includes('pk koko') ||
+      pos.includes('gpk koko')
+    );
+  });
+  if (pkKoko) return pkKoko;
+
+  const staf4 = staffList.find((s) => s.id === 'staf-4');
+  if (staf4) return staf4;
+
+  return undefined;
+};

@@ -13,7 +13,9 @@ import {
   CoCurriculumUnit,
   SignageSlide,
   SignageConfig,
-  HemData
+  HemData,
+  NavigationMenuItem,
+  TeacherLinkItem
 } from '../types';
 import {
   initialSchoolProfile,
@@ -30,7 +32,9 @@ import {
   initialCoCurriculumUnits,
   initialSignageSlides,
   initialSignageConfig,
-  initialHemData
+  initialHemData,
+  initialNavigationMenu,
+  initialTeacherLinks
 } from '../data/initialData';
 import { getSafeNewsImageUrl } from './imageHelpers';
 import { sortStaffBySeniority } from './staffHelpers';
@@ -44,13 +48,15 @@ const KEYS = {
   AWARDS: 'skmp_awards_v1',
   DOCUMENTS: 'skmp_documents_v1',
   SYSTEM_LINKS: 'skmp_syslinks_v1',
+  TEACHER_LINKS: 'skmp_teacher_links_v1',
   FEEDBACK: 'skmp_feedback_v1',
   PIBG_ACT: 'skmp_pibg_act_v1',
   PIBG_COMM: 'skmp_pibg_comm_v1',
   COCURRICULUM: 'skmp_cocurriculum_v1',
   SIGNAGE_SLIDES: 'skmp_signage_slides_v1',
   SIGNAGE_CONFIG: 'skmp_signage_config_v1',
-  HEM: 'skmp_hem_v1'
+  HEM: 'skmp_hem_v1',
+  NAV_MENU: 'skmp_nav_menu_v1'
 };
 
 function getStored<T>(key: string, fallback: T): T {
@@ -213,6 +219,19 @@ export function saveSystemLinks(links: SystemLink[]): void {
   setStored(KEYS.SYSTEM_LINKS, links);
 }
 
+export function loadTeacherLinks(): TeacherLinkItem[] {
+  return getStored<TeacherLinkItem[]>(KEYS.TEACHER_LINKS, initialTeacherLinks);
+}
+
+export function saveTeacherLinks(links: TeacherLinkItem[]): void {
+  setStored(KEYS.TEACHER_LINKS, links);
+  try {
+    window.dispatchEvent(new CustomEvent('skmp_teacher_links_updated', { detail: { links } }));
+  } catch {
+    // Ignore in non-browser env
+  }
+}
+
 export function loadFeedback(): FeedbackEntry[] {
   return getStored<FeedbackEntry[]>(KEYS.FEEDBACK, initialFeedbackList);
 }
@@ -344,6 +363,97 @@ export function saveHemData(data: HemData): void {
   }
 }
 
+export function loadNavigationMenu(): NavigationMenuItem[] {
+  const stored = getStored<NavigationMenuItem[]>(KEYS.NAV_MENU, initialNavigationMenu);
+  if (!Array.isArray(stored) || stored.length === 0) {
+    return initialNavigationMenu;
+  }
+
+  // Hilangkan tab 'organisasi', 'galeri', 'anugerah', dan 'portal' daripada menu utama serta selaraskan penamaan baharu
+  const hasOrganisasi = stored.some(i => i.targetTab === 'organisasi' || i.id === 'organisasi');
+  const hasGaleri = stored.some(i => i.targetTab === 'galeri' || i.id === 'galeri');
+  const hasAnugerah = stored.some(i => i.targetTab === 'anugerah' || i.id === 'anugerah');
+  const hasPortal = stored.some(i => i.targetTab === 'portal' || i.id === 'portal');
+  const hasOldBeritaLabel = stored.some(i => (i.targetTab === 'berita' || i.id === 'berita') && (i.label === 'Berita & Pekeliling' || i.label === 'Berita & Galeri'));
+  const hasOldProfilLabel = stored.some(i => (i.targetTab === 'profil' || i.id === 'profil') && i.label === 'Profil Sekolah');
+  const hasOldAkademikLabel = stored.some(i => (i.targetTab === 'akademik' || i.id === 'akademik') && (i.label === 'Akademik & Takwim' || i.label === 'Akademik'));
+  const hasOldHemLabel = stored.some(i => (i.targetTab === 'hem' || i.id === 'hem') && i.label === 'Hal Ehwal Murid (HEM)');
+  const hasOldUtamaLabel = stored.some(i => (i.targetTab === 'utama' || i.id === 'utama') && i.label === 'Utama');
+  
+  let cleaned = stored;
+  if (hasOrganisasi || hasGaleri || hasAnugerah || hasPortal || hasOldBeritaLabel || hasOldProfilLabel || hasOldAkademikLabel || hasOldHemLabel || hasOldUtamaLabel) {
+    cleaned = stored
+      .filter(i => 
+        i.targetTab !== 'organisasi' && i.id !== 'organisasi' && 
+        i.targetTab !== 'galeri' && i.id !== 'galeri' &&
+        i.targetTab !== 'anugerah' && i.id !== 'anugerah' &&
+        i.targetTab !== 'portal' && i.id !== 'portal'
+      )
+      .map((item, idx) => {
+        let updatedLabel = item.label;
+        let updatedIcon = item.iconName;
+        if (item.targetTab === 'utama' || item.id === 'utama') {
+          updatedLabel = '';
+        } else if (item.targetTab === 'profil' || item.id === 'profil') {
+          if (item.label === 'Profil Sekolah' || !item.label) updatedLabel = 'Profil';
+        } else if (item.targetTab === 'akademik' || item.id === 'akademik') {
+          if (item.label === 'Akademik & Takwim' || item.label === 'Akademik' || !item.label) updatedLabel = 'Kurikulum';
+        } else if (item.targetTab === 'hem' || item.id === 'hem') {
+          if (item.label === 'Hal Ehwal Murid (HEM)' || !item.label) updatedLabel = 'HEM';
+        } else if (item.targetTab === 'berita' || item.id === 'berita') {
+          if (item.label === 'Berita & Pekeliling' || item.label === 'Berita & Galeri' || !item.label) {
+            updatedLabel = 'Umum';
+            if (item.iconName === 'Newspaper') updatedIcon = 'Layers';
+          }
+        }
+        return { ...item, label: updatedLabel, iconName: updatedIcon, order: idx + 1 };
+      });
+    setStored(KEYS.NAV_MENU, cleaned);
+  }
+
+  // Pastikan menu mengandungi sekurang-kurangnya tab penting
+  const hasUtama = cleaned.some(i => i.targetTab === 'utama');
+  if (!hasUtama) {
+    return initialNavigationMenu;
+  }
+
+  // Pastikan tab Guru wujud untuk akses admin (selepas Utama dan sebelum Profil)
+  const hasGuru = cleaned.some(i => i.targetTab === 'guru' || i.id === 'guru');
+  if (!hasGuru) {
+    const guruItem: NavigationMenuItem = {
+      id: 'guru',
+      targetTab: 'guru',
+      label: 'Guru',
+      iconName: 'UserCheck',
+      badge: 'Admin',
+      isVisible: true,
+      order: 2,
+      requiresAdmin: true
+    };
+    // Sisipkan selepas tab 'utama'
+    const utamaIdx = cleaned.findIndex(i => i.targetTab === 'utama' || i.id === 'utama');
+    if (utamaIdx !== -1) {
+      cleaned.splice(utamaIdx + 1, 0, guruItem);
+    } else {
+      cleaned.unshift(guruItem);
+    }
+    cleaned = cleaned.map((item, idx) => ({ ...item, order: idx + 1 }));
+    setStored(KEYS.NAV_MENU, cleaned);
+  }
+
+  return cleaned.sort((a, b) => (a.order || 0) - (b.order || 0));
+}
+
+export function saveNavigationMenu(items: NavigationMenuItem[]): void {
+  const sorted = [...items].sort((a, b) => (a.order || 0) - (b.order || 0));
+  setStored(KEYS.NAV_MENU, sorted);
+  try {
+    window.dispatchEvent(new CustomEvent('skmp_nav_menu_updated', { detail: { menu: sorted } }));
+  } catch {
+    // Ignore in non-browser env
+  }
+}
+
 export function resetAllToDefault(): void {
   localStorage.removeItem(KEYS.PROFILE);
   localStorage.removeItem(KEYS.STAFF);
@@ -353,6 +463,7 @@ export function resetAllToDefault(): void {
   localStorage.removeItem(KEYS.AWARDS);
   localStorage.removeItem(KEYS.DOCUMENTS);
   localStorage.removeItem(KEYS.SYSTEM_LINKS);
+  localStorage.removeItem(KEYS.TEACHER_LINKS);
   localStorage.removeItem(KEYS.FEEDBACK);
   localStorage.removeItem(KEYS.PIBG_ACT);
   localStorage.removeItem(KEYS.PIBG_COMM);
@@ -360,4 +471,5 @@ export function resetAllToDefault(): void {
   localStorage.removeItem(KEYS.SIGNAGE_SLIDES);
   localStorage.removeItem(KEYS.SIGNAGE_CONFIG);
   localStorage.removeItem(KEYS.HEM);
+  localStorage.removeItem(KEYS.NAV_MENU);
 }

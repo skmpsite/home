@@ -8,10 +8,24 @@ export interface SchoolProfile {
   phone: string;
   fax: string;
   email: string;
+  // Perutusan & Kata Alu-Aluan
   principalName: string;
   principalTitle: string;
   principalPhotoUrl?: string;
   principalSpeech?: string;
+  principalBadge?: string;
+  // Tayangan Rasmi Sekolah (Video)
+  officialVideoTag?: string;
+  officialVideoTitle?: string;
+  officialVideoDescription?: string;
+  officialVideoUrl?: string;
+  officialVideoIsVisible?: boolean;
+  // Statistik Ringkas Laman Utama
+  statsMurid?: string;
+  statsGuru?: string;
+  statsAnugerah?: string;
+  statsDokumen?: string;
+  // Identiti & Lagu
   motto: string;
   vision: string;
   mission: string;
@@ -107,6 +121,17 @@ export interface SystemLink {
   description: string;
   badge: string;
   iconName: string;
+}
+
+export interface TeacherLinkItem {
+  id: string;
+  title: string;
+  category: 'kurikulum' | 'hem' | 'kokurikulum' | 'umum';
+  url: string;
+  description: string;
+  badge?: string;
+  iconName?: string;
+  order: number;
 }
 
 export interface FeedbackEntry {
@@ -237,11 +262,24 @@ export interface FacebookPost {
 }
 
 export interface SearchResultItem {
-  type: 'berita' | 'staf' | 'dokumen' | 'acara' | 'anugerah' | 'hem' | 'pengumuman';
+  type: 'berita' | 'staf' | 'dokumen' | 'acara' | 'anugerah' | 'hem' | 'pengumuman' | 'galeri';
   title: string;
   subtitle: string;
   linkTab: string;
   id: string;
+}
+
+export interface NavigationMenuItem {
+  id: string;
+  targetTab: string;
+  label: string;
+  iconName: string;
+  badge?: string;
+  isVisible: boolean;
+  order: number;
+  isExternal?: boolean;
+  externalUrl?: string;
+  requiresAdmin?: boolean;
 }
 
 export interface SignageSlide {

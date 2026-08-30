@@ -16,7 +16,9 @@ import {
   SearchResultItem,
   SignageSlide,
   SignageConfig,
-  HemData
+  HemData,
+  NavigationMenuItem,
+  TeacherLinkItem
 } from './types';
 import {
   loadProfile,
@@ -34,6 +36,8 @@ import {
   loadDocuments,
   saveDocuments,
   loadSystemLinks,
+  loadTeacherLinks,
+  saveTeacherLinks,
   loadFeedback,
   saveFeedback,
   loadPibgActivities,
@@ -48,6 +52,8 @@ import {
   saveSignageConfig,
   loadHemData,
   saveHemData,
+  loadNavigationMenu,
+  saveNavigationMenu,
   resetAllToDefault
 } from './utils/storage';
 import {
@@ -62,6 +68,7 @@ import { broadcastLiveSignage, fetchLiveSignageFromServer } from './utils/liveSi
 import { Header } from './components/Header';
 import { Navbar, TabType } from './components/Navbar';
 import { HeroSection } from './components/sections/HeroSection';
+import { TeacherSection } from './components/sections/TeacherSection';
 import { ProfileSection } from './components/sections/ProfileSection';
 import { OrganizationSection } from './components/sections/OrganizationSection';
 import { AcademicSection } from './components/sections/AcademicSection';
@@ -144,6 +151,8 @@ export default function App() {
   const [signageSlides, setSignageSlides] = useState<SignageSlide[]>(loadSignageSlides);
   const [signageConfig, setSignageConfig] = useState<SignageConfig>(loadSignageConfig);
   const [hemData, setHemData] = useState<HemData>(loadHemData);
+  const [navigationMenu, setNavigationMenu] = useState<NavigationMenuItem[]>(loadNavigationMenu);
+  const [teacherLinks, setTeacherLinks] = useState<TeacherLinkItem[]>(loadTeacherLinks);
 
   // UI States
   const [activeTab, setActiveTab] = useState<TabType>('utama');
@@ -253,6 +262,10 @@ export default function App() {
       onSignageConfigChange: (cfg) => {
         setSignageConfig(cfg);
         saveSignageConfig(cfg);
+      },
+      onNavigationMenuChange: (menu) => {
+        setNavigationMenu(menu);
+        saveNavigationMenu(menu);
       }
     });
 
@@ -272,12 +285,24 @@ export default function App() {
       if (e.key === 'skmp_signage_slides_v1') setSignageSlides(loadSignageSlides());
       if (e.key === 'skmp_signage_config_v1') setSignageConfig(loadSignageConfig());
       if (e.key === 'skmp_hem_v1') setHemData(loadHemData());
+      if (e.key === 'skmp_nav_menu_v1') setNavigationMenu(loadNavigationMenu());
+      if (e.key === 'skmp_teacher_links_v1') setTeacherLinks(loadTeacherLinks());
+    };
+
+    const handleTeacherLinksUpdated = (e: Event) => {
+      const customEvt = e as CustomEvent<{ links: TeacherLinkItem[] }>;
+      if (customEvt.detail?.links) {
+        setTeacherLinks(customEvt.detail.links);
+      } else {
+        setTeacherLinks(loadTeacherLinks());
+      }
     };
 
     window.addEventListener('visibilitychange', handleImmediateSync);
     window.addEventListener('focus', handleImmediateSync);
     window.addEventListener('online', handleImmediateSync);
     window.addEventListener('storage', handleStorageEvent);
+    window.addEventListener('skmp_teacher_links_updated', handleTeacherLinksUpdated);
 
     return () => {
       clearInterval(interval);
@@ -286,6 +311,7 @@ export default function App() {
       window.removeEventListener('focus', handleImmediateSync);
       window.removeEventListener('online', handleImmediateSync);
       window.removeEventListener('storage', handleStorageEvent);
+      window.removeEventListener('skmp_teacher_links_updated', handleTeacherLinksUpdated);
     };
   }, []);
 
@@ -421,6 +447,22 @@ export default function App() {
     autoPushToCloud({ hemData: data });
   };
 
+  const handleUpdateNavigationMenu = (menu: NavigationMenuItem[]) => {
+    setNavigationMenu(menu);
+    saveNavigationMenu(menu);
+    if (isFirebaseEnabled()) {
+      pushToFirestore('school_data', 'navigation_menu', { items: menu });
+    }
+  };
+
+  const handleUpdateTeacherLinks = (links: TeacherLinkItem[]) => {
+    setTeacherLinks(links);
+    saveTeacherLinks(links);
+    if (isFirebaseEnabled()) {
+      pushToFirestore('school_data', 'teacher_links', { items: links });
+    }
+  };
+
   const handleAddFeedback = (data: Omit<FeedbackEntry, 'id' | 'createdAt' | 'status'>) => {
     const entry: FeedbackEntry = {
       ...data,
@@ -454,6 +496,8 @@ export default function App() {
     setSignageSlides(loadSignageSlides());
     setSignageConfig(loadSignageConfig());
     setHemData(loadHemData());
+    setNavigationMenu(loadNavigationMenu());
+    setTeacherLinks(loadTeacherLinks());
   };
 
   // Global Search Autocomplete Builder
@@ -482,8 +526,21 @@ export default function App() {
           type: 'staf',
           title: s.name,
           subtitle: `${s.position} (${s.grade})`,
-          linkTab: 'organisasi',
+          linkTab: 'profil',
           id: s.id
+        });
+      }
+    });
+
+    // Search Gallery Media
+    gallery.forEach((g) => {
+      if (g.title.toLowerCase().includes(q) || (g.description && g.description.toLowerCase().includes(q))) {
+        results.push({
+          type: 'galeri',
+          title: g.title,
+          subtitle: `Galeri (${g.category})`,
+          linkTab: 'berita',
+          id: g.id
         });
       }
     });
@@ -588,6 +645,7 @@ export default function App() {
           onTabChange={setActiveTab}
           isAdmin={isAdmin}
           unreadFeedbackCount={unreadFeedbackCount}
+          navigationMenu={navigationMenu}
           mobileMenuOpen={mobileMenuOpen}
           onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
           onCloseMobileMenu={() => setMobileMenuOpen(false)}
@@ -610,18 +668,46 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'profil' && <ProfileSection profile={profile} />}
-
-        {activeTab === 'organisasi' && (
-          <OrganizationSection profile={profile} staffList={staffList} />
+        {activeTab === 'guru' && (
+          <TeacherSection
+            profile={profile}
+            staffList={staffList}
+            teacherLinks={teacherLinks}
+            onSaveTeacherLinks={handleUpdateTeacherLinks}
+            isAdmin={isAdmin}
+            onOpenLogin={() => setLoginModalOpen(true)}
+            onNavigate={setActiveTab}
+          />
         )}
 
-        {activeTab === 'akademik' && <AcademicSection events={events} />}
+        {activeTab === 'profil' && <ProfileSection profile={profile} staffList={staffList} />}
 
-        {activeTab === 'hem' && <HemSection hemData={hemData} profile={profile} />}
+        {activeTab === 'organisasi' && (
+          <ProfileSection profile={profile} staffList={staffList} />
+        )}
+
+        {activeTab === 'akademik' && (
+          <AcademicSection
+            events={events}
+            profile={profile}
+            staffList={staffList}
+          />
+        )}
+
+        {activeTab === 'hem' && (
+          <HemSection
+            hemData={hemData}
+            profile={profile}
+            staffList={staffList}
+          />
+        )}
 
         {activeTab === 'kokurikulum' && (
-          <CokurriculumSection units={coCurriculumUnits} />
+          <CokurriculumSection
+            units={coCurriculumUnits}
+            profile={profile}
+            staffList={staffList}
+          />
         )}
 
         {activeTab === 'signage' && (
@@ -635,21 +721,60 @@ export default function App() {
         {activeTab === 'berita' && (
           <NewsSection
             newsList={newsList}
-            selectedNewsItem={selectedNewsReader}
-            onSelectNewsItem={setSelectedNewsReader}
-          />
-        )}
-
-        {activeTab === 'galeri' && <GallerySection galleryItems={gallery} />}
-
-        {activeTab === 'anugerah' && <AwardsSection awards={awards} />}
-
-        {activeTab === 'portal' && (
-          <PortalDownloadSection
+            galleryItems={gallery}
+            awards={awards}
             documents={documents}
             systemLinks={systemLinks}
             pibgActivities={pibgActivities}
             pibgCommittee={pibgCommittee}
+            selectedNewsItem={selectedNewsReader}
+            onSelectNewsItem={setSelectedNewsReader}
+            initialSubTab="semua"
+          />
+        )}
+
+        {activeTab === 'galeri' && (
+          <NewsSection
+            newsList={newsList}
+            galleryItems={gallery}
+            awards={awards}
+            documents={documents}
+            systemLinks={systemLinks}
+            pibgActivities={pibgActivities}
+            pibgCommittee={pibgCommittee}
+            selectedNewsItem={selectedNewsReader}
+            onSelectNewsItem={setSelectedNewsReader}
+            initialSubTab="galeri"
+          />
+        )}
+
+        {activeTab === 'anugerah' && (
+          <NewsSection
+            newsList={newsList}
+            galleryItems={gallery}
+            awards={awards}
+            documents={documents}
+            systemLinks={systemLinks}
+            pibgActivities={pibgActivities}
+            pibgCommittee={pibgCommittee}
+            selectedNewsItem={selectedNewsReader}
+            onSelectNewsItem={setSelectedNewsReader}
+            initialSubTab="anugerah"
+          />
+        )}
+
+        {activeTab === 'portal' && (
+          <NewsSection
+            newsList={newsList}
+            galleryItems={gallery}
+            awards={awards}
+            documents={documents}
+            systemLinks={systemLinks}
+            pibgActivities={pibgActivities}
+            pibgCommittee={pibgCommittee}
+            selectedNewsItem={selectedNewsReader}
+            onSelectNewsItem={setSelectedNewsReader}
+            initialSubTab="portal"
           />
         )}
 
@@ -709,6 +834,8 @@ export default function App() {
             onSaveSignageConfig={handleUpdateSignageConfig}
             hemData={hemData}
             onSaveHemData={handleUpdateHemData}
+            navigationMenu={navigationMenu}
+            onSaveNavigationMenu={handleUpdateNavigationMenu}
             onResetAll={handleResetAllData}
           />
         )}

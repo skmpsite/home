@@ -1,5 +1,8 @@
-import React, { useState, useRef } from 'react';
-import { SchoolProfile } from '../../types';
+import React, { useState, useRef, useMemo } from 'react';
+import { SchoolProfile, Staff } from '../../types';
+import { initialStaffList } from '../../data/initialData';
+import { formatGoogleDriveUrl } from '../../utils/imageHelpers';
+import { sortStaffBySeniority, isAdministrator } from '../../utils/staffHelpers';
 import {
   School,
   Music,
@@ -12,18 +15,114 @@ import {
   Eye,
   Bookmark,
   Award,
-  Sparkles,
-  Info
+  Users,
+  Mail,
+  Phone,
+  BookOpen,
+  ShieldCheck,
+  X,
+  Search,
+  UserCheck
 } from 'lucide-react';
 
 interface ProfileSectionProps {
   profile: SchoolProfile;
+  staffList?: Staff[];
 }
 
-export const ProfileSection: React.FC<ProfileSectionProps> = ({ profile }) => {
+export const ProfileSection: React.FC<ProfileSectionProps> = ({ profile, staffList = initialStaffList }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // States for Carta Organisasi
+  const [selectedCategory, setSelectedCategory] = useState<'semua' | 'pentadbir' | 'guru' | 'staf'>('semua');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedStaffModal, setSelectedStaffModal] = useState<Staff | null>(null);
+
+  // Susun semua staf mengikut hierarki kekananan
+  const sortedStaffList = useMemo(() => {
+    return sortStaffBySeniority(staffList, profile);
+  }, [staffList, profile]);
+
+  const getStaffName = (staff: Staff): string => {
+    const isGuruBesar =
+      staff.id === 'staf-1' ||
+      (staff.position && staff.position.toLowerCase().includes('guru besar')) ||
+      (staff.name && staff.name.toLowerCase().includes('norhafiza'));
+    if (isGuruBesar) {
+      return profile?.principalName || staff.name || 'Puan Norhafiza Binti Dolah';
+    }
+    return staff.name;
+  };
+
+  const getStaffPosition = (staff: Staff): string => {
+    const isGuruBesar =
+      staff.id === 'staf-1' ||
+      (staff.position && staff.position.toLowerCase().includes('guru besar')) ||
+      (staff.name && staff.name.toLowerCase().includes('norhafiza'));
+    if (isGuruBesar) {
+      return profile?.principalTitle || staff.position || 'Guru Besar (DG48)';
+    }
+    return staff.position;
+  };
+
+  const getStaffPhoto = (staff: Staff): string => {
+    const isGuruBesar =
+      staff.id === 'staf-1' ||
+      (staff.position && staff.position.toLowerCase().includes('guru besar')) ||
+      (staff.name && staff.name.toLowerCase().includes('norhafiza'));
+
+    if (isGuruBesar) {
+      if (profile?.principalPhotoUrl && profile.principalPhotoUrl.trim() !== '') {
+        return formatGoogleDriveUrl(profile.principalPhotoUrl);
+      }
+      if (
+        staff.photoUrl &&
+        staff.photoUrl.trim() !== '' &&
+        !staff.photoUrl.includes('unsplash.com') &&
+        !staff.photoUrl.includes('1786556385385') &&
+        !staff.photoUrl.includes('1786555771027') &&
+        !staff.photoUrl.includes('guru_besar_norhafiza') &&
+        !staff.photoUrl.includes('1786808669012')
+      ) {
+        return formatGoogleDriveUrl(staff.photoUrl);
+      }
+      return '';
+    }
+
+    if (!staff.photoUrl || staff.photoUrl.trim() === '' || staff.photoUrl.includes('unsplash.com')) {
+      return '';
+    }
+    return formatGoogleDriveUrl(staff.photoUrl);
+  };
+
+  const administrators = useMemo(() => {
+    const admins = sortedStaffList.filter((s) => isAdministrator(s, profile));
+    return sortStaffBySeniority(admins, profile);
+  }, [sortedStaffList, profile]);
+  
+  const filteredStaff = useMemo(() => {
+    return sortedStaffList.filter((s) => {
+      let matchesCategory = true;
+      if (selectedCategory === 'pentadbir') {
+        matchesCategory = isAdministrator(s, profile);
+      } else if (selectedCategory === 'guru') {
+        matchesCategory = !isAdministrator(s, profile) && (s.category === 'guru' || (s.grade && s.grade.toUpperCase().includes('DG')));
+      } else if (selectedCategory === 'staf') {
+        matchesCategory = s.category === 'staf' || s.category === 'akp' || (!isAdministrator(s, profile) && !(s.grade && s.grade.toUpperCase().includes('DG')));
+      }
+
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch =
+        q === '' ||
+        s.name.toLowerCase().includes(q) ||
+        s.position.toLowerCase().includes(q) ||
+        (s.grade && s.grade.toLowerCase().includes(q)) ||
+        (s.subject && s.subject.toLowerCase().includes(q));
+      return matchesCategory && matchesSearch;
+    });
+  }, [sortedStaffList, selectedCategory, searchQuery, profile]);
 
   const togglePlay = () => {
     if (audioRef.current) {
@@ -111,6 +210,160 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ profile }) => {
           <p>
             Nama sekolah ini diambil sempena kawasan petempatan Merbau Pulas yang kaya dengan sejarah tradisi pertanian dan semangat kemasyarakatan yang kuat. Kini SK Merbau Pulas menempatkan blok akademik yang kondusif, Pusat Sumber Digital Seri Merbau, Makmal Komputer Komprehensif, Dewan Terbuka, serta pelbagai kelengkapan sukan.
           </p>
+        </div>
+      </div>
+
+      {/* Carta Organisasi Section */}
+      <div className="bg-white/10 backdrop-blur-md rounded-3xl border border-white/10 p-6 sm:p-8 shadow-lg space-y-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-500/20 text-yellow-300 font-bold rounded-full text-xs border border-yellow-400/30 mb-2">
+              <Users className="w-3.5 h-3.5 text-yellow-400" />
+              <span>Warga Pendidik & Pengurusan</span>
+            </div>
+            <h3 className="text-xl sm:text-2xl font-black text-white">Carta Organisasi</h3>
+            <p className="text-xs text-slate-200 mt-0.5">
+              Struktur kepimpinan pentadbiran tertinggi sekolah, barisan guru pendidik, dan staf sokongan SK Merbau Pulas.
+            </p>
+          </div>
+        </div>
+
+        {/* Barisan Pentadbir Utama Sekolah */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 pb-2 border-b border-white/10">
+            <ShieldCheck className="w-5 h-5 text-yellow-400" />
+            <h4 className="text-lg font-black text-white">Barisan Pentadbir Utama Sekolah</h4>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {administrators.map((admin) => {
+              const photo = getStaffPhoto(admin);
+              return (
+                <div
+                  key={admin.id}
+                  onClick={() => setSelectedStaffModal(admin)}
+                  className="bg-white/10 backdrop-blur-md rounded-3xl border border-white/10 p-5 shadow-lg hover:shadow-xl transition text-center cursor-pointer group hover:border-yellow-400/50 flex flex-col items-center"
+                >
+                  <div className="w-24 h-24 rounded-2xl bg-yellow-400 p-0.5 shadow-md overflow-hidden mb-3 border-2 border-yellow-300 group-hover:scale-105 transition flex items-center justify-center">
+                    {photo && photo.trim() !== '' ? (
+                      <img
+                        src={photo}
+                        alt={admin.name}
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                        className="w-full h-full object-cover rounded-xl"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-slate-900 rounded-xl flex items-center justify-center text-yellow-300">
+                        <UserCheck className="w-10 h-10 opacity-70" />
+                      </div>
+                    )}
+                  </div>
+                  <span className="px-2.5 py-0.5 bg-blue-950 text-yellow-300 font-black rounded-md text-[10px] uppercase mb-2 border border-white/20">
+                    {admin.position.toLowerCase().includes('guru besar') ? 'DG48' : admin.grade}
+                  </span>
+                  <h5 className="font-extrabold text-xs sm:text-sm text-white group-hover:text-yellow-300 transition line-clamp-1">
+                    {getStaffName(admin)}
+                  </h5>
+                  <p className="text-xs text-yellow-400 font-bold mt-1 line-clamp-2">
+                    {getStaffPosition(admin)}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Direktori Guru & Staf Sokongan with Filter & Search */}
+        <div className="space-y-6 pt-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
+            <div className="flex items-center gap-2">
+              <UserCheck className="w-5 h-5 text-yellow-400" />
+              <h4 className="text-lg font-black text-white">Direktori Guru & Staf Sokongan</h4>
+            </div>
+
+            {/* Search Field */}
+            <div className="relative w-full sm:w-64">
+              <Search className="w-4 h-4 text-slate-300 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Cari nama atau subjek..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full text-xs pl-9 pr-3 py-2 bg-white/5 border border-white/20 text-white placeholder:text-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400/50"
+              />
+            </div>
+          </div>
+
+          {/* Filter Category Tabs */}
+          <div className="flex flex-wrap items-center gap-2">
+            {[
+              { id: 'semua', label: 'Semua Warga' },
+              { id: 'pentadbir', label: 'Pentadbir' },
+              { id: 'guru', label: 'Barisan Guru' },
+              { id: 'staf', label: 'Staf Sokongan' }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setSelectedCategory(tab.id as any)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
+                  selectedCategory === tab.id
+                    ? 'bg-yellow-400 text-blue-950 font-black shadow-lg shadow-yellow-400/20'
+                    : 'bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Staff Cards Grid */}
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {filteredStaff.map((staff) => {
+              const photo = getStaffPhoto(staff);
+              return (
+                <div
+                  key={staff.id}
+                  onClick={() => setSelectedStaffModal(staff)}
+                  className="bg-white/5 hover:bg-white/10 p-4 rounded-2xl border border-white/10 hover:border-yellow-400/50 transition cursor-pointer shadow-md group flex items-center gap-3.5"
+                >
+                  <div className="w-14 h-14 rounded-xl bg-yellow-400 p-0.5 overflow-hidden flex-shrink-0 shadow-sm flex items-center justify-center">
+                    {photo && photo.trim() !== '' ? (
+                      <img
+                        src={photo}
+                        alt={getStaffName(staff)}
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                        className="w-full h-full object-cover rounded-lg group-hover:scale-105 transition"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-slate-900 rounded-lg flex items-center justify-center text-yellow-300">
+                        <UserCheck className="w-6 h-6 opacity-70" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-0.5 overflow-hidden">
+                    <span className="text-[10px] font-bold text-yellow-300 uppercase bg-yellow-500/20 px-1.5 py-0.2 rounded border border-yellow-400/30">
+                      {staff.position.toLowerCase().includes('guru besar') ? 'DG48' : staff.grade}
+                    </span>
+                    <h5 className="font-extrabold text-xs text-white group-hover:text-yellow-300 transition truncate">
+                      {getStaffName(staff)}
+                    </h5>
+                    <p className="text-[11px] text-slate-300 truncate font-medium">
+                      {getStaffPosition(staff)}
+                    </p>
+                    {staff.subject && (
+                      <p className="text-[10px] text-yellow-400 font-semibold truncate">
+                        📖 {staff.subject}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -223,6 +476,70 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ profile }) => {
           ))}
         </div>
       </div>
+
+      {/* Staff Detail Modal */}
+      {selectedStaffModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="bg-slate-900/90 backdrop-blur-2xl text-slate-100 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-white/20 relative">
+            <button
+              onClick={() => setSelectedStaffModal(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex flex-col items-center text-center space-y-3">
+              <div className="w-24 h-24 rounded-2xl bg-yellow-400 p-1 shadow-lg overflow-hidden flex items-center justify-center">
+                {getStaffPhoto(selectedStaffModal) && getStaffPhoto(selectedStaffModal).trim() !== '' ? (
+                  <img
+                    src={getStaffPhoto(selectedStaffModal)}
+                    alt={getStaffName(selectedStaffModal)}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                    className="w-full h-full object-cover rounded-xl"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-slate-900 rounded-xl flex items-center justify-center text-yellow-300">
+                    <UserCheck className="w-10 h-10 opacity-70" />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <span className="px-2.5 py-0.5 bg-blue-950 text-yellow-300 font-black rounded-md text-[10px] uppercase border border-white/20">
+                  {selectedStaffModal.position.toLowerCase().includes('guru besar') ? 'DG48' : selectedStaffModal.grade}
+                </span>
+                <h3 className="font-extrabold text-base text-white mt-2">
+                  {getStaffName(selectedStaffModal)}
+                </h3>
+                <p className="text-xs text-yellow-400 font-bold">
+                  {getStaffPosition(selectedStaffModal)}
+                </p>
+              </div>
+
+              <div className="w-full bg-white/5 p-4 rounded-2xl border border-white/10 text-left space-y-2 text-xs">
+                {selectedStaffModal.subject && (
+                  <div className="flex items-center gap-2 text-slate-200">
+                    <BookOpen className="w-4 h-4 text-yellow-400 flex-shrink-0" />
+                    <span><strong>Subjek / Tugas:</strong> {selectedStaffModal.subject}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 text-slate-200">
+                  <Mail className="w-4 h-4 text-yellow-400 flex-shrink-0" />
+                  <span><strong>E-mel DELIMa:</strong> {selectedStaffModal.email}</span>
+                </div>
+                {selectedStaffModal.phone && (
+                  <div className="flex items-center gap-2 text-slate-200">
+                    <Phone className="w-4 h-4 text-yellow-400 flex-shrink-0" />
+                    <span><strong>No. Telefon:</strong> {selectedStaffModal.phone}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

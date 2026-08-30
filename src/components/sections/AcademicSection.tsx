@@ -1,14 +1,40 @@
-import React, { useState } from 'react';
-import { CalendarEvent } from '../../types';
-import { GraduationCap, Calendar as CalendarIcon, BookOpen, Layers, CheckCircle, Clock, MapPin, Users, Award, FileText } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { CalendarEvent, SchoolProfile, Staff } from '../../types';
+import { GraduationCap, Calendar as CalendarIcon, BookOpen, Layers, CheckCircle, Clock, MapPin, Users, Award, FileText, UserCheck } from 'lucide-react';
+import { formatGoogleDriveUrl } from '../../utils/imageHelpers';
+import { findPkPentadbiranStaff } from '../../utils/staffHelpers';
 
 interface AcademicSectionProps {
   events: CalendarEvent[];
+  profile?: SchoolProfile;
+  staffList?: Staff[];
 }
 
-export const AcademicSection: React.FC<AcademicSectionProps> = ({ events }) => {
+export const AcademicSection: React.FC<AcademicSectionProps> = ({ events, profile, staffList }) => {
   const [selectedCategory, setSelectedCategory] = useState<'semua' | 'peperiksaan' | 'cuti' | 'acara' | 'pibg'>('semua');
   const [selectedEventModal, setSelectedEventModal] = useState<CalendarEvent | null>(null);
+
+  // Ambil maklumat Penolong Kanan Pentadbiran / Kurikulum mengikut Barisan Pentadbir Utama
+  const pkPentadbiranStaff = useMemo(() => {
+    if (staffList && staffList.length > 0) {
+      return findPkPentadbiranStaff(staffList, profile);
+    }
+    return undefined;
+  }, [staffList, profile]);
+
+  const pkKurikulumName = pkPentadbiranStaff?.name || "Puan Noraini binti Yusof";
+  const pkKurikulumTitle = pkPentadbiranStaff?.position || "Guru Penolong Kanan Pentadbiran (PK 1)";
+  const pkKurikulumGrade = pkPentadbiranStaff?.grade || "DG44";
+  const pkKurikulumInfo = pkPentadbiranStaff?.grade
+    ? (pkPentadbiranStaff.grade.startsWith('DG') ? `Pegawai Perkhidmatan Pendidikan (${pkPentadbiranStaff.grade})` : `Gred ${pkPentadbiranStaff.grade}`)
+    : "Pegawai Perkhidmatan Pendidikan (DG44)";
+
+  const pkKurikulumPhoto = useMemo(() => {
+    if (pkPentadbiranStaff?.photoUrl && pkPentadbiranStaff.photoUrl.trim() !== '') {
+      return formatGoogleDriveUrl(pkPentadbiranStaff.photoUrl);
+    }
+    return '';
+  }, [pkPentadbiranStaff]);
 
   const filteredEvents = events.filter(
     (e) => selectedCategory === 'semua' || e.category === selectedCategory
@@ -30,15 +56,65 @@ export const AcademicSection: React.FC<AcademicSectionProps> = ({ events }) => {
   return (
     <div className="space-y-8 animate-fadeIn">
       {/* Title Banner */}
-      <div className="bg-white/10 backdrop-blur-xl text-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-white/20">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-yellow-500/20 text-yellow-300 font-bold rounded-full text-xs border border-yellow-400/30 mb-2">
-          <GraduationCap className="w-3.5 h-3.5 text-yellow-400" />
-          <span>Pengajian & Kurikulum</span>
+      <div className="bg-white/10 backdrop-blur-xl text-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-white/20 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-yellow-400/10 rounded-full blur-2xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="flex-1">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-yellow-500/20 text-yellow-300 font-bold rounded-full text-xs border border-yellow-400/30 mb-2">
+              <GraduationCap className="w-3.5 h-3.5 text-yellow-400" />
+              <span>Pengajian & Kurikulum</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black text-white">Akademik & Takwim Persekolahan</h2>
+            <p className="text-xs sm:text-sm text-slate-200 mt-1 max-w-2xl leading-relaxed">
+              Maklumat kurikulum KSSR Semakan, program Dual Language Programme (DLP), Pentaksiran Bilik Darjah (PBD), dan Takwim Peperiksaan & Cuti Sekolah.
+            </p>
+          </div>
+
+          {/* PK Pentadbiran Profile Mini-Card with Picture, Position, Name & Info */}
+          <div className="bg-slate-900/85 backdrop-blur-md p-4 sm:p-5 rounded-3xl border border-white/20 flex items-center gap-4 flex-shrink-0 shadow-xl hover:border-yellow-400/50 transition">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-yellow-400 p-0.5 shadow-md overflow-hidden border-2 border-yellow-300 flex items-center justify-center flex-shrink-0">
+              {pkKurikulumPhoto && pkKurikulumPhoto.trim() !== '' ? (
+                <img
+                  src={pkKurikulumPhoto}
+                  alt={pkKurikulumName}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const parent = e.currentTarget.parentElement;
+                    const fallback = parent?.querySelector('.fallback-pkkurikulum-icon');
+                    if (fallback) (fallback as HTMLElement).classList.remove('hidden');
+                  }}
+                  className="w-full h-full object-cover rounded-xl"
+                />
+              ) : null}
+              <div
+                className={`fallback-pkkurikulum-icon w-full h-full bg-slate-900 rounded-xl flex items-center justify-center text-yellow-300 ${
+                  pkKurikulumPhoto && pkKurikulumPhoto.trim() !== '' ? 'hidden' : 'flex'
+                }`}
+              >
+                <UserCheck className="w-8 h-8 opacity-80" />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md bg-blue-500/20 text-blue-300 border border-blue-400/30">
+                  {pkKurikulumTitle}
+                </span>
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-blue-950 text-yellow-300 border border-white/20">
+                  {pkKurikulumGrade}
+                </span>
+              </div>
+              <h4 className="text-sm sm:text-base font-black text-white leading-snug">
+                {pkKurikulumName}
+              </h4>
+              <p className="text-xs text-slate-300 font-medium">
+                {pkKurikulumInfo}
+              </p>
+            </div>
+          </div>
         </div>
-        <h2 className="text-2xl sm:text-3xl font-black text-white">Akademik & Takwim Persekolahan</h2>
-        <p className="text-xs sm:text-sm text-slate-200 mt-1 max-w-2xl">
-          Maklumat kurikulum KSSR Semakan, program Dual Language Programme (DLP), Pentaksiran Bilik Darjah (PBD), dan Takwim Peperiksaan & Cuti Sekolah.
-        </p>
       </div>
 
       {/* Curriculum & Key Programs Grid */}

@@ -40,7 +40,8 @@ import {
   CoCurriculumUnit,
   SignageSlide,
   SignageConfig,
-  HemData
+  HemData,
+  NavigationMenuItem
 } from '../../types';
 
 interface FirebaseManagerProps {
@@ -60,6 +61,7 @@ interface FirebaseManagerProps {
     cocurriculum?: CoCurriculumUnit[];
     signageSlides?: SignageSlide[];
     signageConfig?: SignageConfig;
+    navigationMenu?: NavigationMenuItem[];
   };
 }
 

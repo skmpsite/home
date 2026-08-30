@@ -7,6 +7,7 @@ import {
   AwardItem,
   DownloadDocument,
   SystemLink,
+  TeacherLinkItem,
   FeedbackEntry,
   PibgActivity,
   PibgCommittee,
@@ -14,7 +15,8 @@ import {
   FacebookPost,
   SignageSlide,
   SignageConfig,
-  HemData
+  HemData,
+  NavigationMenuItem
 } from '../types';
 
 export const initialSchoolProfile: SchoolProfile = {
@@ -31,6 +33,16 @@ export const initialSchoolProfile: SchoolProfile = {
   principalTitle: "Guru Besar (DG48)",
   principalPhotoUrl: "",
   principalSpeech: "Selamat datang ke laman web rasmi SK Merbau Pulas. Semoga platform ini menjadi jambatan perhubungan yang mantap antara warga sekolah, ibu bapa, dan komuniti dalam mencapai kecemerlangan modal insan.",
+  principalBadge: "Perutusan & Kata Alu-Aluan",
+  officialVideoTag: "Tayangan Rasmi Sekolah",
+  officialVideoTitle: "Video Alu-Aluan & Profil SK Merbau Pulas",
+  officialVideoDescription: "Saksikan paparan montaj multimedia rasmi sekolah yang memaparkan keindahan persekitaran, keharmonian warga murid, serta aktiviti pembelajaran di SKMP.",
+  officialVideoUrl: "https://www.youtube.com/watch?v=i8HoTEU3h_I",
+  officialVideoIsVisible: true,
+  statsMurid: "485",
+  statsGuru: "32",
+  statsAnugerah: "18",
+  statsDokumen: "24+",
   motto: "Berilmu, Beramal, Berbakti",
   vision: "Pendidikan Berkualiti Insan Terdidik Negara Sejahtera.",
   mission: "Melestarikan Sistem Pendidikan Yang Berkualiti Untuk Membangunkan Potensi Individu Bagi Memenuhi Aspirasi Negara.",
@@ -971,4 +983,331 @@ export const initialHemData: HemData = {
     }
   ]
 };
+
+export const initialTeacherLinks: TeacherLinkItem[] = [
+  // 1. KURIKULUM
+  {
+    id: "tlink-k1",
+    title: "IDME KPM (Sistem Pentaksiran Bersepadu)",
+    category: "kurikulum",
+    url: "https://idme.moe.gov.my",
+    description: "Modul kemasukan Pentaksiran Bilik Darjah (PBD), UASA, dan pengurusan akademik bersepadu KPM.",
+    badge: "PBD / UASA",
+    iconName: "GraduationCap",
+    order: 1
+  },
+  {
+    id: "tlink-k2",
+    title: "e-RPH Skrip (Buku Rekod Mengajar Digital)",
+    category: "kurikulum",
+    url: "https://erph.moe-dl.edu.my",
+    description: "Penyediaan, penghantaran mingguan dan semakan Rancangan Pengajaran Harian digital guru.",
+    badge: "e-RPH",
+    iconName: "BookOpen",
+    order: 2
+  },
+  {
+    id: "tlink-k3",
+    title: "DELIMa 3.0 KPM (Google Classroom)",
+    category: "kurikulum",
+    url: "https://d3.delima.edu.my",
+    description: "Portal Pembelajaran Digital KPM, Google Classroom, Canva for Education dan repositori sumber PdP.",
+    badge: "DELIMa",
+    iconName: "Laptop",
+    order: 3
+  },
+  {
+    id: "tlink-k4",
+    title: "SPPAT & Lembaga Peperiksaan Malaysia",
+    category: "kurikulum",
+    url: "https://sppat.moe.gov.my",
+    description: "Sistem Pengurusan Peperiksaan Atas Talian, pendaftaran calon dan analisis pentaksiran pusat.",
+    badge: "LPM",
+    iconName: "FileText",
+    order: 4
+  },
+  {
+    id: "tlink-k5",
+    title: "Buku Teks Digital & DSKP KSSR Semakan",
+    category: "kurikulum",
+    url: "https://textbook.moe.gov.my",
+    description: "Arkib Dokumen Standard Kurikulum & Pentaksiran (DSKP) serta e-Buku Teks digital semua tahun.",
+    badge: "DSKP",
+    iconName: "Bookmark",
+    order: 5
+  },
+  {
+    id: "tlink-k6",
+    title: "Google Drive Panitia & Bank Soalan",
+    category: "kurikulum",
+    url: "https://drive.google.com",
+    description: "Penyimpanan bahan panitia mata pelajaran, kertas peperiksaan lepas, modul latihan dan MMI.",
+    badge: "Panitia",
+    iconName: "Layers",
+    order: 6
+  },
+
+  // 2. HAL EHWAL MURID
+  {
+    id: "tlink-h1",
+    title: "APDM (Aplikasi Pangkalan Data Murid)",
+    category: "hem",
+    url: "https://apdm.moe.gov.my",
+    description: "Pengurusan data peribadi murid, enrolmen kelas, rekod kehadiran harian dan maklumat penjaga.",
+    badge: "APDM",
+    iconName: "Users",
+    order: 7
+  },
+  {
+    id: "tlink-h2",
+    title: "SSDM v2 (Sistem Sahsiah Diri Murid)",
+    category: "hem",
+    url: "https://ssdm.moe.gov.my",
+    description: "Perekodan amalan baik terpuji murid, pengurusan disiplin dan laporan salah laku tatatertib.",
+    badge: "SSDM",
+    iconName: "Shield",
+    order: 8
+  },
+  {
+    id: "tlink-h3",
+    title: "e-SPBT (Sistem Skim Pinjaman Buku Teks)",
+    category: "hem",
+    url: "https://espbt.moe.gov.my",
+    description: "Pengurusan stok buku teks, pesanan unjuran murid, dan pelupusan buku teks BOSS.",
+    badge: "SPBT",
+    iconName: "BookOpen",
+    order: 9
+  },
+  {
+    id: "tlink-h4",
+    title: "Portal RMT & Program Susu Sekolah",
+    category: "hem",
+    url: "https://apdm.moe.gov.my",
+    description: "Pemantauan senarai kelayakan penerima Rancangan Makanan Tambahan dan jadual menu kantin.",
+    badge: "RMT",
+    iconName: "HeartHandshake",
+    order: 10
+  },
+  {
+    id: "tlink-h5",
+    title: "e-Bantuan KPM (BAP & KWAPM)",
+    category: "hem",
+    url: "https://apdm.moe.gov.my",
+    description: "Pengurusan permohonan dan agihan Bantuan Awal Persekolahan serta KWAPM murid B40.",
+    badge: "Kebajikan",
+    iconName: "Award",
+    order: 11
+  },
+  {
+    id: "tlink-h6",
+    title: "e-Bimbingan & Kaunseling (UBK)",
+    category: "hem",
+    url: "https://d3.delima.edu.my",
+    description: "Temujanji sesi kaunseling individu/kelompok, inventori psikometrik dan program motivasi.",
+    badge: "UBK",
+    iconName: "Sparkles",
+    order: 12
+  },
+
+  // 3. KOKURIKULUM
+  {
+    id: "tlink-c1",
+    title: "PAJSK Online KPM",
+    category: "kokurikulum",
+    url: "https://pajsk.moe.gov.my",
+    description: "Pentaksiran Aktiviti Jasmani, Sukan & Kokurikulum (Badan Beruniform, Kelab & Sukan).",
+    badge: "PAJSK",
+    iconName: "Trophy",
+    order: 13
+  },
+  {
+    id: "tlink-c2",
+    title: "e-Kehadiran & Laporan Aktiviti Kokurikulum",
+    category: "kokurikulum",
+    url: "https://d3.delima.edu.my",
+    description: "Perekodan kehadiran mingguan hari Rabu dan borang laporan aktiviti mingguan guru penasihat.",
+    badge: "Kehadiran Koko",
+    iconName: "Calendar",
+    order: 14
+  },
+  {
+    id: "tlink-c3",
+    title: "Borang Skor Markah & Merit Kokurikulum",
+    category: "kokurikulum",
+    url: "https://drive.google.com",
+    description: "Borang penskoran jawatan, peringkat pencapaian, penglibatan dan sumbangan ekstra kurikulum.",
+    badge: "Merit Koko",
+    iconName: "Award",
+    order: 15
+  },
+  {
+    id: "tlink-c4",
+    title: "Portal Kejohanan Sukan MSSD / MSSK",
+    category: "kokurikulum",
+    url: "https://jpnkedah.moe.gov.my",
+    description: "Maklumat kejohanan Majlis Sukan Sekolah Daerah, pendaftaran atlet dan jadual pertandingan.",
+    badge: "MSSD / MSSK",
+    iconName: "Activity",
+    order: 16
+  },
+  {
+    id: "tlink-c5",
+    title: "Buku Log & Panduan Badan Beruniform",
+    category: "kokurikulum",
+    url: "https://d3.delima.edu.my",
+    description: "Bahan silibus skema ujian lencana Pengakap Kanak-kanak, TKRS, dan Pandu Puteri Tunas.",
+    badge: "Beruniform",
+    iconName: "Shield",
+    order: 17
+  },
+
+  // 4. UMUM
+  {
+    id: "tlink-u1",
+    title: "e-Operasi KPM (Modul Pengurusan Guru)",
+    category: "umum",
+    url: "https://eoperasi.moe.gov.my",
+    description: "Sistem pengurusan guru, semakan pengisian jawatan, profil perkhidmatan dan subjek ajar.",
+    badge: "e-Operasi",
+    iconName: "Users",
+    order: 18
+  },
+  {
+    id: "tlink-u2",
+    title: "HRMIS 2.0 (Pengurusan Sumber Manusia JPA)",
+    category: "umum",
+    url: "https://hrmis2.eghrmis.gov.my",
+    description: "Permohonan Cuti Rehat Khas (CRK), semakan perkhidmatan, SKT, dan pengisytiharan harta.",
+    badge: "HRMIS",
+    iconName: "Briefcase",
+    order: 19
+  },
+  {
+    id: "tlink-u3",
+    title: "SPLKPM (Sistem Pengurusan Latihan KPM)",
+    category: "umum",
+    url: "https://splkpm.moe.gov.my",
+    description: "Perekodan hari berkursus, mata kredit SPLKPM, LDP sekolah dan pautan modul EPSA.",
+    badge: "SPLKPM",
+    iconName: "CheckCircle2",
+    order: 20
+  },
+  {
+    id: "tlink-u4",
+    title: "e-Penyata Gaji & Laporan ANM",
+    category: "umum",
+    url: "https://epenyatagaji-laporan.anm.gov.my",
+    description: "Semakan penyata gaji bulanan rasmi dan Penyata Pendapatan Tahunan (Borang EC) ANM.",
+    badge: "Gaji ANM",
+    iconName: "FileText",
+    order: 21
+  },
+  {
+    id: "tlink-u5",
+    title: "Portal Sistem Saraan Perkhidmatan Awam (SSPA)",
+    category: "umum",
+    url: "https://sspa.jpa.gov.my",
+    description: "Rujukan rasmi skim SSPA, kalkulator simulasi gaji baharu dan maklumat opsyen perkhidmatan.",
+    badge: "SSPA JPA",
+    iconName: "Sparkles",
+    order: 22
+  },
+  {
+    id: "tlink-u6",
+    title: "Tempahan Bilik Khas & Alatan ICT Sekolah",
+    category: "umum",
+    url: "https://forms.google.com",
+    description: "Borang tempahan Makmal Komputer, Bilik Media, Dewan Terbuka dan peminjaman projektor LCD.",
+    badge: "Tempahan",
+    iconName: "Tv",
+    order: 23
+  }
+];
+
+export const initialNavigationMenu: NavigationMenuItem[] = [
+  {
+    id: 'utama',
+    targetTab: 'utama',
+    label: '',
+    iconName: 'Home',
+    isVisible: true,
+    order: 1
+  },
+  {
+    id: 'guru',
+    targetTab: 'guru',
+    label: 'Guru',
+    iconName: 'UserCheck',
+    badge: 'Admin',
+    isVisible: true,
+    order: 2,
+    requiresAdmin: true
+  },
+  {
+    id: 'profil',
+    targetTab: 'profil',
+    label: 'Profil',
+    iconName: 'School',
+    isVisible: true,
+    order: 3
+  },
+  {
+    id: 'akademik',
+    targetTab: 'akademik',
+    label: 'Kurikulum',
+    iconName: 'GraduationCap',
+    isVisible: true,
+    order: 4
+  },
+  {
+    id: 'hem',
+    targetTab: 'hem',
+    label: 'HEM',
+    iconName: 'HeartHandshake',
+    isVisible: true,
+    order: 5
+  },
+  {
+    id: 'kokurikulum',
+    targetTab: 'kokurikulum',
+    label: 'Kokurikulum',
+    iconName: 'Trophy',
+    isVisible: true,
+    order: 6
+  },
+  {
+    id: 'berita',
+    targetTab: 'berita',
+    label: 'Umum',
+    iconName: 'Layers',
+    isVisible: true,
+    order: 7
+  },
+  {
+    id: 'signage',
+    targetTab: 'signage',
+    label: 'Signage',
+    iconName: 'Tv',
+    isVisible: true,
+    order: 8
+  },
+  {
+    id: 'hubungi',
+    targetTab: 'hubungi',
+    label: 'Hubungi Kami',
+    iconName: 'PhoneCall',
+    isVisible: true,
+    order: 9
+  },
+  {
+    id: 'gas_code',
+    targetTab: 'gas_code',
+    label: 'Kod Apps Script',
+    iconName: 'Code2',
+    badge: 'Admin',
+    isVisible: true,
+    order: 10,
+    requiresAdmin: true
+  }
+];
 

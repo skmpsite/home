@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { TabType } from '../Navbar';
 import { getSafeNewsImageUrl, SECONDARY_FALLBACK_PHOTOS } from '../../utils/imageHelpers';
+import { getYouTubeEmbedUrl } from '../../utils/videoHelpers';
 import { FacebookSmartphoneSection } from './FacebookSmartphoneSection';
 
 interface HeroSectionProps {
@@ -52,7 +53,14 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   const displayName = profile.principalName || (guruBesarFromStaff ? guruBesarFromStaff.name : 'Puan Norhafiza Binti Dolah');
   const displayPhoto = profile.principalPhotoUrl || guruBesarFromStaff?.photoUrl || '';
   const displayTitle = profile.principalTitle || (guruBesarFromStaff ? guruBesarFromStaff.position : 'Guru Besar (DG48)');
+  const displayBadge = profile.principalBadge || 'Perutusan & Kata Alu-Aluan';
   const pinnedNews = latestNews.filter((n) => n.isPinned)[0] || latestNews[0];
+
+  const videoTag = profile.officialVideoTag || 'Tayangan Rasmi Sekolah';
+  const videoTitle = profile.officialVideoTitle || 'Video Alu-Aluan & Profil SK Merbau Pulas';
+  const videoDesc = profile.officialVideoDescription || 'Saksikan paparan montaj multimedia rasmi sekolah yang memaparkan keindahan persekitaran, keharmonian warga murid, serta aktiviti pembelajaran di SKMP.';
+  const videoEmbedUrl = getYouTubeEmbedUrl(profile.officialVideoUrl || 'https://www.youtube.com/embed/i8HoTEU3h_I');
+  const isVideoVisible = profile.officialVideoIsVisible !== false;
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -96,14 +104,14 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             </div>
             <div>
               <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-yellow-500/20 text-yellow-300 font-bold rounded-full text-[11px] border border-yellow-400/30 mb-1.5">
-                <span>Perutusan & Kata Alu-Aluan</span>
+                <span>{displayBadge}</span>
               </div>
               <h4 className="font-black text-base sm:text-lg text-yellow-300">{displayName}</h4>
               <p className="text-xs sm:text-sm text-slate-300 font-medium">{displayTitle}</p>
             </div>
           </div>
           <p className="text-xs sm:text-sm text-slate-200 italic leading-relaxed font-light border-t border-white/10 pt-3">
-            "{profile.principalSpeech || "Selamat datang ke laman web rasmi SK Merbau Pulas. Semoga platform ini menjadi jembatan perhubungan yang mantap antara warga sekolah, ibu bapa, dan komuniti dalam mencapai kecemerlangan modal insan."}"
+            "{profile.principalSpeech || "Selamat datang ke laman web rasmi SK Merbau Pulas. Semoga platform ini menjadi jambatan perhubungan yang mantap antara warga sekolah, ibu bapa, dan komuniti dalam mencapai kecemerlangan modal insan."}"
           </p>
         </div>
       </div>
@@ -115,7 +123,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             <Users className="w-6 h-6 text-blue-300" />
           </div>
           <div>
-            <span className="text-2xl font-black text-white leading-none">485</span>
+            <span className="text-2xl font-black text-white leading-none">{profile.statsMurid || '485'}</span>
             <p className="text-xs font-semibold text-slate-300 mt-0.5">Murid Terdaftar</p>
           </div>
         </div>
@@ -125,7 +133,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             <UserCheck className="w-6 h-6 text-yellow-300" />
           </div>
           <div>
-            <span className="text-2xl font-black text-white leading-none">32</span>
+            <span className="text-2xl font-black text-white leading-none">{profile.statsGuru || '32'}</span>
             <p className="text-xs font-semibold text-slate-300 mt-0.5">Guru Pendidik</p>
           </div>
         </div>
@@ -135,7 +143,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             <Award className="w-6 h-6 text-emerald-300" />
           </div>
           <div>
-            <span className="text-2xl font-black text-white leading-none">18</span>
+            <span className="text-2xl font-black text-white leading-none">{profile.statsAnugerah || '18'}</span>
             <p className="text-xs font-semibold text-slate-300 mt-0.5">Anugerah Tertiari</p>
           </div>
         </div>
@@ -145,40 +153,42 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             <Download className="w-6 h-6 text-indigo-300" />
           </div>
           <div>
-            <span className="text-2xl font-black text-white leading-none">24+</span>
+            <span className="text-2xl font-black text-white leading-none">{profile.statsDokumen || '24+'}</span>
             <p className="text-xs font-semibold text-slate-300 mt-0.5">Dokumen & Borang</p>
           </div>
         </div>
       </div>
 
       {/* Welcome Video Section */}
-      <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-white/20 shadow-2xl space-y-5">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-white/10">
-          <div className="space-y-1">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-500/20 text-yellow-300 font-bold rounded-full text-xs border border-yellow-400/30">
-              <Play className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
-              <span>Tayangan Rasmi Sekolah</span>
+      {isVideoVisible && (
+        <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-white/20 shadow-2xl space-y-5">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-white/10">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-500/20 text-yellow-300 font-bold rounded-full text-xs border border-yellow-400/30">
+                <Play className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+                <span>{videoTag}</span>
+              </div>
+              <h3 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+                <Video className="w-6 h-6 text-yellow-400" />
+                <span>{videoTitle}</span>
+              </h3>
             </div>
-            <h3 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
-              <Video className="w-6 h-6 text-yellow-400" />
-              <span>Video Alu-Aluan & Profil SK Merbau Pulas</span>
-            </h3>
+            <p className="text-xs text-slate-200 max-w-md leading-relaxed font-normal">
+              {videoDesc}
+            </p>
           </div>
-          <p className="text-xs text-slate-200 max-w-md leading-relaxed font-normal">
-            Saksikan paparan montaj multimedia rasmi sekolah yang memaparkan keindahan persekitaran, keharmonian warga murid, serta aktiviti pembelajaran di SKMP.
-          </p>
-        </div>
 
-        <div className="relative rounded-2xl overflow-hidden border border-white/20 shadow-2xl aspect-video bg-slate-950 group">
-          <iframe
-            src="https://www.youtube.com/embed/i8HoTEU3h_I?autoplay=0&rel=0"
-            title="Video Alu-aluan SK Merbau Pulas"
-            className="w-full h-full border-0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-          />
+          <div className="relative rounded-2xl overflow-hidden border border-white/20 shadow-2xl aspect-video bg-slate-950 group">
+            <iframe
+              src={videoEmbedUrl}
+              title={videoTitle}
+              className="w-full h-full border-0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Facebook Live Feed Section - Smartphone Mockup & Full News Feed View */}
       <FacebookSmartphoneSection profile={profile} />

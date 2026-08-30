@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   HeartHandshake,
   ShieldCheck,
@@ -21,17 +21,25 @@ import {
   PhoneCall,
   Activity
 } from 'lucide-react';
-import { HemData, SchoolProfile } from '../../types';
+import { HemData, SchoolProfile, Staff } from '../../types';
 import { initialHemData } from '../../data/initialData';
+import { formatGoogleDriveUrl } from '../../utils/imageHelpers';
+import {
+  findPkHemStaff,
+  findPkPentadbiranStaff,
+  findPkKokurikulumStaff
+} from '../../utils/staffHelpers';
 
 interface HemSectionProps {
   hemData?: HemData;
   profile?: SchoolProfile;
+  staffList?: Staff[];
 }
 
 export const HemSection: React.FC<HemSectionProps> = ({
   hemData = initialHemData,
-  profile
+  profile,
+  staffList
 }) => {
   const data = hemData || initialHemData;
   const [activeSubTab, setActiveSubTab] = useState<'semua' | 'disiplin' | 'kebajikan' | '3k'>('semua');
@@ -45,6 +53,46 @@ export const HemSection: React.FC<HemSectionProps> = ({
   const principalName = profile?.principalName || "Puan Norhafiza Binti Dolah";
   const principalTitle = profile?.principalTitle || "Guru Besar (DG48)";
 
+  // Ambil maklumat Penolong Kanan Hal Ehwal Murid mengikut Barisan Pentadbir Utama
+  const pkHemStaff = useMemo(() => {
+    if (staffList && staffList.length > 0) {
+      return findPkHemStaff(staffList, profile);
+    }
+    return undefined;
+  }, [staffList, profile]);
+
+  const pkPentadbiranStaff = useMemo(() => {
+    if (staffList && staffList.length > 0) {
+      return findPkPentadbiranStaff(staffList, profile);
+    }
+    return undefined;
+  }, [staffList, profile]);
+
+  const pkKokurikulumStaff = useMemo(() => {
+    if (staffList && staffList.length > 0) {
+      return findPkKokurikulumStaff(staffList, profile);
+    }
+    return undefined;
+  }, [staffList, profile]);
+
+  // Maklumat Terkini PK HEM
+  const pkHemName = pkHemStaff?.name || data.gpkName || "Encik Mohd Ridzuan bin Osman";
+  const pkHemTitle = pkHemStaff?.position || data.gpkTitle || "Guru Penolong Kanan Hal Ehwal Murid (PK HEM)";
+  const pkHemGrade = pkHemStaff?.grade || "DG44";
+  const pkHemInfo = pkHemStaff?.grade
+    ? (pkHemStaff.grade.startsWith('DG') ? `Pegawai Perkhidmatan Pendidikan (${pkHemStaff.grade})` : `Gred ${pkHemStaff.grade}`)
+    : (data.gpkGrade || "Pegawai Perkhidmatan Pendidikan (DG44)");
+
+  const pkHemPhoto = useMemo(() => {
+    if (pkHemStaff?.photoUrl && pkHemStaff.photoUrl.trim() !== '') {
+      if (!pkHemStaff.photoUrl.includes('unsplash.com')) {
+        return formatGoogleDriveUrl(pkHemStaff.photoUrl);
+      }
+      return formatGoogleDriveUrl(pkHemStaff.photoUrl);
+    }
+    return '';
+  }, [pkHemStaff]);
+
   return (
     <div className="space-y-8 animate-fadeIn text-white">
       {/* Title Banner */}
@@ -52,8 +100,8 @@ export const HemSection: React.FC<HemSectionProps> = ({
         <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-yellow-400/10 rounded-full blur-2xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="flex-1">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-emerald-500/20 text-emerald-300 font-bold rounded-full text-xs border border-emerald-400/30 mb-3">
               <HeartHandshake className="w-3.5 h-3.5 text-emerald-400" />
               <span>Pengurusan Hal Ehwal Murid</span>
@@ -67,20 +115,45 @@ export const HemSection: React.FC<HemSectionProps> = ({
             </p>
           </div>
 
-          {/* PK HEM Profile Mini-Card */}
-          <div className="bg-slate-900/80 backdrop-blur-md p-4 rounded-2xl border border-white/15 flex items-center gap-4 flex-shrink-0 shadow-lg">
-            <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 flex items-center justify-center flex-shrink-0">
-              <UserCheck className="w-6 h-6" />
+          {/* PK HEM Profile Mini-Card with Picture, Position, Name & Info */}
+          <div className="bg-slate-900/85 backdrop-blur-md p-4 sm:p-5 rounded-3xl border border-white/20 flex items-center gap-4 flex-shrink-0 shadow-xl hover:border-emerald-400/50 transition">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-yellow-400 p-0.5 shadow-md overflow-hidden border-2 border-yellow-300 flex items-center justify-center flex-shrink-0">
+              {pkHemPhoto && pkHemPhoto.trim() !== '' ? (
+                <img
+                  src={pkHemPhoto}
+                  alt={pkHemName}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const parent = e.currentTarget.parentElement;
+                    const fallback = parent?.querySelector('.fallback-pkhem-icon');
+                    if (fallback) (fallback as HTMLElement).classList.remove('hidden');
+                  }}
+                  className="w-full h-full object-cover rounded-xl"
+                />
+              ) : null}
+              <div
+                className={`fallback-pkhem-icon w-full h-full bg-slate-900 rounded-xl flex items-center justify-center text-yellow-300 ${
+                  pkHemPhoto && pkHemPhoto.trim() !== '' ? 'hidden' : 'flex'
+                }`}
+              >
+                <UserCheck className="w-8 h-8 opacity-80" />
+              </div>
             </div>
-            <div>
-              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
-                {data.gpkTitle || "GPK Hal Ehwal Murid (PK 2)"}
-              </span>
-              <h4 className="text-xs sm:text-sm font-black text-white mt-1">
-                {data.gpkName || "Encik Mohd Ridzuan bin Osman"}
+
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                  {pkHemTitle}
+                </span>
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-blue-950 text-yellow-300 border border-white/20">
+                  {pkHemGrade}
+                </span>
+              </div>
+              <h4 className="text-sm sm:text-base font-black text-white leading-snug">
+                {pkHemName}
               </h4>
-              <p className="text-[11px] text-slate-300">
-                {data.gpkGrade || "Pegawai Perkhidmatan Pendidikan (DG44)"}
+              <p className="text-xs text-slate-300 font-medium">
+                {pkHemInfo}
               </p>
             </div>
           </div>
@@ -722,20 +795,20 @@ export const HemSection: React.FC<HemSectionProps> = ({
 
           <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-1">
             <span className="text-[10px] font-extrabold text-emerald-400 uppercase tracking-wider">Timbalan Pengerusi</span>
-            <h5 className="font-extrabold text-sm text-white">{data.gpkName}</h5>
-            <p className="text-xs text-slate-300">{data.gpkTitle}</p>
+            <h5 className="font-extrabold text-sm text-white">{pkHemName}</h5>
+            <p className="text-xs text-slate-300">{pkHemTitle} {pkHemGrade ? `(${pkHemGrade})` : ''}</p>
           </div>
 
           <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-1">
             <span className="text-[10px] font-extrabold text-blue-400 uppercase tracking-wider">Naib Pengerusi I</span>
-            <h5 className="font-extrabold text-sm text-white">Puan Noraini binti Yusof</h5>
-            <p className="text-xs text-slate-300">PK Pentadbiran (DG44)</p>
+            <h5 className="font-extrabold text-sm text-white">{pkPentadbiranStaff?.name || "Puan Noraini binti Yusof"}</h5>
+            <p className="text-xs text-slate-300">{pkPentadbiranStaff?.position || "PK Pentadbiran"} {pkPentadbiranStaff?.grade ? `(${pkPentadbiranStaff.grade})` : ''}</p>
           </div>
 
           <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-1">
             <span className="text-[10px] font-extrabold text-purple-400 uppercase tracking-wider">Naib Pengerusi II</span>
-            <h5 className="font-extrabold text-sm text-white">Puan Siti Hajar binti Abdul Rahman</h5>
-            <p className="text-xs text-slate-300">PK Kokurikulum (DG44)</p>
+            <h5 className="font-extrabold text-sm text-white">{pkKokurikulumStaff?.name || "Puan Siti Hajar binti Abdul Rahman"}</h5>
+            <p className="text-xs text-slate-300">{pkKokurikulumStaff?.position || "PK Kokurikulum"} {pkKokurikulumStaff?.grade ? `(${pkKokurikulumStaff.grade})` : ''}</p>
           </div>
         </div>
 
