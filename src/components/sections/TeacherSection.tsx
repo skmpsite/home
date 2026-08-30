@@ -211,9 +211,24 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
     }
   };
 
+  const formatExternalUrl = (rawUrl: string): string => {
+    if (!rawUrl) return '#';
+    const trimmed = rawUrl.trim();
+    if (!trimmed || trimmed === '#') return '#';
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('mailto:') || trimmed.startsWith('tel:')) {
+      return trimmed;
+    }
+    return `https://${trimmed}`;
+  };
+
   const handleSaveModal = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim() || !formData.url.trim()) return;
+
+    let cleanUrl = formData.url.trim();
+    if (cleanUrl && cleanUrl !== '#' && !cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://') && !cleanUrl.startsWith('mailto:') && !cleanUrl.startsWith('tel:')) {
+      cleanUrl = `https://${cleanUrl}`;
+    }
 
     let updated: TeacherLinkItem[];
     if (editingLink) {
@@ -223,7 +238,7 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
               ...l,
               title: formData.title.trim(),
               category: formData.category,
-              url: formData.url.trim(),
+              url: cleanUrl,
               description: formData.description.trim(),
               badge: formData.badge.trim(),
               iconName: formData.iconName
@@ -236,7 +251,7 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
         id: newId,
         title: formData.title.trim(),
         category: formData.category,
-        url: formData.url.trim(),
+        url: cleanUrl,
         description: formData.description.trim(),
         badge: formData.badge.trim(),
         iconName: formData.iconName,
@@ -873,9 +888,15 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                       {/* Card Bottom Actions */}
                       <div className="pt-3 border-t border-white/10 flex items-center gap-2">
                         <a
-                          href={link.url}
-                          target="_blank"
+                          href={formatExternalUrl(link.url)}
+                          target={formatExternalUrl(link.url) !== '#' ? "_blank" : undefined}
                           rel="noopener noreferrer"
+                          onClick={(e) => {
+                            if (formatExternalUrl(link.url) === '#') {
+                              e.preventDefault();
+                              showToast('Pautan portal ini belum diisi atau sedang dikemas kini.');
+                            }
+                          }}
                           className={`flex-1 py-2.5 px-4 rounded-2xl text-xs font-black flex items-center justify-center gap-2 transition ${catMeta.btnClass}`}
                         >
                           <span>Buka Portal</span>
@@ -883,7 +904,7 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                         </a>
 
                         <button
-                          onClick={() => handleCopy(link.url, link.id)}
+                          onClick={() => handleCopy(formatExternalUrl(link.url), link.id)}
                           title="Salin Pautan URL"
                           className={`p-2.5 rounded-2xl text-xs font-bold border transition flex items-center justify-center ${
                             isCopied

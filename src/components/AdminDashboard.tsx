@@ -14,7 +14,8 @@ import {
   SignageSlide,
   SignageConfig,
   HemData,
-  NavigationMenuItem
+  NavigationMenuItem,
+  TeacherLinkItem
 } from '../types';
 import {
   LayoutDashboard,
@@ -98,6 +99,8 @@ interface AdminDashboardProps {
   onSaveHemData?: (data: HemData) => void;
   navigationMenu?: NavigationMenuItem[];
   onSaveNavigationMenu?: (menu: NavigationMenuItem[]) => void;
+  teacherLinks?: TeacherLinkItem[];
+  onSaveTeacherLinks?: (links: TeacherLinkItem[]) => void;
   onResetAll: () => void;
 }
 
@@ -132,6 +135,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onSaveHemData,
   navigationMenu,
   onSaveNavigationMenu,
+  teacherLinks,
+  onSaveTeacherLinks,
   onResetAll
 }) => {
   const [activeTab, setActiveTab] = useState<
@@ -3264,7 +3269,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             cocurriculum: coCurriculumUnits,
             signageSlides,
             signageConfig,
-            navigationMenu: navigationMenu || initialNavigationMenu
+            navigationMenu: navigationMenu || initialNavigationMenu,
+            teacherLinks
           }}
         />
       )}

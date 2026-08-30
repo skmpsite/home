@@ -8,7 +8,8 @@ import {
   DownloadDocument,
   FeedbackEntry,
   SignageSlide,
-  SignageConfig
+  SignageConfig,
+  TeacherLinkItem
 } from '../types';
 import { DEFAULT_GAS_URL } from '../config';
 import { getSafeNewsImageUrl, formatGoogleDriveUrl } from './imageHelpers';
@@ -102,6 +103,7 @@ export async function syncBulkDataToGoogleSheets(payload: {
   feedbackList?: FeedbackEntry[];
   signageSlides?: SignageSlide[];
   signageConfig?: SignageConfig;
+  teacherLinks?: TeacherLinkItem[];
 }): Promise<{ success: boolean; message: string }> {
   const url = getGasWebAppUrl();
   if (!url) {
@@ -193,6 +195,7 @@ export function parseSchoolDataFromSheets(rawData: any): {
   profileUpdates?: Partial<SchoolProfile>;
   signageSlides?: SignageSlide[];
   signageConfig?: Partial<SignageConfig>;
+  teacherLinks?: TeacherLinkItem[];
 } {
   if (!rawData || typeof rawData !== 'object') return {};
 
@@ -203,6 +206,7 @@ export function parseSchoolDataFromSheets(rawData: any): {
     profileUpdates?: Partial<SchoolProfile>;
     signageSlides?: SignageSlide[];
     signageConfig?: Partial<SignageConfig>;
+    teacherLinks?: TeacherLinkItem[];
   } = {};
 
   // 1. Takwim Sekolah
@@ -522,6 +526,42 @@ export function parseSchoolDataFromSheets(rawData: any): {
 
     if (Object.keys(configUpdates).length > 0) {
       parsed.signageConfig = configUpdates;
+    }
+  }
+
+  // 7. Pautan Guru / Portal Portfolio
+  const teacherRows = rawData.Pautan_Guru || rawData.Teacher_Links || rawData.PautanGuru;
+  if (Array.isArray(teacherRows) && teacherRows.length > 0) {
+    const validTeacherLinks: TeacherLinkItem[] = teacherRows
+      .filter((row: any) => (row.Tajuk || row.Title || row.title) && (row.Pautan || row.URL || row.url))
+      .map((row: any, idx: number) => {
+        let cat = (row.Kategori || row.Category || row.category || 'kurikulum').toLowerCase().trim();
+        if (!['kurikulum', 'hem', 'kokurikulum', 'umum'].includes(cat)) {
+          if (cat.includes('koku')) cat = 'kokurikulum';
+          else if (cat.includes('hem') || cat.includes('murid')) cat = 'hem';
+          else if (cat.includes('umum') || cat.includes('pentadbiran')) cat = 'umum';
+          else cat = 'kurikulum';
+        }
+
+        let url = (row.Pautan || row.URL || row.url || '').trim();
+        if (url && !url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('#')) {
+          url = `https://${url}`;
+        }
+
+        return {
+          id: row.ID || row.id || `tlink-sheet-${idx + 1}`,
+          title: row.Tajuk || row.Title || row.title,
+          category: cat as any,
+          url: url || '#',
+          description: row.Penerangan || row.Description || row.description || '',
+          badge: row.Lencana || row.Badge || row.badge || '',
+          iconName: row.Ikon || row.IconName || row.iconName || 'Globe',
+          order: Number(row.Susunan || row.Order || row.order) || (idx + 1)
+        };
+      });
+
+    if (validTeacherLinks.length > 0) {
+      parsed.teacherLinks = validTeacherLinks.sort((a, b) => (a.order || 0) - (b.order || 0));
     }
   }
 

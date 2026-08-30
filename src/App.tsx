@@ -197,6 +197,10 @@ export default function App() {
             return updated;
           });
         }
+        if (parsed.teacherLinks && parsed.teacherLinks.length > 0) {
+          setTeacherLinks(parsed.teacherLinks);
+          saveTeacherLinks(parsed.teacherLinks);
+        }
         if (parsed.profileUpdates) {
           setProfile(prev => {
             const updated = { ...prev, ...parsed.profileUpdates };
@@ -267,6 +271,12 @@ export default function App() {
       onNavigationMenuChange: (menu) => {
         setNavigationMenu(menu);
         saveNavigationMenu(menu);
+      },
+      onTeacherLinksChange: (links) => {
+        if (Array.isArray(links) && links.length > 0) {
+          setTeacherLinks(links);
+          saveTeacherLinks(links);
+        }
       }
     });
 
@@ -328,6 +338,7 @@ export default function App() {
     signageSlides?: SignageSlide[];
     signageConfig?: SignageConfig;
     hemData?: HemData;
+    teacherLinks?: TeacherLinkItem[];
   }) => {
     // 1. Push to Google Sheets
     syncBulkDataToGoogleSheets({
@@ -339,7 +350,8 @@ export default function App() {
       awards: partialUpdate.awards || awards,
       documents: partialUpdate.documents || documents,
       signageSlides: partialUpdate.signageSlides || signageSlides,
-      signageConfig: partialUpdate.signageConfig || signageConfig
+      signageConfig: partialUpdate.signageConfig || signageConfig,
+      teacherLinks: partialUpdate.teacherLinks || teacherLinks
     }).catch(err => console.warn('Auto cloud sync sheets failed:', err));
 
     // 2. Push to Google Firebase Firestore
@@ -348,6 +360,7 @@ export default function App() {
     if (partialUpdate.newsList) pushToFirestore('school_data', 'news', { items: partialUpdate.newsList });
     if (partialUpdate.events) pushToFirestore('school_data', 'events', { items: partialUpdate.events });
     if (partialUpdate.hemData) pushToFirestore('school_data', 'hem', partialUpdate.hemData);
+    if (partialUpdate.teacherLinks) pushToFirestore('school_data', 'teacher_links', { items: partialUpdate.teacherLinks });
     if (partialUpdate.signageSlides || partialUpdate.signageConfig) {
       pushToFirestore('school_data', 'signage', {
         slides: partialUpdate.signageSlides || signageSlides,
@@ -459,9 +472,7 @@ export default function App() {
   const handleUpdateTeacherLinks = (links: TeacherLinkItem[]) => {
     setTeacherLinks(links);
     saveTeacherLinks(links);
-    if (isFirebaseEnabled()) {
-      pushToFirestore('school_data', 'teacher_links', { items: links });
-    }
+    autoPushToCloud({ teacherLinks: links });
   };
 
   const handleAddFeedback = (data: Omit<FeedbackEntry, 'id' | 'createdAt' | 'status'>) => {
@@ -849,6 +860,8 @@ export default function App() {
             onSaveHemData={handleUpdateHemData}
             navigationMenu={navigationMenu}
             onSaveNavigationMenu={handleUpdateNavigationMenu}
+            teacherLinks={teacherLinks}
+            onSaveTeacherLinks={handleUpdateTeacherLinks}
             onResetAll={handleResetAllData}
           />
         )}

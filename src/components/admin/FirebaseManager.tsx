@@ -41,7 +41,8 @@ import {
   SignageSlide,
   SignageConfig,
   HemData,
-  NavigationMenuItem
+  NavigationMenuItem,
+  TeacherLinkItem
 } from '../../types';
 
 interface FirebaseManagerProps {
@@ -62,6 +63,7 @@ interface FirebaseManagerProps {
     signageSlides?: SignageSlide[];
     signageConfig?: SignageConfig;
     navigationMenu?: NavigationMenuItem[];
+    teacherLinks?: TeacherLinkItem[];
   };
 }
 

@@ -20,7 +20,8 @@ import {
   SignageSlide,
   SignageConfig,
   HemData,
-  NavigationMenuItem
+  NavigationMenuItem,
+  TeacherLinkItem
 } from '../types';
 
 /**
@@ -60,6 +61,7 @@ export async function syncAllDataToFirestore(data: {
   signageSlides?: SignageSlide[];
   signageConfig?: SignageConfig;
   navigationMenu?: NavigationMenuItem[];
+  teacherLinks?: TeacherLinkItem[];
 }): Promise<boolean> {
   if (!isFirebaseEnabled()) return false;
   const db = getFirebaseDb();
@@ -105,6 +107,12 @@ export async function syncAllDataToFirestore(data: {
         updatedAt: new Date().toISOString()
       }, { merge: true }));
     }
+    if (data.teacherLinks) {
+      promises.push(setDoc(doc(db, 'school_data', 'teacher_links'), {
+        items: data.teacherLinks,
+        updatedAt: new Date().toISOString()
+      }, { merge: true }));
+    }
 
     await Promise.all(promises);
     return true;
@@ -133,6 +141,7 @@ export function setupFirestoreRealtimeSync(callbacks: {
   onSignageConfigChange?: (config: SignageConfig) => void;
   onHemDataChange?: (hem: HemData) => void;
   onNavigationMenuChange?: (menu: NavigationMenuItem[]) => void;
+  onTeacherLinksChange?: (links: TeacherLinkItem[]) => void;
 }): () => void {
   if (!isFirebaseEnabled()) return () => {};
   const db = getFirebaseDb();
@@ -261,6 +270,19 @@ export function setupFirestoreRealtimeSync(callbacks: {
           }
         }
       }, (err) => console.warn('[FIRESTORE] Navigation Menu sync listener:', err));
+      unsubscribers.push(unsub);
+    }
+
+    // 10. Portal Pautan Guru (Teacher Links)
+    if (callbacks.onTeacherLinksChange) {
+      const unsub = onSnapshot(doc(db, 'school_data', 'teacher_links'), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data && Array.isArray(data.items)) {
+            callbacks.onTeacherLinksChange!(data.items as TeacherLinkItem[]);
+          }
+        }
+      }, (err) => console.warn('[FIRESTORE] Teacher Links sync listener:', err));
       unsubscribers.push(unsub);
     }
 
