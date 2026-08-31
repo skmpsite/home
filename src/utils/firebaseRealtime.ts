@@ -21,7 +21,9 @@ import {
   SignageConfig,
   HemData,
   NavigationMenuItem,
-  TeacherLinkItem
+  TeacherLinkItem,
+  StudentRecord,
+  StudentAbsenceRecord
 } from '../types';
 
 /**
@@ -62,6 +64,7 @@ export async function syncAllDataToFirestore(data: {
   signageConfig?: SignageConfig;
   navigationMenu?: NavigationMenuItem[];
   teacherLinks?: TeacherLinkItem[];
+  absenceRecords?: StudentAbsenceRecord[];
 }): Promise<boolean> {
   if (!isFirebaseEnabled()) return false;
   const db = getFirebaseDb();
@@ -113,6 +116,12 @@ export async function syncAllDataToFirestore(data: {
         updatedAt: new Date().toISOString()
       }, { merge: true }));
     }
+    if (data.absenceRecords) {
+      promises.push(setDoc(doc(db, 'school_data', 'attendance_absence'), {
+        items: data.absenceRecords,
+        updatedAt: new Date().toISOString()
+      }, { merge: true }));
+    }
 
     await Promise.all(promises);
     return true;
@@ -142,6 +151,7 @@ export function setupFirestoreRealtimeSync(callbacks: {
   onHemDataChange?: (hem: HemData) => void;
   onNavigationMenuChange?: (menu: NavigationMenuItem[]) => void;
   onTeacherLinksChange?: (links: TeacherLinkItem[]) => void;
+  onAbsenceRecordsChange?: (records: StudentAbsenceRecord[]) => void;
 }): () => void {
   if (!isFirebaseEnabled()) return () => {};
   const db = getFirebaseDb();
@@ -283,6 +293,19 @@ export function setupFirestoreRealtimeSync(callbacks: {
           }
         }
       }, (err) => console.warn('[FIRESTORE] Teacher Links sync listener:', err));
+      unsubscribers.push(unsub);
+    }
+
+    // 11. Rekod Ketidakhadiran Murid (Attendance Absence)
+    if (callbacks.onAbsenceRecordsChange) {
+      const unsub = onSnapshot(doc(db, 'school_data', 'attendance_absence'), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data && Array.isArray(data.items)) {
+            callbacks.onAbsenceRecordsChange!(data.items as StudentAbsenceRecord[]);
+          }
+        }
+      }, (err) => console.warn('[FIRESTORE] Attendance Absence sync listener:', err));
       unsubscribers.push(unsub);
     }
 

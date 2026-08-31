@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { CoCurriculumUnit, SchoolProfile, Staff } from '../../types';
-import { Trophy, Shield, Heart, Award, Cpu, BookOpen, Target, Clock, User, Sparkles, UserCheck } from 'lucide-react';
+import { Trophy, Shield, Heart, Award, Cpu, BookOpen, Target, Clock, User, Sparkles, UserCheck, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatGoogleDriveUrl } from '../../utils/imageHelpers';
 import { findPkKokurikulumStaff } from '../../utils/staffHelpers';
 
@@ -12,6 +12,14 @@ interface CokurriculumSectionProps {
 
 export const CokurriculumSection: React.FC<CokurriculumSectionProps> = ({ units, profile, staffList }) => {
   const [activeCategory, setActiveCategory] = useState<'semua' | 'beruniform' | 'kelab' | 'sukan'>('semua');
+  const [showDesc, setShowDesc] = useState<boolean>(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowDesc(false);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Ambil maklumat Penolong Kanan Kokurikulum mengikut Barisan Pentadbir Utama
   const pkKokurikulumStaff = useMemo(() => {
@@ -66,9 +74,29 @@ export const CokurriculumSection: React.FC<CokurriculumSectionProps> = ({ units,
               <span>Aktiviti Luar Bilik Darjah</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-black text-white">Aktiviti Kokurikulum & Pembangunan Bakat</h2>
-            <p className="text-xs sm:text-sm text-slate-200 mt-1 max-w-2xl leading-relaxed">
-              Penglibatan murid dalam Badan Beruniform, Kelab & Persatuan, serta Sukan & Permainan bagi memupuk jati diri, kepimpinan, dan daya saing.
-            </p>
+
+            {/* Collapsible Info with 5-second auto-hide & simple arrow toggle */}
+            <div className="mt-1 max-w-2xl">
+              <div
+                className={`transition-all duration-500 overflow-hidden ${
+                  showDesc ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'
+                }`}
+              >
+                <p className="text-xs sm:text-sm text-slate-200 leading-relaxed pb-1">
+                  Penglibatan murid dalam Badan Beruniform, Kelab & Persatuan, serta Sukan & Permainan bagi memupuk jati diri, kepimpinan, dan daya saing.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowDesc(!showDesc)}
+                className="inline-flex items-center gap-1.5 text-[11px] font-bold text-yellow-300 hover:text-yellow-200 bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg transition mt-1 border border-white/10"
+                title={showDesc ? "Sembunyikan penerangan" : "Baca penerangan penuh"}
+              >
+                <span>{showDesc ? "Sembunyikan Info" : "Info Kokurikulum"}</span>
+                {showDesc ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+            </div>
           </div>
 
           {/* PK Kokurikulum Profile Mini-Card with Picture, Position, Name & Info */}

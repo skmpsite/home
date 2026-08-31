@@ -15,7 +15,9 @@ import {
   SignageConfig,
   HemData,
   NavigationMenuItem,
-  TeacherLinkItem
+  TeacherLinkItem,
+  StudentRecord,
+  StudentAbsenceRecord
 } from '../types';
 import {
   initialSchoolProfile,
@@ -36,6 +38,8 @@ import {
   initialNavigationMenu,
   initialTeacherLinks
 } from '../data/initialData';
+import { initialStudentsData } from '../data/studentsData';
+import { initialAbsenceRecords } from '../data/initialAttendance';
 import { getSafeNewsImageUrl } from './imageHelpers';
 import { sortStaffBySeniority } from './staffHelpers';
 
@@ -56,7 +60,9 @@ const KEYS = {
   SIGNAGE_SLIDES: 'skmp_signage_slides_v1',
   SIGNAGE_CONFIG: 'skmp_signage_config_v1',
   HEM: 'skmp_hem_v1',
-  NAV_MENU: 'skmp_nav_menu_v1'
+  NAV_MENU: 'skmp_nav_menu_v1',
+  STUDENTS: 'skmp_students_v1',
+  ABSENCE_RECORDS: 'skmp_absence_records_v1'
 };
 
 function getStored<T>(key: string, fallback: T): T {
@@ -454,6 +460,30 @@ export function saveNavigationMenu(items: NavigationMenuItem[]): void {
   }
 }
 
+export function getStudentsList(): StudentRecord[] {
+  const list = getStored<StudentRecord[]>(KEYS.STUDENTS, initialStudentsData);
+  if (!Array.isArray(list) || list.length === 0) {
+    return initialStudentsData;
+  }
+  return list;
+}
+
+export function saveStudentsList(students: StudentRecord[]): void {
+  setStored(KEYS.STUDENTS, students);
+}
+
+export function getAbsenceRecords(): StudentAbsenceRecord[] {
+  const list = getStored<StudentAbsenceRecord[]>(KEYS.ABSENCE_RECORDS, initialAbsenceRecords);
+  if (!Array.isArray(list)) {
+    return initialAbsenceRecords;
+  }
+  return list;
+}
+
+export function saveAbsenceRecords(records: StudentAbsenceRecord[]): void {
+  setStored(KEYS.ABSENCE_RECORDS, records);
+}
+
 export function resetAllToDefault(): void {
   localStorage.removeItem(KEYS.PROFILE);
   localStorage.removeItem(KEYS.STAFF);
@@ -472,4 +502,6 @@ export function resetAllToDefault(): void {
   localStorage.removeItem(KEYS.SIGNAGE_CONFIG);
   localStorage.removeItem(KEYS.HEM);
   localStorage.removeItem(KEYS.NAV_MENU);
+  localStorage.removeItem(KEYS.STUDENTS);
+  localStorage.removeItem(KEYS.ABSENCE_RECORDS);
 }

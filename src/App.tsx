@@ -18,7 +18,9 @@ import {
   SignageConfig,
   HemData,
   NavigationMenuItem,
-  TeacherLinkItem
+  TeacherLinkItem,
+  StudentRecord,
+  StudentAbsenceRecord
 } from './types';
 import {
   loadProfile,
@@ -54,6 +56,10 @@ import {
   saveHemData,
   loadNavigationMenu,
   saveNavigationMenu,
+  getStudentsList,
+  saveStudentsList,
+  getAbsenceRecords,
+  saveAbsenceRecords,
   resetAllToDefault
 } from './utils/storage';
 import {
@@ -153,9 +159,12 @@ export default function App() {
   const [hemData, setHemData] = useState<HemData>(loadHemData);
   const [navigationMenu, setNavigationMenu] = useState<NavigationMenuItem[]>(loadNavigationMenu);
   const [teacherLinks, setTeacherLinks] = useState<TeacherLinkItem[]>(loadTeacherLinks);
+  const [studentsList, setStudentsList] = useState<StudentRecord[]>(getStudentsList);
+  const [absenceRecords, setAbsenceRecords] = useState<StudentAbsenceRecord[]>(getAbsenceRecords);
 
   // UI States
   const [activeTab, setActiveTab] = useState<TabType>('utama');
+  const [hemSubTab, setHemSubTab] = useState<'semua' | 'kehadiran' | 'disiplin' | 'kebajikan' | '3k'>('semua');
   const [isAdmin, setIsAdmin] = useState(false);
   const [userRole, setUserRole] = useState<'admin' | 'guru' | null>(null);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
@@ -277,6 +286,12 @@ export default function App() {
           setTeacherLinks(links);
           saveTeacherLinks(links);
         }
+      },
+      onAbsenceRecordsChange: (records) => {
+        if (Array.isArray(records)) {
+          setAbsenceRecords(records);
+          saveAbsenceRecords(records);
+        }
       }
     });
 
@@ -298,6 +313,8 @@ export default function App() {
       if (e.key === 'skmp_hem_v1') setHemData(loadHemData());
       if (e.key === 'skmp_nav_menu_v1') setNavigationMenu(loadNavigationMenu());
       if (e.key === 'skmp_teacher_links_v1') setTeacherLinks(loadTeacherLinks());
+      if (e.key === 'skmp_absence_records_v1') setAbsenceRecords(getAbsenceRecords());
+      if (e.key === 'skmp_students_list_v1') setStudentsList(getStudentsList());
     };
 
     const handleTeacherLinksUpdated = (e: Event) => {
@@ -309,11 +326,22 @@ export default function App() {
       }
     };
 
+    const handleCustomTabSwitch = (e: Event) => {
+      const customEvt = e as CustomEvent<{ tab: TabType; subTab?: any }>;
+      if (customEvt.detail?.tab) {
+        setActiveTab(customEvt.detail.tab);
+        if (customEvt.detail.tab === 'hem' && customEvt.detail.subTab) {
+          setHemSubTab(customEvt.detail.subTab);
+        }
+      }
+    };
+
     window.addEventListener('visibilitychange', handleImmediateSync);
     window.addEventListener('focus', handleImmediateSync);
     window.addEventListener('online', handleImmediateSync);
     window.addEventListener('storage', handleStorageEvent);
     window.addEventListener('skmp_teacher_links_updated', handleTeacherLinksUpdated);
+    window.addEventListener('skmp_switch_tab', handleCustomTabSwitch);
 
     return () => {
       clearInterval(interval);
@@ -323,6 +351,7 @@ export default function App() {
       window.removeEventListener('online', handleImmediateSync);
       window.removeEventListener('storage', handleStorageEvent);
       window.removeEventListener('skmp_teacher_links_updated', handleTeacherLinksUpdated);
+      window.removeEventListener('skmp_switch_tab', handleCustomTabSwitch);
     };
   }, []);
 
@@ -339,6 +368,7 @@ export default function App() {
     signageConfig?: SignageConfig;
     hemData?: HemData;
     teacherLinks?: TeacherLinkItem[];
+    absenceRecords?: StudentAbsenceRecord[];
   }) => {
     // 1. Push to Google Sheets
     syncBulkDataToGoogleSheets({
@@ -361,6 +391,7 @@ export default function App() {
     if (partialUpdate.events) pushToFirestore('school_data', 'events', { items: partialUpdate.events });
     if (partialUpdate.hemData) pushToFirestore('school_data', 'hem', partialUpdate.hemData);
     if (partialUpdate.teacherLinks) pushToFirestore('school_data', 'teacher_links', { items: partialUpdate.teacherLinks });
+    if (partialUpdate.absenceRecords) pushToFirestore('school_data', 'attendance_absence', { records: partialUpdate.absenceRecords });
     if (partialUpdate.signageSlides || partialUpdate.signageConfig) {
       pushToFirestore('school_data', 'signage', {
         slides: partialUpdate.signageSlides || signageSlides,
@@ -490,6 +521,42 @@ export default function App() {
     };
     handleUpdateFeedback([entry, ...feedbackList]);
     syncFeedbackToGoogleSheets(entry);
+  };
+
+  const handleAddAbsenceRecord = (
+    newRecord: Omit<StudentAbsenceRecord, 'id' | 'refNo' | 'createdAt'>
+  ): StudentAbsenceRecord => {
+    const id = `abs_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const yyyymmdd = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const randNum = Math.floor(1000 + Math.random() * 9000);
+    const refNo = `KHD-${yyyymmdd}-${randNum}`;
+
+    const completeRecord: StudentAbsenceRecord = {
+      ...newRecord,
+      id,
+      refNo,
+      createdAt: new Date().toISOString()
+    };
+
+    const updated = [completeRecord, ...absenceRecords];
+    setAbsenceRecords(updated);
+    saveAbsenceRecords(updated);
+    autoPushToCloud({ absenceRecords: updated });
+    return completeRecord;
+  };
+
+  const handleUpdateAbsenceRecord = (updatedRecord: StudentAbsenceRecord) => {
+    const updated = absenceRecords.map((r) => (r.id === updatedRecord.id ? updatedRecord : r));
+    setAbsenceRecords(updated);
+    saveAbsenceRecords(updated);
+    autoPushToCloud({ absenceRecords: updated });
+  };
+
+  const handleDeleteAbsenceRecord = (id: string) => {
+    const updated = absenceRecords.filter((r) => r.id !== id);
+    setAbsenceRecords(updated);
+    saveAbsenceRecords(updated);
+    autoPushToCloud({ absenceRecords: updated });
   };
 
   const handleResetAllData = () => {
@@ -723,6 +790,15 @@ export default function App() {
             hemData={hemData}
             profile={profile}
             staffList={staffList}
+            students={studentsList}
+            absenceRecords={absenceRecords}
+            onAddAbsenceRecord={handleAddAbsenceRecord}
+            onUpdateAbsenceRecord={handleUpdateAbsenceRecord}
+            onDeleteAbsenceRecord={handleDeleteAbsenceRecord}
+            initialSubTab={hemSubTab}
+            isAdmin={isAdmin}
+            isTeacher={userRole === 'guru'}
+            userRole={userRole}
           />
         )}
 

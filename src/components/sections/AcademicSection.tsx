@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { CalendarEvent, SchoolProfile, Staff } from '../../types';
-import { GraduationCap, Calendar as CalendarIcon, BookOpen, Layers, CheckCircle, Clock, MapPin, Users, Award, FileText, UserCheck } from 'lucide-react';
+import { GraduationCap, Calendar as CalendarIcon, BookOpen, Layers, CheckCircle, Clock, MapPin, Users, Award, FileText, UserCheck, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatGoogleDriveUrl } from '../../utils/imageHelpers';
 import { findPkPentadbiranStaff } from '../../utils/staffHelpers';
 
@@ -13,6 +13,14 @@ interface AcademicSectionProps {
 export const AcademicSection: React.FC<AcademicSectionProps> = ({ events, profile, staffList }) => {
   const [selectedCategory, setSelectedCategory] = useState<'semua' | 'peperiksaan' | 'cuti' | 'acara' | 'pibg'>('semua');
   const [selectedEventModal, setSelectedEventModal] = useState<CalendarEvent | null>(null);
+  const [showDesc, setShowDesc] = useState<boolean>(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowDesc(false);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Ambil maklumat Penolong Kanan Pentadbiran / Kurikulum mengikut Barisan Pentadbir Utama
   const pkPentadbiranStaff = useMemo(() => {
@@ -67,9 +75,29 @@ export const AcademicSection: React.FC<AcademicSectionProps> = ({ events, profil
               <span>Pengajian & Kurikulum</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-black text-white">Akademik & Takwim Persekolahan</h2>
-            <p className="text-xs sm:text-sm text-slate-200 mt-1 max-w-2xl leading-relaxed">
-              Maklumat kurikulum KSSR Semakan, program Dual Language Programme (DLP), Pentaksiran Bilik Darjah (PBD), dan Takwim Peperiksaan & Cuti Sekolah.
-            </p>
+            
+            {/* Collapsible Info with 5-second auto-hide & simple arrow toggle */}
+            <div className="mt-1 max-w-2xl">
+              <div
+                className={`transition-all duration-500 overflow-hidden ${
+                  showDesc ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'
+                }`}
+              >
+                <p className="text-xs sm:text-sm text-slate-200 leading-relaxed pb-1">
+                  Maklumat kurikulum KSSR Semakan, program Dual Language Programme (DLP), Pentaksiran Bilik Darjah (PBD), dan Takwim Peperiksaan & Cuti Sekolah.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowDesc(!showDesc)}
+                className="inline-flex items-center gap-1.5 text-[11px] font-bold text-yellow-300 hover:text-yellow-200 bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg transition mt-1 border border-white/10"
+                title={showDesc ? "Sembunyikan penerangan" : "Baca penerangan penuh"}
+              >
+                <span>{showDesc ? "Sembunyikan Info" : "Info Kurikulum"}</span>
+                {showDesc ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+            </div>
           </div>
 
           {/* PK Pentadbiran Profile Mini-Card with Picture, Position, Name & Info */}

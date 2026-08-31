@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   HeartHandshake,
   ShieldCheck,
@@ -15,14 +15,23 @@ import {
   AlertTriangle,
   ExternalLink,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Award,
   Users,
   X,
   PhoneCall,
-  Activity
+  Activity,
+  Calendar,
+  Percent,
+  FileCheck,
+  Send
 } from 'lucide-react';
-import { HemData, SchoolProfile, Staff } from '../../types';
+import { HemData, SchoolProfile, Staff, StudentRecord, StudentAbsenceRecord } from '../../types';
 import { initialHemData } from '../../data/initialData';
+import { initialStudentsList } from '../../data/studentsData';
+import { initialAbsenceRecords } from '../../data/initialAttendance';
+import { HemAttendanceSubSection } from './HemAttendanceSubSection';
 import { formatGoogleDriveUrl } from '../../utils/imageHelpers';
 import {
   findPkHemStaff,
@@ -34,15 +43,52 @@ interface HemSectionProps {
   hemData?: HemData;
   profile?: SchoolProfile;
   staffList?: Staff[];
+  students?: StudentRecord[];
+  absenceRecords?: StudentAbsenceRecord[];
+  onAddAbsenceRecord?: (
+    record: Omit<StudentAbsenceRecord, 'id' | 'refNo' | 'createdAt'>
+  ) => StudentAbsenceRecord;
+  onUpdateAbsenceRecord?: (record: StudentAbsenceRecord) => void;
+  onDeleteAbsenceRecord?: (id: string) => void;
+  initialSubTab?: 'semua' | 'kehadiran' | 'disiplin' | 'kebajikan' | '3k';
+  isAdmin?: boolean;
+  isTeacher?: boolean;
+  userRole?: 'admin' | 'guru' | null;
 }
 
 export const HemSection: React.FC<HemSectionProps> = ({
   hemData = initialHemData,
   profile,
-  staffList
+  staffList,
+  students = initialStudentsList,
+  absenceRecords = initialAbsenceRecords,
+  onAddAbsenceRecord,
+  onUpdateAbsenceRecord,
+  onDeleteAbsenceRecord,
+  initialSubTab = 'semua',
+  isAdmin = false,
+  isTeacher = false,
+  userRole
 }) => {
   const data = hemData || initialHemData;
-  const [activeSubTab, setActiveSubTab] = useState<'semua' | 'disiplin' | 'kebajikan' | '3k'>('semua');
+  const [activeSubTab, setActiveSubTab] = useState<'semua' | 'kehadiran' | 'disiplin' | 'kebajikan' | '3k'>(initialSubTab);
+
+  // Auto-hide penerangan HEM selepas 5 saat dan gantikan dengan butang anak panah ringkas
+  const [showHemIntro, setShowHemIntro] = useState<boolean>(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowHemIntro(false);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Sync initialSubTab if parent changes it
+  useEffect(() => {
+    if (initialSubTab) {
+      setActiveSubTab(initialSubTab);
+    }
+  }, [initialSubTab]);
   const [selectedDetailModal, setSelectedDetailModal] = useState<{
     title: string;
     category: string;
@@ -60,6 +106,35 @@ export const HemSection: React.FC<HemSectionProps> = ({
     }
     return undefined;
   }, [staffList, profile]);
+
+  // Today's attendance summary for HEM Sub-tab highlight
+  const todayAttendanceStats = useMemo(() => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${yyyy}-${mm}-${dd}`;
+
+    const totalStudents = students.length || 375;
+    const absentIds = new Set<string>();
+    absenceRecords.forEach((rec) => {
+      if (rec.status !== 'ditolak' && todayStr >= rec.dateFrom && todayStr <= rec.dateTo) {
+        absentIds.add(rec.studentId);
+      }
+    });
+
+    const absentCount = absentIds.size;
+    const presentCount = Math.max(0, totalStudents - absentCount);
+    const percentage = totalStudents > 0 ? ((presentCount / totalStudents) * 100).toFixed(1) : '100.0';
+
+    return {
+      todayStr,
+      totalStudents,
+      absentCount,
+      presentCount,
+      percentage
+    };
+  }, [students, absenceRecords]);
 
   const pkPentadbiranStaff = useMemo(() => {
     if (staffList && staffList.length > 0) {
@@ -109,10 +184,30 @@ export const HemSection: React.FC<HemSectionProps> = ({
             <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
               Hal Ehwal Murid (HEM)
             </h2>
-            <p className="text-xs sm:text-sm text-slate-200 mt-1 max-w-2xl leading-relaxed">
-              {data.gpkSpeech ||
-                "Memacu pembangunan sahsiah terpuji, menyantuni kebajikan murid secara inklusif, memperkukuh disiplin kendiri, serta memastikan persekitaran sekolah yang selamat, sihat dan ceria (3K)."}
-            </p>
+
+            {/* Collapsible Info with 5-second auto-hide & simple arrow toggle */}
+            <div className="mt-1 max-w-2xl">
+              <div
+                className={`transition-all duration-500 overflow-hidden ${
+                  showHemIntro ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'
+                }`}
+              >
+                <p className="text-xs sm:text-sm text-slate-200 leading-relaxed pb-1">
+                  {data.gpkSpeech ||
+                    "Pengurusan Hal Ehwal Murid (HEM) komited memastikan kemenjadian sahsiah murid, kebajikan terpelihara serta iklim sekolah yang selamat, sihat dan kondusif berteraskan prinsip Anak yang Baik lagi Cerdik (ABC)."}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowHemIntro(!showHemIntro)}
+                className="inline-flex items-center gap-1.5 text-[11px] font-bold text-yellow-300 hover:text-yellow-200 bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg transition mt-1 border border-white/10"
+                title={showHemIntro ? "Sembunyikan penerangan" : "Baca penerangan penuh"}
+              >
+                <span>{showHemIntro ? "Sembunyikan Info" : "Info Hal Ehwal Murid"}</span>
+                {showHemIntro ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+            </div>
           </div>
 
           {/* PK HEM Profile Mini-Card with Picture, Position, Name & Info */}
@@ -159,76 +254,154 @@ export const HemSection: React.FC<HemSectionProps> = ({
           </div>
         </div>
 
-        {/* Sub-Tabs Selector */}
+        {/* Sub-Tabs Selector: e-Kehadiran first with badge */}
         <div className="mt-6 pt-4 border-t border-white/10 flex flex-wrap items-center gap-2">
           {[
+            {
+              id: 'kehadiran',
+              label: 'e-Kehadiran',
+              icon: UserCheck,
+              badge: `${todayAttendanceStats.percentage}%`
+            },
             { id: 'semua', label: 'Semua Bidang HEM', icon: HeartHandshake },
-            { id: 'disiplin', label: '1. Disiplin & Bimbingan Kaunseling', icon: Scale },
-            { id: 'kebajikan', label: '2. Kebajikan Murid (SPBT, RMT, BAP)', icon: Heart },
+            { id: 'disiplin', label: '1. Disiplin & Sahsiah', icon: Scale },
+            { id: 'kebajikan', label: '2. Kebajikan Murid (SPBT, RMT)', icon: Heart },
             { id: '3k', label: '3. Keselamatan & Kesihatan (3K)', icon: ShieldCheck }
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeSubTab === tab.id;
+            const isAttendance = tab.id === 'kehadiran';
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveSubTab(tab.id as any)}
                 className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition ${
                   isActive
-                    ? 'bg-yellow-400 text-blue-950 shadow-md shadow-yellow-400/20 border border-yellow-300'
+                    ? isAttendance
+                      ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/30 border border-emerald-300'
+                      : 'bg-yellow-400 text-blue-950 shadow-md shadow-yellow-400/20 border border-yellow-300'
+                    : isAttendance
+                    ? 'bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 border border-emerald-400/40'
                     : 'bg-white/5 hover:bg-white/15 text-slate-200 border border-white/10'
                 }`}
               >
-                <Icon className="w-3.5 h-3.5" />
+                <Icon className={`w-3.5 h-3.5 ${isAttendance && !isActive ? 'text-emerald-400' : ''}`} />
                 <span>{tab.label}</span>
+                {tab.badge && (
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded font-black ${
+                      isActive ? 'bg-slate-950 text-emerald-300' : 'bg-emerald-500/30 text-emerald-200'
+                    }`}
+                  >
+                    {tab.badge}
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* QUICK HIGHLIGHT STATS */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-lg flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-400/30 text-blue-300 flex items-center justify-center">
-            <BookMarked className="w-5 h-5" />
-          </div>
-          <div>
-            <span className="text-xl font-black text-white">{data.stats?.spbtPercentage || '100%'}</span>
-            <p className="text-[11px] font-semibold text-slate-300">Penerima SPBT</p>
-          </div>
-        </div>
+      {/* RENDER SPECIFIC SUB-TAB: KEHADIRAN */}
+      {activeSubTab === 'kehadiran' && (
+        <HemAttendanceSubSection
+          students={students}
+          absenceRecords={absenceRecords}
+          onAddAbsenceRecord={
+            onAddAbsenceRecord ||
+            ((rec) => {
+              const newRec: StudentAbsenceRecord = {
+                ...rec,
+                id: `abs_${Date.now()}`,
+                refNo: `KHD-${Date.now().toString().slice(-6)}`,
+                createdAt: new Date().toISOString()
+              };
+              return newRec;
+            })
+          }
+          onUpdateAbsenceRecord={onUpdateAbsenceRecord}
+          onDeleteAbsenceRecord={onDeleteAbsenceRecord}
+          isAdmin={isAdmin}
+          isTeacher={isTeacher}
+          userRole={userRole}
+        />
+      )}
 
-        <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-lg flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/30 text-amber-300 flex items-center justify-center">
-            <Utensils className="w-5 h-5" />
-          </div>
-          <div>
-            <span className="text-xl font-black text-white">{data.stats?.rmtCount || '78 Murid'}</span>
-            <p className="text-[11px] font-semibold text-slate-300">Penerima RMT Sihat</p>
-          </div>
-        </div>
+      {/* QUICK HIGHLIGHT STATS (Rendered on 'semua') */}
+      {activeSubTab === 'semua' && (
+        <>
+          {/* Spotlight Card: e-Kehadiran Portal Trigger */}
+          <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 p-5 sm:p-6 rounded-3xl border border-emerald-500/40 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden">
+            <div className="space-y-1.5 z-10">
+              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-bold border border-emerald-400/30">
+                <UserCheck className="w-3.5 h-3.5" />
+                <span>e-Kehadiran Hari Ini ({todayAttendanceStats.todayStr})</span>
+              </div>
+              <h4 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+                <span>Peratus Kehadiran Semasa:</span>
+                <span className="text-yellow-400">{todayAttendanceStats.percentage}%</span>
+              </h4>
+              <p className="text-xs text-slate-300 max-w-xl">
+                Enrolmen: <strong>{todayAttendanceStats.totalStudents} murid</strong> | Hadir: <strong>{todayAttendanceStats.presentCount}</strong> | Tidak Hadir: <strong>{todayAttendanceStats.absentCount}</strong>.
+                Murid yang tidak mengisi borang ketidakhadiran dikira hadir secara automatik.
+              </p>
+            </div>
 
-        <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-lg flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 flex items-center justify-center">
-            <Coins className="w-5 h-5" />
+            <div className="flex flex-wrap items-center gap-2.5 z-10">
+              <button
+                type="button"
+                onClick={() => setActiveSubTab('kehadiran')}
+                className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Buka Borang Waris & Analisis Kelas</span>
+              </button>
+            </div>
           </div>
-          <div>
-            <span className="text-xl font-black text-white">{data.stats?.bapAmount || 'RM150'}</span>
-            <p className="text-[11px] font-semibold text-slate-300">BAP Setiap Murid</p>
-          </div>
-        </div>
 
-        <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-lg flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-400/30 text-purple-300 flex items-center justify-center">
-            <Smile className="w-5 h-5" />
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-lg flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-400/30 text-blue-300 flex items-center justify-center">
+                <BookMarked className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-xl font-black text-white">{data.stats?.spbtPercentage || '100%'}</span>
+                <p className="text-[11px] font-semibold text-slate-300">Penerima SPBT</p>
+              </div>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-lg flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/30 text-amber-300 flex items-center justify-center">
+                <Utensils className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-xl font-black text-white">{data.stats?.rmtCount || '78 Murid'}</span>
+                <p className="text-[11px] font-semibold text-slate-300">Penerima RMT Sihat</p>
+              </div>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-lg flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 flex items-center justify-center">
+                <Coins className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-xl font-black text-white">{data.stats?.bapAmount || 'RM150'}</span>
+                <p className="text-[11px] font-semibold text-slate-300">BAP Setiap Murid</p>
+              </div>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-lg flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-400/30 text-purple-300 flex items-center justify-center">
+                <Smile className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-xl font-black text-white">{data.stats?.sahsiahPercentage || '96.8%'}</span>
+                <p className="text-[11px] font-semibold text-slate-300">Amalan Sahsiah Baik</p>
+              </div>
+            </div>
           </div>
-          <div>
-            <span className="text-xl font-black text-white">{data.stats?.sahsiahPercentage || '96.8%'}</span>
-            <p className="text-[11px] font-semibold text-slate-300">Amalan Sahsiah Baik</p>
-          </div>
-        </div>
-      </div>
+        </>
+      )}
 
       {/* SECTION 1: DISIPLIN & BIMBINGAN KAUNSELING */}
       {(activeSubTab === 'semua' || activeSubTab === 'disiplin') && (

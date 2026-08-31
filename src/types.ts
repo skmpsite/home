@@ -311,3 +311,45 @@ export interface SignageConfig {
   theme: 'dark' | 'glass' | 'corporate';
 }
 
+export interface StudentRecord {
+  id: string;
+  bil: number;
+  name: string;
+  ic: string;
+  gender: 'LELAKI' | 'PEREMPUAN';
+  year: string;
+  className: string;
+  classTeacher: string;
+  parent1Name?: string;
+  parent1Rel?: string;
+  parent1Phone?: string;
+  parent2Name?: string;
+  parent2Phone?: string;
+}
+
+export interface StudentAbsenceRecord {
+  id: string;
+  refNo: string;
+  studentId: string;
+  studentName: string;
+  studentIc?: string;
+  year: string;
+  className: string;
+  dateFrom: string; // YYYY-MM-DD
+  dateTo: string;   // YYYY-MM-DD
+  daysCount: number;
+  reasonCategory: 'sakit' | 'hospital' | 'kecemasan' | 'keluarga' | 'bencana' | 'lain';
+  reasonDetails: string;
+  parentName: string;
+  parentPhone: string;
+  parentRelationship?: string;
+  attachmentUrl?: string; // image base64 or URL
+  attachmentName?: string;
+  status: 'disahkan' | 'dalam_semakan' | 'ditolak';
+  verifiedBy?: string;
+  verifiedAt?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+
