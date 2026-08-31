@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SchoolProfile, SearchResultItem } from '../types';
-import { Search, Lock, UserCheck, MapPin, Phone, Mail, LogOut, ChevronRight, X, ShieldAlert, Menu } from 'lucide-react';
+import { Search, Lock, UserCheck, MapPin, Phone, Mail, LogOut, ChevronRight, X, ShieldAlert, Menu, Users } from 'lucide-react';
 
 interface HeaderProps {
   profile: SchoolProfile;
@@ -14,6 +14,7 @@ interface HeaderProps {
   onSelectSearchResult: (item: SearchResultItem) => void;
   onOpenAdminDashboard: () => void;
   onOpenTeacherPortal?: () => void;
+  onOpenStudentPortal?: () => void;
   isMobileMenuOpen?: boolean;
   onToggleMobileMenu?: () => void;
 }
@@ -30,6 +31,7 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectSearchResult,
   onOpenAdminDashboard,
   onOpenTeacherPortal,
+  onOpenStudentPortal,
   isMobileMenuOpen,
   onToggleMobileMenu
 }) => {
@@ -59,6 +61,20 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold bg-white/10 text-yellow-300 px-2.5 py-0.5 rounded-full border border-white/15">
               Kod Sekolah: {profile.code}
             </span>
+
+            {/* Direct Quick Button: Carian Murid APDM (Boleh diakses terus dari semua peranti) */}
+            {onOpenStudentPortal && (
+              <button
+                type="button"
+                onClick={onOpenStudentPortal}
+                className="inline-flex items-center gap-1.5 text-xs font-black text-white hover:bg-emerald-500 bg-emerald-600 px-3 py-0.5 rounded-full border border-emerald-400 shadow-md shadow-emerald-950/30 transition active:scale-95"
+                title="Buka Portal Senarai & Carian Murid SKMP"
+              >
+                <Users className="w-3.5 h-3.5 text-emerald-200" />
+                <span>Carian Murid</span>
+              </button>
+            )}
+
             {isAdmin ? (
               <div className="flex items-center gap-2">
                 <button

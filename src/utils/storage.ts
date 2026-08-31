@@ -228,10 +228,11 @@ export function saveSystemLinks(links: SystemLink[]): void {
 export function loadTeacherLinks(): TeacherLinkItem[] {
   const links = getStored<TeacherLinkItem[]>(KEYS.TEACHER_LINKS, initialTeacherLinks);
   if (!Array.isArray(links) || links.length === 0) {
+    setStored(KEYS.TEACHER_LINKS, initialTeacherLinks);
     return initialTeacherLinks;
   }
 
-  // Ensure the new student database link exists
+  // Ensure the new student database link exists across all devices
   const hasStudentPortalLink = links.some(
     (l) =>
       l.id === 'tlink-h-carian' ||
@@ -242,19 +243,43 @@ export function loadTeacherLinks(): TeacherLinkItem[] {
   if (!hasStudentPortalLink) {
     const defaultStudentPortalLink = initialTeacherLinks.find(
       (l) => l.id === 'tlink-h-carian' || l.url.includes('1eODYEpiGFEVRe6RjoxZrPX3bPXpGYOR7l9PaGi8EKEo')
-    );
-    if (defaultStudentPortalLink) {
-      const hemIdx = links.findIndex((l) => l.category === 'hem');
-      if (hemIdx !== -1) {
-        links.splice(hemIdx, 0, defaultStudentPortalLink);
-      } else {
-        links.push(defaultStudentPortalLink);
-      }
-      setStored(KEYS.TEACHER_LINKS, links);
+    ) || {
+      id: 'tlink-h-carian',
+      title: 'Portal Senarai & Carian Murid (Google Sheets)',
+      category: 'hem' as const,
+      url: 'https://docs.google.com/spreadsheets/d/1eODYEpiGFEVRe6RjoxZrPX3bPXpGYOR7l9PaGi8EKEo/edit?usp=drive_link',
+      description: 'Portal carian maklumat lengkap 375 orang murid SKMP (Profil APDM, Kelas, Maklumat Ibu Bapa/Penjaga, No. Telefon & Alamat dari Google Sheets).',
+      badge: 'Pangkalan Data Murid',
+      iconName: 'Search',
+      order: 7
+    };
+
+    const hemIdx = links.findIndex((l) => l.category === 'hem');
+    if (hemIdx !== -1) {
+      links.splice(hemIdx, 0, defaultStudentPortalLink);
+    } else {
+      links.push(defaultStudentPortalLink);
     }
+    setStored(KEYS.TEACHER_LINKS, links);
   }
 
   return links;
+}
+
+// Auto-heal function that runs immediately upon script import
+export function autoHealStorage(): void {
+  try {
+    loadTeacherLinks();
+    getStudentsList();
+    getAbsenceRecords();
+  } catch (e) {
+    console.warn('Auto heal storage encountered error:', e);
+  }
+}
+
+// Execute auto-heal once on load
+if (typeof window !== 'undefined') {
+  autoHealStorage();
 }
 
 export function saveTeacherLinks(links: TeacherLinkItem[]): void {

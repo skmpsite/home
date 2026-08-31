@@ -119,10 +119,41 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
 
   const canAccess = isAdmin || isTeacher || userRole === 'admin' || userRole === 'guru';
 
-  // Link Management State
+  // Link Management State with auto-preservation of Student Search Portal
+  const ensureStudentPortalIncluded = (inputLinks: TeacherLinkItem[]): TeacherLinkItem[] => {
+    const list = [...inputLinks];
+    const hasStudentPortal = list.some(
+      (l) =>
+        l.id === 'tlink-h-carian' ||
+        l.url.includes('1eODYEpiGFEVRe6RjoxZrPX3bPXpGYOR7l9PaGi8EKEo') ||
+        l.title.toLowerCase().includes('carian murid')
+    );
+    if (!hasStudentPortal) {
+      const defaultStudentPortalLink = initialTeacherLinks.find(
+        (l) => l.id === 'tlink-h-carian' || l.url.includes('1eODYEpiGFEVRe6RjoxZrPX3bPXpGYOR7l9PaGi8EKEo')
+      ) || {
+        id: 'tlink-h-carian',
+        title: 'Portal Senarai & Carian Murid (Google Sheets)',
+        category: 'hem' as const,
+        url: 'https://docs.google.com/spreadsheets/d/1eODYEpiGFEVRe6RjoxZrPX3bPXpGYOR7l9PaGi8EKEo/edit?usp=drive_link',
+        description: 'Portal carian maklumat lengkap 375 orang murid SKMP (Profil APDM, Kelas, Maklumat Ibu Bapa/Penjaga, No. Telefon & Alamat dari Google Sheets).',
+        badge: 'Pangkalan Data Murid',
+        iconName: 'Search',
+        order: 7
+      };
+      const hemIdx = list.findIndex((l) => l.category === 'hem');
+      if (hemIdx !== -1) {
+        list.splice(hemIdx, 0, defaultStudentPortalLink);
+      } else {
+        list.push(defaultStudentPortalLink);
+      }
+    }
+    return list;
+  };
+
   const [links, setLinks] = useState<TeacherLinkItem[]>(() => {
     if (controlledLinks && controlledLinks.length > 0) {
-      return controlledLinks;
+      return ensureStudentPortalIncluded(controlledLinks);
     }
     return initialTeacherLinks;
   });
@@ -130,7 +161,7 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
   // Sync if controlledLinks changes
   React.useEffect(() => {
     if (controlledLinks && controlledLinks.length > 0) {
-      setLinks(controlledLinks);
+      setLinks(ensureStudentPortalIncluded(controlledLinks));
     }
   }, [controlledLinks]);
 

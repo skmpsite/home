@@ -90,6 +90,7 @@ import { GasScriptSection } from './components/sections/GasScriptSection';
 import { AdminDashboard } from './components/AdminDashboard';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { SweetbotWidget } from './components/chat/SweetbotWidget';
+import { StudentSearchPortalModal } from './components/sections/StudentSearchPortalModal';
 import { Footer } from './components/Footer';
 import TvApp from './TvApp';
 
@@ -171,6 +172,7 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedNewsReader, setSelectedNewsReader] = useState<NewsItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isGlobalStudentPortalOpen, setIsGlobalStudentPortalOpen] = useState(false);
 
   // Ref to prevent overlapping in-flight fetch requests
   const isSyncingRef = useRef(false);
@@ -652,6 +654,8 @@ export default function App() {
 
     // Search HEM
     const hemKeywords = [
+      { key: 'murid', title: 'Portal Pangkalan Data Murid APDM', sub: 'Carian 375 orang murid SKMP & Maklumat Lengkap' },
+      { key: 'carian', title: 'Portal Senarai & Carian Murid', sub: 'Carian mengikut nama, kelas, no. KP & penjaga' },
       { key: 'hem', title: 'Hal Ehwal Murid (HEM)', sub: 'Pengurusan Disiplin, Kebajikan & 3K' },
       { key: 'disiplin', title: 'Disiplin & Peraturan Sekolah', sub: 'Kod Tatatertib & Etika Murid' },
       { key: 'kaunseling', title: 'Unit Bimbingan & Kaunseling (UBK)', sub: 'Program Guru Penyayang & Minda Sihat' },
@@ -669,16 +673,33 @@ export default function App() {
           type: 'pengumuman',
           title: h.title,
           subtitle: h.sub,
-          linkTab: 'hem',
+          linkTab: h.key === 'murid' || h.key === 'carian' ? ('carian_murid' as any) : 'hem',
           id: `hem-${idx}`
         });
       }
     });
 
+    // Search Students Database directly
+    studentsList.forEach((st) => {
+      if (st.name.toLowerCase().includes(q) || st.icNumber.includes(q) || st.className.toLowerCase().includes(q)) {
+        results.push({
+          type: 'pengumuman',
+          title: st.name,
+          subtitle: `Murid ${st.className} • No. KP: ${st.icNumber}`,
+          linkTab: 'carian_murid' as any,
+          id: st.id
+        });
+      }
+    });
+
     return results.slice(0, 8);
-  }, [searchQuery, newsList, staffList, documents, events]);
+  }, [searchQuery, newsList, staffList, documents, events, studentsList]);
 
   const handleSelectSearchResult = (item: SearchResultItem) => {
+    if (item.linkTab === ('carian_murid' as any)) {
+      setIsGlobalStudentPortalOpen(true);
+      return;
+    }
     setActiveTab(item.linkTab as TabType);
     if (item.type === 'berita') {
       const newsItem = newsList.find((n) => n.id === item.id);
@@ -722,6 +743,7 @@ export default function App() {
           onSelectSearchResult={handleSelectSearchResult}
           onOpenAdminDashboard={() => setActiveTab('admin_cms')}
           onOpenTeacherPortal={() => setActiveTab('guru')}
+          onOpenStudentPortal={() => setIsGlobalStudentPortalOpen(true)}
           isMobileMenuOpen={mobileMenuOpen}
           onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
         />
@@ -800,6 +822,7 @@ export default function App() {
             isAdmin={isAdmin}
             isTeacher={userRole === 'guru'}
             userRole={userRole}
+            onOpenStudentPortal={() => setIsGlobalStudentPortalOpen(true)}
           />
         )}
 
@@ -966,6 +989,12 @@ export default function App() {
             setActiveTab('guru');
           }
         }}
+      />
+
+      {/* Student Database & Search Portal Modal (Carian Murid) */}
+      <StudentSearchPortalModal
+        isOpen={isGlobalStudentPortalOpen}
+        onClose={() => setIsGlobalStudentPortalOpen(false)}
       />
 
       {/* Sweetbot AI Robot Assistant (Peeking on the screen edge) */}

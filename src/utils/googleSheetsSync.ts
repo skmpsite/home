@@ -12,6 +12,7 @@ import {
   TeacherLinkItem
 } from '../types';
 import { DEFAULT_GAS_URL } from '../config';
+import { initialTeacherLinks } from '../data/initialData';
 import { getSafeNewsImageUrl, formatGoogleDriveUrl } from './imageHelpers';
 import { sortStaffBySeniority } from './staffHelpers';
 import { extractYouTubeId, getYouTubeThumbnail, isVideoUrl } from './signageMediaHelpers';
@@ -561,6 +562,37 @@ export function parseSchoolDataFromSheets(rawData: any): {
       });
 
     if (validTeacherLinks.length > 0) {
+      // Ensure the Student Database & Search Portal link is preserved across all devices
+      const hasStudentPortal = validTeacherLinks.some(
+        (l) =>
+          l.id === 'tlink-h-carian' ||
+          l.title.toLowerCase().includes('carian murid') ||
+          l.url.includes('1eODYEpiGFEVRe6RjoxZrPX3bPXpGYOR7l9PaGi8EKEo')
+      );
+
+      if (!hasStudentPortal) {
+        const studentPortalLink = initialTeacherLinks.find(
+          (l) => l.id === 'tlink-h-carian' || l.url.includes('1eODYEpiGFEVRe6RjoxZrPX3bPXpGYOR7l9PaGi8EKEo')
+        ) || {
+          id: 'tlink-h-carian',
+          title: 'Portal Senarai & Carian Murid (Google Sheets)',
+          category: 'hem' as const,
+          url: 'https://docs.google.com/spreadsheets/d/1eODYEpiGFEVRe6RjoxZrPX3bPXpGYOR7l9PaGi8EKEo/edit?usp=drive_link',
+          description:
+            'Portal carian maklumat lengkap 375 orang murid SKMP (Profil APDM, Kelas, Maklumat Ibu Bapa/Penjaga, No. Telefon & Alamat dari Google Sheets).',
+          badge: 'Pangkalan Data Murid',
+          iconName: 'Search',
+          order: 7
+        };
+
+        const hemIndex = validTeacherLinks.findIndex((l) => l.category === 'hem');
+        if (hemIndex !== -1) {
+          validTeacherLinks.splice(hemIndex, 0, studentPortalLink);
+        } else {
+          validTeacherLinks.push(studentPortalLink);
+        }
+      }
+
       parsed.teacherLinks = validTeacherLinks.sort((a, b) => (a.order || 0) - (b.order || 0));
     }
   }

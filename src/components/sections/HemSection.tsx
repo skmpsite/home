@@ -54,6 +54,7 @@ interface HemSectionProps {
   isAdmin?: boolean;
   isTeacher?: boolean;
   userRole?: 'admin' | 'guru' | null;
+  onOpenStudentPortal?: () => void;
 }
 
 export const HemSection: React.FC<HemSectionProps> = ({
@@ -68,7 +69,8 @@ export const HemSection: React.FC<HemSectionProps> = ({
   initialSubTab = 'semua',
   isAdmin = false,
   isTeacher = false,
-  userRole
+  userRole,
+  onOpenStudentPortal
 }) => {
   const data = hemData || initialHemData;
   const [activeSubTab, setActiveSubTab] = useState<'semua' | 'kehadiran' | 'disiplin' | 'kebajikan' | '3k'>(initialSubTab);
@@ -299,6 +301,18 @@ export const HemSection: React.FC<HemSectionProps> = ({
               </button>
             );
           })}
+
+          {onOpenStudentPortal && (
+            <button
+              type="button"
+              onClick={onOpenStudentPortal}
+              className="ml-auto px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white shadow-md border border-emerald-400/40 transition active:scale-95"
+              title="Buka Pangkalan Data & Portal Carian Murid SKMP"
+            >
+              <Users className="w-3.5 h-3.5 text-emerald-200" />
+              <span>Portal Carian Murid ({students.length})</span>
+            </button>
+          )}
         </div>
       </div>
 
