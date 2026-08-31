@@ -121,7 +121,10 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
   // Active view tab inside Attendance portal
   const [attendanceViewTab, setAttendanceViewTab] = useState<'borang' | 'analisis' | 'senarai'>('borang');
 
-  // Filter for class analysis & records table
+  // Filter for class analysis
+  const [analysisClassFilter, setAnalysisClassFilter] = useState<string>('semua');
+
+  // Filter for records table
   const [filterDateMode, setFilterDateMode] = useState<'selected' | 'semua'>('selected');
   const [filterClass, setFilterClass] = useState<string>('semua');
   const [filterReason, setFilterReason] = useState<string>('semua');
@@ -421,6 +424,37 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
 
     return sortClassBreakdown(breakdownList);
   }, [students, absentStudentIds]);
+
+  // Filtered breakdown for Analisis Kehadiran Tab
+  const filteredClassesBreakdown = useMemo(() => {
+    if (analysisClassFilter === 'semua') {
+      return allClassesBreakdown;
+    }
+    return allClassesBreakdown.filter((item) => {
+      const fullKey = `${item.year} - ${item.className}`;
+      return analysisClassFilter === fullKey || analysisClassFilter === item.className || analysisClassFilter === item.key;
+    });
+  }, [allClassesBreakdown, analysisClassFilter]);
+
+  // Summary statistics for currently filtered classes in Analisis tab
+  const selectedAnalysisStats = useMemo(() => {
+    let total = 0;
+    let absent = 0;
+    let present = 0;
+    filteredClassesBreakdown.forEach((item) => {
+      total += item.total;
+      absent += item.absentCount;
+      present += item.presentCount;
+    });
+    const pct = total > 0 ? ((present / total) * 100).toFixed(1) : '100.0';
+    return {
+      classesCount: filteredClassesBreakdown.length,
+      total,
+      absent,
+      present,
+      percentage: pct
+    };
+  }, [filteredClassesBreakdown]);
 
   // Filtered absence list for table / search
   const filteredAbsenceRecordsList = useMemo(() => {
@@ -1013,7 +1047,8 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
       {/* ========================================================================= */}
       {attendanceViewTab === 'analisis' && (
         <div className="space-y-6">
-          <div className="bg-slate-900/80 backdrop-blur-md rounded-3xl p-6 sm:p-8 border border-white/15 shadow-2xl text-white">
+          <div className="bg-slate-900/80 backdrop-blur-md rounded-3xl p-6 sm:p-8 border border-white/15 shadow-2xl text-white space-y-6">
+            {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
               <div>
                 <h4 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
@@ -1026,84 +1061,261 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
                 </p>
               </div>
 
-              <div className="text-right">
-                <span className="text-xs text-slate-400">Purata Keseluruhan:</span>
-                <div className="text-2xl font-black text-yellow-400">{overallPercentage}%</div>
+              <div className="flex items-center gap-4 bg-slate-950/60 px-4 py-2.5 rounded-2xl border border-white/10">
+                <div className="text-left">
+                  <span className="text-[11px] text-slate-400 block font-medium">Purata Keseluruhan:</span>
+                  <span className="text-xl sm:text-2xl font-black text-yellow-400">{overallPercentage}%</span>
+                </div>
+                {analysisClassFilter !== 'semua' && (
+                  <div className="text-left border-l border-white/10 pl-4">
+                    <span className="text-[11px] text-emerald-400 block font-medium">Pilihan Semasa:</span>
+                    <span className="text-xl sm:text-2xl font-black text-emerald-300">{selectedAnalysisStats.percentage}%</span>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Grid of 14 Classes */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
-              {allClassesBreakdown.map((item) => {
-                const pct = Number(item.percentage);
-                const yearTheme = getYearTheme(item.year);
-                let badgeColor = 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40';
-                let barColor = 'bg-emerald-500';
-                if (pct < 90) {
-                  badgeColor = 'bg-rose-500/20 text-rose-300 border-rose-400/40';
-                  barColor = 'bg-rose-500';
-                } else if (pct < 95) {
-                  badgeColor = 'bg-yellow-500/20 text-yellow-300 border-yellow-400/40';
-                  barColor = 'bg-yellow-400';
-                }
-
-                return (
-                  <div
-                    key={item.key}
-                    className={`p-4 sm:p-5 rounded-2xl border ${yearTheme.cardBorder} ${yearTheme.cardBg} space-y-3 transition shadow-lg relative overflow-hidden`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <span className={`inline-block text-[10px] font-extrabold uppercase px-2 py-0.5 rounded border ${yearTheme.badge}`}>
-                          {item.year}
-                        </span>
-                        <h5 className={`text-base font-black mt-1 ${yearTheme.headerAccent} truncate`}>{item.className}</h5>
-                        <p className="text-[11px] text-slate-300 truncate mt-0.5" title={item.classTeacher}>
-                          Guru: <strong>{item.classTeacher}</strong>
-                        </p>
-                      </div>
-
-                      <div className={`flex-shrink-0 whitespace-nowrap px-3 py-1.5 rounded-xl text-xs font-black border shadow-sm ${badgeColor} text-center`}>
-                        {item.percentage}%
-                      </div>
-                    </div>
-
-                    {/* Progress Bar */}
-                    <div className="space-y-1">
-                      <div className="w-full h-2.5 bg-slate-950/80 rounded-full overflow-hidden border border-white/10">
-                        <div
-                          className={`h-full ${barColor} transition-all duration-500`}
-                          style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-[10px] text-slate-300 font-semibold pt-0.5">
-                        <span className="text-emerald-400 font-bold">Hadir: {item.presentCount}</span>
-                        <span className="text-slate-400">Jumlah: {item.total}</span>
-                        <span className="text-rose-400 font-bold">Tidak Hadir: {item.absentCount}</span>
-                      </div>
-                    </div>
-
-                    {/* Absent students list in this class if any */}
-                    {item.absentStudents.length > 0 && (
-                      <div className="pt-2 border-t border-white/10 space-y-1">
-                        <p className="text-[10px] font-bold text-rose-300">Murid Tidak Hadir:</p>
-                        <div className="space-y-1">
-                          {item.absentStudents.map((st) => (
-                            <div
-                              key={st.id}
-                              className="text-[11px] bg-rose-950/60 px-2.5 py-1 rounded-lg border border-rose-500/30 text-slate-200 flex items-center justify-between shadow-sm"
-                            >
-                              <span className="truncate font-medium">{st.name}</span>
-                              <span className="text-[9px] bg-rose-500/30 text-rose-200 px-1.5 py-0.5 rounded font-bold">Cuti/MC</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+            {/* Filter Controls Bar: ONLY Specific Class Dropdown */}
+            <div className="p-4 sm:p-5 bg-slate-950/60 rounded-2xl border border-white/10 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex-1 max-w-lg">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                      <Filter className="w-3.5 h-3.5 text-blue-400" />
+                      <span>Pilih Kelas Khusus:</span>
+                    </label>
+                    {analysisClassFilter !== 'semua' && (
+                      <button
+                        type="button"
+                        onClick={() => setAnalysisClassFilter('semua')}
+                        className="text-[11px] font-bold text-amber-300 hover:text-amber-200 underline"
+                      >
+                        Papar Semua 14 Kelas
+                      </button>
                     )}
                   </div>
-                );
-              })}
+                  <select
+                    value={analysisClassFilter}
+                    onChange={(e) => setAnalysisClassFilter(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/20 text-white text-xs sm:text-sm font-bold focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 shadow-inner"
+                  >
+                    <option value="semua">Semua Kelas ({allClassesBreakdown.length} Kelas)</option>
+                    {allClassesBreakdown.map((c) => (
+                      <option key={c.key} value={c.key}>
+                        {c.year} - {c.className}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 font-semibold text-xs text-slate-300 sm:self-end pt-1">
+                  <span className="text-slate-300">
+                    Jumlah Murid: <strong className="text-white">{selectedAnalysisStats.total}</strong>
+                  </span>
+                  <span className="text-emerald-400">
+                    Hadir: <strong>{selectedAnalysisStats.present}</strong>
+                  </span>
+                  <span className="text-rose-400">
+                    Tidak Hadir: <strong>{selectedAnalysisStats.absent}</strong>
+                  </span>
+                  <span className="text-yellow-400">
+                    Peratusan: <strong>{selectedAnalysisStats.percentage}%</strong>
+                  </span>
+                </div>
+              </div>
             </div>
+
+            {/* Grid of Classes */}
+            {filteredClassesBreakdown.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredClassesBreakdown.map((item) => {
+                  const pct = Number(item.percentage);
+                  const yearTheme = getYearTheme(item.year);
+                  let badgeColor = 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40';
+                  let barColor = 'bg-emerald-500';
+                  if (pct < 90) {
+                    badgeColor = 'bg-rose-500/20 text-rose-300 border-rose-400/40';
+                    barColor = 'bg-rose-500';
+                  } else if (pct < 95) {
+                    badgeColor = 'bg-yellow-500/20 text-yellow-300 border-yellow-400/40';
+                    barColor = 'bg-yellow-400';
+                  }
+
+                  const isSingleSelected = analysisClassFilter === item.key;
+
+                  return (
+                    <div
+                      key={item.key}
+                      className={`p-4 sm:p-5 rounded-2xl border ${yearTheme.cardBorder} ${yearTheme.cardBg} space-y-3 transition shadow-lg relative overflow-hidden ${
+                        isSingleSelected ? 'ring-2 ring-yellow-400/60 shadow-yellow-500/10' : ''
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <span className={`inline-block text-[10px] font-extrabold uppercase px-2 py-0.5 rounded border ${yearTheme.badge}`}>
+                            {item.year}
+                          </span>
+                          <h5 className={`text-base font-black mt-1 ${yearTheme.headerAccent} truncate`}>{item.className}</h5>
+                          <p className="text-[11px] text-slate-300 truncate mt-0.5" title={item.classTeacher}>
+                            Guru: <strong>{item.classTeacher}</strong>
+                          </p>
+                        </div>
+
+                        <div className={`flex-shrink-0 whitespace-nowrap px-3 py-1.5 rounded-xl text-xs font-black border shadow-sm ${badgeColor} text-center`}>
+                          {item.percentage}%
+                        </div>
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div className="space-y-1">
+                        <div className="w-full h-2.5 bg-slate-950/80 rounded-full overflow-hidden border border-white/10">
+                          <div
+                            className={`h-full ${barColor} transition-all duration-500`}
+                            style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] text-slate-300 font-semibold pt-0.5">
+                          <span className="text-emerald-400 font-bold">Hadir: {item.presentCount}</span>
+                          <span className="text-slate-400">Jumlah: {item.total}</span>
+                          <span className="text-rose-400 font-bold">Tidak Hadir: {item.absentCount}</span>
+                        </div>
+                      </div>
+
+                      {/* Absent students list in this class if any */}
+                      {item.absentStudents.length > 0 && (
+                        <div className="pt-2 border-t border-white/10 space-y-1">
+                          <p className="text-[10px] font-bold text-rose-300">Murid Tidak Hadir:</p>
+                          <div className="space-y-1">
+                            {item.absentStudents.map((st) => (
+                              <div
+                                key={st.id}
+                                className="text-[11px] bg-rose-950/60 px-2.5 py-1 rounded-lg border border-rose-500/30 text-slate-200 flex items-center justify-between shadow-sm"
+                              >
+                                <span className="truncate font-medium">{st.name}</span>
+                                <span className="text-[9px] bg-rose-500/30 text-rose-200 px-1.5 py-0.5 rounded font-bold">Cuti/MC</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Quick Select Class Button */}
+                      {analysisClassFilter !== item.key && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAnalysisClassFilter(item.key);
+                          }}
+                          className="w-full mt-2 py-1.5 px-3 rounded-xl bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white text-[11px] font-bold border border-white/10 transition flex items-center justify-center gap-1.5"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-blue-400" />
+                          <span>Fokus & Semak Roster Kelas Ini</span>
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="p-8 text-center bg-slate-950/40 rounded-2xl border border-white/10 space-y-3">
+                <Filter className="w-8 h-8 text-slate-400 mx-auto opacity-60" />
+                <h5 className="text-sm font-bold text-white">Tiada kelas dijumpai</h5>
+                <button
+                  type="button"
+                  onClick={() => setAnalysisClassFilter('semua')}
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow"
+                >
+                  Papar Semua Kelas
+                </button>
+              </div>
+            )}
+
+            {/* If 1 class is actively selected, show complete student roster with attendance status */}
+            {analysisClassFilter !== 'semua' && filteredClassesBreakdown.length === 1 && (
+              <div className="mt-8 pt-6 border-t border-white/15 space-y-4 animate-fadeIn">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-950/80 p-4 rounded-2xl border border-white/10">
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-300 border border-yellow-400/30">
+                      Roster Terperinci
+                    </span>
+                    <h5 className="text-lg font-black text-white mt-1">
+                      Senarai Penuh Murid {filteredClassesBreakdown[0].year} - {filteredClassesBreakdown[0].className}
+                    </h5>
+                    <p className="text-xs text-slate-300">
+                      Guru Kelas: <strong>{filteredClassesBreakdown[0].classTeacher}</strong> &bull; Tarikh: <strong className="text-yellow-300">{selectedDate}</strong>
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAnalysisClassFilter('semua')}
+                    className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition self-start sm:self-center border border-white/10"
+                  >
+                    Tutup Roster & Lihat Semua Kelas
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto rounded-2xl border border-white/10">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-950/80 text-slate-300 border-b border-white/10 font-bold uppercase tracking-wider text-[10px]">
+                      <tr>
+                        <th className="px-4 py-3 w-12 text-center">Bil</th>
+                        <th className="px-4 py-3">Nama Murid</th>
+                        <th className="px-4 py-3">No. KP / MyKid</th>
+                        <th className="px-4 py-3">Jantina</th>
+                        <th className="px-4 py-3 text-center">Status Kehadiran ({selectedDate})</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5 bg-slate-900/40">
+                      {students
+                        .filter(
+                          (s) =>
+                            s.year === filteredClassesBreakdown[0].year &&
+                            s.className === filteredClassesBreakdown[0].className
+                        )
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map((st, idx) => {
+                          const isAbsent = absentStudentIds.has(st.id);
+                          const absenceDetails = isAbsent
+                            ? dailyAbsenceRecords.find((r) => r.studentId === st.id)
+                            : null;
+
+                          return (
+                            <tr
+                              key={st.id}
+                              className={isAbsent ? 'bg-rose-950/30 hover:bg-rose-950/40' : 'hover:bg-white/5'}
+                            >
+                              <td className="px-4 py-3 text-center text-slate-400 font-mono">{idx + 1}</td>
+                              <td className="px-4 py-3 font-semibold text-white">
+                                {st.name}
+                              </td>
+                              <td className="px-4 py-3 font-mono text-slate-300">{st.icNumber || st.id}</td>
+                              <td className="px-4 py-3 text-slate-300">{st.gender || '-'}</td>
+                              <td className="px-4 py-3 text-center">
+                                {isAbsent ? (
+                                  <div className="inline-flex flex-col items-center">
+                                    <span className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                                      TIDAK HADIR ({absenceDetails?.reasonCategory?.toUpperCase() || 'CUTI'})
+                                    </span>
+                                    {absenceDetails?.reasonDetails && (
+                                      <span className="text-[9.5px] text-rose-300/80 max-w-[200px] truncate mt-0.5" title={absenceDetails.reasonDetails}>
+                                        {absenceDetails.reasonDetails}
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                                    HADIR
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
