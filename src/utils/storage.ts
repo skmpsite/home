@@ -226,7 +226,35 @@ export function saveSystemLinks(links: SystemLink[]): void {
 }
 
 export function loadTeacherLinks(): TeacherLinkItem[] {
-  return getStored<TeacherLinkItem[]>(KEYS.TEACHER_LINKS, initialTeacherLinks);
+  const links = getStored<TeacherLinkItem[]>(KEYS.TEACHER_LINKS, initialTeacherLinks);
+  if (!Array.isArray(links) || links.length === 0) {
+    return initialTeacherLinks;
+  }
+
+  // Ensure the new student database link exists
+  const hasStudentPortalLink = links.some(
+    (l) =>
+      l.id === 'tlink-h-carian' ||
+      l.url.includes('1eODYEpiGFEVRe6RjoxZrPX3bPXpGYOR7l9PaGi8EKEo') ||
+      l.title.toLowerCase().includes('carian murid')
+  );
+
+  if (!hasStudentPortalLink) {
+    const defaultStudentPortalLink = initialTeacherLinks.find(
+      (l) => l.id === 'tlink-h-carian' || l.url.includes('1eODYEpiGFEVRe6RjoxZrPX3bPXpGYOR7l9PaGi8EKEo')
+    );
+    if (defaultStudentPortalLink) {
+      const hemIdx = links.findIndex((l) => l.category === 'hem');
+      if (hemIdx !== -1) {
+        links.splice(hemIdx, 0, defaultStudentPortalLink);
+      } else {
+        links.push(defaultStudentPortalLink);
+      }
+      setStored(KEYS.TEACHER_LINKS, links);
+    }
+  }
+
+  return links;
 }
 
 export function saveTeacherLinks(links: TeacherLinkItem[]): void {

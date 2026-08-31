@@ -1049,6 +1049,16 @@ export const initialTeacherLinks: TeacherLinkItem[] = [
 
   // 2. HAL EHWAL MURID
   {
+    id: "tlink-h-carian",
+    title: "Portal Senarai & Carian Murid (Google Sheets)",
+    category: "hem",
+    url: "https://docs.google.com/spreadsheets/d/1eODYEpiGFEVRe6RjoxZrPX3bPXpGYOR7l9PaGi8EKEo/edit?usp=drive_link",
+    description: "Portal carian maklumat lengkap 375 orang murid SKMP (Profil APDM, Kelas, Maklumat Ibu Bapa/Penjaga, No. Telefon & Alamat dari Google Sheets).",
+    badge: "Pangkalan Data Murid",
+    iconName: "Search",
+    order: 7
+  },
+  {
     id: "tlink-h1",
     title: "APDM (Aplikasi Pangkalan Data Murid)",
     category: "hem",
@@ -1056,7 +1066,7 @@ export const initialTeacherLinks: TeacherLinkItem[] = [
     description: "Pengurusan data peribadi murid, enrolmen kelas, rekod kehadiran harian dan maklumat penjaga.",
     badge: "APDM",
     iconName: "Users",
-    order: 7
+    order: 8
   },
   {
     id: "tlink-h2",

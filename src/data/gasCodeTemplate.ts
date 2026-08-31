@@ -122,6 +122,26 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+    if (action === "updateStudentPhoto") {
+      var photoData = contents.data || contents;
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      var sheetPhoto = ss.getSheetByName("Foto_Murid");
+      if (!sheetPhoto) {
+        sheetPhoto = ss.insertSheet("Foto_Murid");
+        sheetPhoto.appendRow(["ID_Murid", "No_KP", "Nama", "Tahun_Kelas", "URL_Foto", "Tarikh_Kemaskini"]);
+      }
+      sheetPhoto.appendRow([
+        photoData.studentId || "",
+        photoData.ic || "",
+        photoData.name || "",
+        (photoData.year || "") + " - " + (photoData.className || ""),
+        photoData.photoUrl || "",
+        new Date().toISOString()
+      ]);
+      return ContentService.createTextOutput(JSON.stringify({ success: true, message: "Foto murid berjaya disimpan!" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     if (action === "syncBulkData" || action === "syncSignage" || action === "updateSignage") {
       var payloadData = contents.payload || contents.data || contents;
       if (typeof payloadData === "string") {

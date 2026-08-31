@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { getNavIcon } from '../../utils/iconMap';
 import { initialTeacherLinks } from '../../data/initialData';
+import { StudentSearchPortalModal } from './StudentSearchPortalModal';
 
 interface TeacherSectionProps {
   profile?: SchoolProfile;
@@ -110,6 +111,7 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isReorderMode, setIsReorderMode] = useState(false);
   const [orderToast, setOrderToast] = useState<string | null>(null);
+  const [isStudentSearchPortalOpen, setIsStudentSearchPortalOpen] = useState(false);
 
   // Drag and Drop States
   const [draggedLinkId, setDraggedLinkId] = useState<string | null>(null);
@@ -740,6 +742,11 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                   const isFirst = idx === 0;
                   const isLast = idx === sectionLinks.length - 1;
 
+                  const isStudentPortalLink =
+                    link.id === 'tlink-h-carian' ||
+                    link.url.includes('1eODYEpiGFEVRe6RjoxZrPX3bPXpGYOR7l9PaGi8EKEo') ||
+                    link.title.toLowerCase().includes('carian murid');
+
                   return (
                     <div
                       key={link.id}
@@ -753,6 +760,8 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                           ? 'opacity-40 scale-95 border-dashed border-amber-400'
                           : isDragOverThis
                           ? 'border-2 border-amber-400 bg-amber-950/20 scale-[1.02] shadow-amber-500/20'
+                          : isStudentPortalLink
+                          ? 'border-emerald-500/40 hover:border-emerald-400 bg-gradient-to-b from-slate-900/95 via-emerald-950/20 to-slate-900/95'
                           : 'border-white/15 hover:border-white/30'
                       }`}
                     >
@@ -887,21 +896,32 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
 
                       {/* Card Bottom Actions */}
                       <div className="pt-3 border-t border-white/10 flex items-center gap-2">
-                        <a
-                          href={formatExternalUrl(link.url)}
-                          target={formatExternalUrl(link.url) !== '#' ? "_blank" : undefined}
-                          rel="noopener noreferrer"
-                          onClick={(e) => {
-                            if (formatExternalUrl(link.url) === '#') {
-                              e.preventDefault();
-                              showToast('Pautan portal ini belum diisi atau sedang dikemas kini.');
-                            }
-                          }}
-                          className={`flex-1 py-2.5 px-4 rounded-2xl text-xs font-black flex items-center justify-center gap-2 transition ${catMeta.btnClass}`}
-                        >
-                          <span>Buka Portal</span>
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
+                        {isStudentPortalLink ? (
+                          <button
+                            type="button"
+                            onClick={() => setIsStudentSearchPortalOpen(true)}
+                            className={`flex-1 py-2.5 px-4 rounded-2xl text-xs font-black flex items-center justify-center gap-2 transition ${catMeta.btnClass}`}
+                          >
+                            <span>Buka Portal</span>
+                            <Search className="w-3.5 h-3.5" />
+                          </button>
+                        ) : (
+                          <a
+                            href={formatExternalUrl(link.url)}
+                            target={formatExternalUrl(link.url) !== '#' ? "_blank" : undefined}
+                            rel="noopener noreferrer"
+                            onClick={(e) => {
+                              if (formatExternalUrl(link.url) === '#') {
+                                e.preventDefault();
+                                showToast('Pautan portal ini belum diisi atau sedang dikemas kini.');
+                              }
+                            }}
+                            className={`flex-1 py-2.5 px-4 rounded-2xl text-xs font-black flex items-center justify-center gap-2 transition ${catMeta.btnClass}`}
+                          >
+                            <span>Buka Portal</span>
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        )}
 
                         <button
                           onClick={() => handleCopy(formatExternalUrl(link.url), link.id)}
@@ -1047,6 +1067,12 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
           </div>
         </div>
       )}
+
+      {/* Student Search & Directory Portal Modal */}
+      <StudentSearchPortalModal
+        isOpen={isStudentSearchPortalOpen}
+        onClose={() => setIsStudentSearchPortalOpen(false)}
+      />
     </div>
   );
 };

@@ -317,6 +317,7 @@ export interface StudentRecord {
   name: string;
   ic: string;
   gender: 'LELAKI' | 'PEREMPUAN';
+  photoUrl?: string;
   year: string;
   className: string;
   classTeacher: string;
@@ -325,6 +326,62 @@ export interface StudentRecord {
   parent1Phone?: string;
   parent2Name?: string;
   parent2Phone?: string;
+}
+
+export interface FullStudentRecord extends StudentRecord {
+  studentId?: string; // ID Murid APDM
+  idType?: string; // Jenis Pengenalan
+  dob?: string; // Tarikh Lahir
+  studyStatus?: string; // Status Pengajian
+  dateEnrolledSchool?: string; // Tarikh Masuk Sekolah
+  dateEnrolledClass?: string; // Tarikh Masuk Kelas
+  dlpStatus?: string; // Status DLP
+  classType?: string; // Jenis Kelas
+  streamDesc?: string; // Keterangan Aliran
+  fieldDesc?: string; // Keterangan Bidang
+  race?: string; // Kaum
+  religion?: string; // Agama
+  citizenship?: string; // Warganegara
+  countryOfOrigin?: string; // Negara Asal
+  hostelStatus?: string; // Status Asrama
+  hostelName?: string; // Nama Asrama
+  isOku?: string; // Status OKU
+  okuVerifiedDate?: string; // Tarikh Sah OKU
+  okuRegNo?: string; // No Pendaftaran OKU
+  okuRegDate?: string; // Tarikh Daftar OKU
+  okuCardDate?: string; // Tarikh Kad OKU
+  okuCategory?: string; // Kategori Ketidakupayaan
+  okuSubCategory?: string; // Subkategori Ketidakupayaan
+  orphanStatus?: string; // Status Yatim
+  bankAccountNo?: string; // No Akaun Bank
+  bankName?: string; // Nama Bank
+  // Penjaga 1
+  parent1Ic?: string;
+  parent1IdType?: string;
+  parent1Job?: string;
+  parent1JobStatus?: string;
+  parent1Employer?: string;
+  parent1Income?: string;
+  parent1OfficePhone?: string;
+  dependentsCount?: string;
+  // Penjaga 2
+  parent2Rel?: string;
+  parent2Ic?: string;
+  parent2IdType?: string;
+  parent2Job?: string;
+  parent2JobStatus?: string;
+  parent2Employer?: string;
+  parent2Income?: string;
+  parent2OfficePhone?: string;
+  // Alamat
+  address1?: string;
+  address2?: string;
+  address3?: string;
+  postcode?: string;
+  city?: string;
+  district?: string;
+  state?: string;
+  fullAddress?: string;
 }
 
 export interface StudentAbsenceRecord {
