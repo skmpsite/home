@@ -31,9 +31,13 @@ import {
   CheckCircle2,
   AlertCircle,
   Camera,
-  Image as ImageIcon
+  Image as ImageIcon,
+  SlidersHorizontal,
+  ChevronDown,
+  ChevronUp,
+  RotateCcw
 } from 'lucide-react';
-import { getYearSortRank, getClassSortRank } from '../../utils/studentHelpers';
+import { getYearSortRank, getClassSortRank, ORDERED_CLASS_PILLS, getStudentClassCode } from '../../utils/studentHelpers';
 import { StudentPhotoCaptureModal } from './StudentPhotoCaptureModal';
 
 interface StudentSearchPortalModalProps {
@@ -52,10 +56,12 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
+  const [selectedClassCode, setSelectedClassCode] = useState<string>('semua');
   const [selectedYear, setSelectedYear] = useState<string>('semua');
   const [selectedClass, setSelectedClass] = useState<string>('semua');
   const [selectedGender, setSelectedGender] = useState<string>('semua');
   const [selectedSpecialStatus, setSelectedSpecialStatus] = useState<string>('semua');
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<FullStudentRecord | null>(null);
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -63,6 +69,10 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
   // Photo Capture Modal State
   const [photoModalStudent, setPhotoModalStudent] = useState<FullStudentRecord | null>(null);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+
+  // Contact Action Modal (WhatsApp / Call Selection for Bapa, Ibu, Penjaga)
+  const [contactModalStudent, setContactModalStudent] = useState<FullStudentRecord | null>(null);
+  const [contactModalType, setContactModalType] = useState<'whatsapp' | 'call'>('whatsapp');
 
   // Load students on open
   useEffect(() => {
@@ -143,6 +153,13 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
   const filteredStudents = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     return students.filter((s) => {
+      // Direct class code filter (6IS, 6IK, 5IS, 5IK, etc.)
+      if (selectedClassCode !== 'semua') {
+        const studentCode = getStudentClassCode(s);
+        if (studentCode !== selectedClassCode) {
+          return false;
+        }
+      }
       // Year filter
       if (selectedYear !== 'semua' && s.year?.toUpperCase() !== selectedYear) {
         return false;
@@ -185,7 +202,7 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
         (s.fullAddress && s.fullAddress.toLowerCase().includes(q))
       );
     });
-  }, [students, searchQuery, selectedYear, selectedClass, selectedGender, selectedSpecialStatus]);
+  }, [students, searchQuery, selectedClassCode, selectedYear, selectedClass, selectedGender, selectedSpecialStatus]);
 
   // Statistics
   const stats = useMemo(() => {
@@ -196,6 +213,26 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
     const yatim = students.filter((s) => s.orphanStatus && s.orphanStatus !== '-' && !s.orphanStatus.toLowerCase().includes('bukan')).length;
     return { total, lelaki, perempuan, oku, yatim };
   }, [students]);
+
+  // Count active filters (excluding default 'semua')
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (selectedClassCode !== 'semua') count++;
+    if (selectedYear !== 'semua') count++;
+    if (selectedClass !== 'semua') count++;
+    if (selectedGender !== 'semua') count++;
+    if (selectedSpecialStatus !== 'semua') count++;
+    return count;
+  }, [selectedClassCode, selectedYear, selectedClass, selectedGender, selectedSpecialStatus]);
+
+  const handleResetFilters = () => {
+    setSelectedClassCode('semua');
+    setSelectedYear('semua');
+    setSelectedClass('semua');
+    setSelectedGender('semua');
+    setSelectedSpecialStatus('semua');
+    setSearchQuery('');
+  };
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -234,35 +271,40 @@ Alamat: ${s.fullAddress || '-'}`;
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 lg:p-6 animate-fadeIn">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-0 sm:p-4 lg:p-6 animate-fadeIn">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-6 right-6 z-[60] bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-2xl border border-emerald-400 flex items-center gap-2.5 text-xs sm:text-sm font-bold animate-fadeIn">
-          <CheckCircle2 className="w-5 h-5 text-yellow-300 flex-shrink-0" />
+        <div className="fixed top-4 right-4 sm:top-6 sm:right-6 z-[60] bg-emerald-600 text-white px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl shadow-2xl border border-emerald-400 flex items-center gap-2 text-xs sm:text-sm font-bold animate-fadeIn">
+          <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-300 flex-shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
 
-      <div className="bg-slate-900 border border-white/20 rounded-3xl w-full max-w-7xl max-h-[94vh] flex flex-col shadow-2xl overflow-hidden relative">
+      <div className="bg-slate-900 border-0 sm:border sm:border-white/20 rounded-none sm:rounded-3xl w-full max-w-7xl h-[100dvh] sm:h-auto sm:max-h-[94vh] flex flex-col shadow-2xl overflow-hidden relative">
         {/* Top Header Bar */}
-        <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 p-4 sm:p-6 border-b border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0">
-          <div className="flex items-start sm:items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-lg shadow-emerald-900/50 border border-emerald-400/40">
-              <Users className="w-6 h-6" />
+        <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 px-3 py-2.5 sm:p-5 border-b border-white/10 flex items-center justify-between gap-2 sm:gap-4 flex-shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-md border border-emerald-400/40">
+              <Users className="w-4 h-4 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-black border border-emerald-400/30 flex items-center gap-1">
-                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="hidden sm:flex px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-black border border-emerald-400/30 items-center gap-1">
+                  <FileSpreadsheet className="w-3 h-3 text-emerald-400" />
                   <span>Google Sheets APDM Rasmi</span>
                 </span>
-                <span className="text-[11px] text-slate-300 font-mono">
-                  {students.length > 0 ? `${students.length} Orang Murid Terdaftar` : 'Memuat data...'}
+                <span className="text-[10px] text-slate-300 font-mono hidden sm:inline">
+                  {students.length > 0 ? `${students.length} Murid Terdaftar` : 'Memuat data...'}
                 </span>
               </div>
-              <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight mt-0.5">
-                Portal Senarai & Carian Murid SKMP
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm sm:text-xl font-black text-white tracking-tight truncate">
+                  Portal Carian Murid SKMP
+                </h2>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-black border border-emerald-400/30 flex-shrink-0 sm:hidden">
+                  {students.length} Murid
+                </span>
+              </div>
               <p className="text-xs text-slate-300 hidden sm:block">
                 Pangkalan data komprehensif maklumat murid, kelas, ibu bapa/penjaga dan alamat kediaman.
               </p>
@@ -270,26 +312,26 @@ Alamat: ${s.fullAddress || '-'}`;
           </div>
 
           {/* Action buttons */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             <button
               onClick={() => loadData(true)}
               disabled={refreshing}
-              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 border border-emerald-400 shadow-md shadow-emerald-950/50"
+              className="p-2 sm:px-3 sm:py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 border border-emerald-400 shadow-md"
               title="Segar semula data terus daripada Google Sheets"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-              <span>{refreshing ? 'Menyegerak...' : 'Segar Semula'}</span>
+              <span className="hidden sm:inline">{refreshing ? 'Menyegerak...' : 'Segar Semula'}</span>
             </button>
 
             <a
               href={GOOGLE_SHEET_STUDENTS_EDIT_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-white/20"
+              className="p-2 sm:px-3 sm:py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-white/20"
               title="Buka fail Google Sheets di tab baharu"
             >
               <ExternalLink className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Buka Google Sheets</span>
+              <span className="hidden sm:inline">Google Sheets</span>
             </a>
 
             <button
@@ -297,32 +339,32 @@ Alamat: ${s.fullAddress || '-'}`;
               className="p-2 bg-white/10 hover:bg-red-600/80 text-slate-300 hover:text-white rounded-xl transition border border-white/10"
               title="Tutup Portal"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>
 
         {/* Quick Stats Strip */}
-        <div className="bg-slate-950/60 px-4 sm:px-6 py-2.5 border-b border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs flex-shrink-0">
-          <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-slate-300">
-            <div className="flex items-center gap-1.5">
-              <span className="text-slate-400">Jumlah:</span>
-              <strong className="text-white font-black">{stats.total} Murid</strong>
+        <div className="bg-slate-950/70 px-3 sm:px-6 py-1.5 sm:py-2 border-b border-white/10 flex items-center justify-between gap-2 text-[11px] sm:text-xs flex-shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 text-slate-300 truncate">
+            <div className="flex items-center gap-1">
+              <span className="text-slate-400 hidden sm:inline">Jumlah:</span>
+              <strong className="text-white font-bold">{stats.total} Murid</strong>
             </div>
             <span className="text-white/20">•</span>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               <span className="text-blue-300">Lelaki:</span>
               <strong className="text-white font-bold">{stats.lelaki}</strong>
             </div>
             <span className="text-white/20">•</span>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               <span className="text-rose-300">Perempuan:</span>
               <strong className="text-white font-bold">{stats.perempuan}</strong>
             </div>
             {stats.oku > 0 && (
               <>
-                <span className="text-white/20">•</span>
-                <div className="flex items-center gap-1.5 text-amber-300">
+                <span className="text-white/20 hidden xs:inline">•</span>
+                <div className="hidden xs:flex items-center gap-1 text-amber-300">
                   <span>OKU:</span>
                   <strong className="font-bold">{stats.oku}</strong>
                 </div>
@@ -330,8 +372,8 @@ Alamat: ${s.fullAddress || '-'}`;
             )}
             {stats.yatim > 0 && (
               <>
-                <span className="text-white/20">•</span>
-                <div className="flex items-center gap-1.5 text-purple-300">
+                <span className="text-white/20 hidden xs:inline">•</span>
+                <div className="hidden xs:flex items-center gap-1 text-purple-300">
                   <span>Yatim:</span>
                   <strong className="font-bold">{stats.yatim}</strong>
                 </div>
@@ -339,48 +381,139 @@ Alamat: ${s.fullAddress || '-'}`;
             )}
           </div>
 
-          <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
+          <div className="text-[10px] sm:text-[11px] text-slate-400 hidden sm:flex items-center gap-1.5 flex-shrink-0">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span>Kemaskini: <span className="text-slate-200 font-mono">{lastUpdated || 'Terkini'}</span></span>
           </div>
         </div>
 
         {/* Search & Filter Controls */}
-        <div className="p-4 sm:p-5 bg-slate-900/90 border-b border-white/10 space-y-3 flex-shrink-0">
-          {/* Main Search Input */}
-          <div className="relative">
-            <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari nama murid, no. KP / MyKid, nama ibu bapa, no. telefon, alamat..."
-              className="w-full pl-11 pr-10 py-3 bg-slate-950 border border-white/15 rounded-2xl text-sm text-white placeholder-slate-400 focus:outline-none focus:border-emerald-400 shadow-inner"
-            />
-            {searchQuery && (
+        <div className="p-2.5 sm:p-4 bg-slate-900/95 border-b border-white/10 space-y-2 flex-shrink-0">
+          {/* Main Search Input + Mobile Filter Toggle Button */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 sm:w-5 sm:h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari nama murid, No. KP, penjaga, tel..."
+                className="w-full pl-9 sm:pl-10 pr-8 py-2 sm:py-2.5 bg-slate-950 border border-white/15 rounded-xl sm:rounded-2xl text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none focus:border-emerald-400 shadow-inner"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Mobile Filter Expand/Collapse Button */}
+            <button
+              type="button"
+              onClick={() => setShowMobileFilters((prev) => !prev)}
+              className={`sm:hidden px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border flex-shrink-0 ${
+                showMobileFilters || activeFilterCount > 0
+                  ? 'bg-emerald-600 text-white border-emerald-400 shadow-md'
+                  : 'bg-white/10 text-slate-200 border-white/15 hover:bg-white/20'
+              }`}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span>Tapis</span>
+              {activeFilterCount > 0 && (
+                <span className="w-4 h-4 rounded-full bg-white text-emerald-900 text-[10px] font-black flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+              {showMobileFilters ? (
+                <ChevronUp className="w-3.5 h-3.5 ml-0.5" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5 ml-0.5" />
+              )}
+            </button>
+
+            {/* Reset Filter Button if any filter active */}
+            {(activeFilterCount > 0 || searchQuery) && (
               <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                type="button"
+                onClick={handleResetFilters}
+                className="hidden sm:flex items-center gap-1 px-3 py-2 bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white rounded-xl text-xs font-bold border border-white/15 transition"
+                title="Padam semua penapis carian"
               >
-                <X className="w-4 h-4" />
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reset</span>
               </button>
             )}
           </div>
 
-          {/* Filter Row */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          {/* Quick Horizontal Class Filter Pills (6IS, 6IK, 5IS, 5IK, ..., P.In, P.Ber) */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 scroll-smooth">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedClassCode('semua');
+                setSelectedYear('semua');
+                setSelectedClass('semua');
+              }}
+              className={`px-3 py-1 rounded-lg text-xs font-black whitespace-nowrap transition flex-shrink-0 border ${
+                selectedClassCode === 'semua' && selectedYear === 'semua' && selectedClass === 'semua'
+                  ? 'bg-emerald-600 text-white border-emerald-400 shadow-sm'
+                  : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              Semua ({students.length})
+            </button>
+            {ORDERED_CLASS_PILLS.map((pill) => {
+              const isSelected = selectedClassCode === pill.code;
+              const countInClass = students.filter((s) => getStudentClassCode(s) === pill.code).length;
+              return (
+                <button
+                  key={pill.code}
+                  type="button"
+                  title={pill.fullName}
+                  onClick={() => {
+                    setSelectedClassCode(isSelected ? 'semua' : pill.code);
+                    setSelectedYear('semua');
+                    setSelectedClass('semua');
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap transition flex-shrink-0 border ${
+                    isSelected
+                      ? 'bg-emerald-600 text-white border-emerald-400 shadow-sm font-black'
+                      : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  <span>{pill.label}</span>
+                  {countInClass > 0 && (
+                    <span className={`text-[10px] ml-1 font-mono ${isSelected ? 'text-emerald-100' : 'text-slate-400'}`}>
+                      ({countInClass})
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Detailed Filter Grid (Shown always on Desktop, collapsible on Mobile) */}
+          <div
+            className={`grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 border-t border-white/10 sm:border-t-0 sm:pt-0 ${
+              showMobileFilters ? 'grid' : 'hidden sm:grid'
+            }`}
+          >
             {/* Year Filter */}
             <div>
-              <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">
+              <label className="block text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 mb-0.5">
                 Tahun / Aliran
               </label>
               <select
                 value={selectedYear}
                 onChange={(e) => {
+                  setSelectedClassCode('semua');
                   setSelectedYear(e.target.value);
                   setSelectedClass('semua');
                 }}
-                className="w-full px-3 py-2 bg-slate-950 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-400"
+                className="w-full px-2.5 py-1.5 sm:py-2 bg-slate-950 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-400"
               >
                 <option value="semua">Semua Tahun ({students.length})</option>
                 {availableYears.map((yr) => (
@@ -393,13 +526,16 @@ Alamat: ${s.fullAddress || '-'}`;
 
             {/* Class Filter */}
             <div>
-              <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">
+              <label className="block text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 mb-0.5">
                 Kelas
               </label>
               <select
                 value={selectedClass}
-                onChange={(e) => setSelectedClass(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-950 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-400"
+                onChange={(e) => {
+                  setSelectedClassCode('semua');
+                  setSelectedClass(e.target.value);
+                }}
+                className="w-full px-2.5 py-1.5 sm:py-2 bg-slate-950 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-400"
               >
                 <option value="semua">Semua Kelas</option>
                 {availableClasses.map((cls) => (
@@ -412,13 +548,13 @@ Alamat: ${s.fullAddress || '-'}`;
 
             {/* Gender Filter */}
             <div>
-              <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">
+              <label className="block text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 mb-0.5">
                 Jantina
               </label>
               <select
                 value={selectedGender}
                 onChange={(e) => setSelectedGender(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-950 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-400"
+                className="w-full px-2.5 py-1.5 sm:py-2 bg-slate-950 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-400"
               >
                 <option value="semua">Semua Jantina</option>
                 <option value="LELAKI">Lelaki</option>
@@ -428,13 +564,13 @@ Alamat: ${s.fullAddress || '-'}`;
 
             {/* Special Status Filter */}
             <div>
-              <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">
+              <label className="block text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 mb-0.5">
                 Status Khas
               </label>
               <select
                 value={selectedSpecialStatus}
                 onChange={(e) => setSelectedSpecialStatus(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-950 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-400"
+                className="w-full px-2.5 py-1.5 sm:py-2 bg-slate-950 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-400"
               >
                 <option value="semua">Semua Status</option>
                 <option value="oku">Murid OKU</option>
@@ -442,11 +578,25 @@ Alamat: ${s.fullAddress || '-'}`;
                 <option value="b40">Bantuan / B40</option>
               </select>
             </div>
+
+            {/* Mobile Reset Action Button inside expanded filter */}
+            {activeFilterCount > 0 && (
+              <div className="col-span-2 sm:hidden pt-1">
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="w-full py-1.5 px-3 bg-white/10 hover:bg-white/20 text-slate-300 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Padam Semua Penapis ({activeFilterCount})</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Results Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-3">
           {loading ? (
             <div className="py-20 text-center space-y-3">
               <RefreshCw className="w-8 h-8 text-emerald-400 animate-spin mx-auto" />
@@ -460,15 +610,9 @@ Alamat: ${s.fullAddress || '-'}`;
               <p className="text-xs text-slate-300 leading-relaxed">
                 Tiada murid yang sepadan dengan carian &ldquo;{searchQuery}&rdquo; atau penapis yang dipilih. Sila cuba kata kunci lain.
               </p>
-              {(searchQuery || selectedYear !== 'semua' || selectedClass !== 'semua' || selectedGender !== 'semua' || selectedSpecialStatus !== 'semua') && (
+              {(searchQuery || selectedClassCode !== 'semua' || selectedYear !== 'semua' || selectedClass !== 'semua' || selectedGender !== 'semua' || selectedSpecialStatus !== 'semua') && (
                 <button
-                  onClick={() => {
-                    setSearchQuery('');
-                    setSelectedYear('semua');
-                    setSelectedClass('semua');
-                    setSelectedGender('semua');
-                    setSelectedSpecialStatus('semua');
-                  }}
+                  onClick={handleResetFilters}
                   className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition"
                 >
                   Padam Semua Penapis
@@ -490,24 +634,25 @@ Alamat: ${s.fullAddress || '-'}`;
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
                 {filteredStudents.map((student) => {
                   const isMale = student.gender === 'LELAKI';
+                  const classCode = getStudentClassCode(student);
                   const cleanPhone1 = formatCleanPhone(student.parent1Phone);
                   const cleanPhone2 = formatCleanPhone(student.parent2Phone);
 
-                  return (
+                      return (
                     <div
                       key={student.id}
                       onClick={() => setSelectedStudent(student)}
-                      className="bg-slate-950/70 hover:bg-slate-900 border border-white/10 hover:border-emerald-500/50 rounded-2xl p-4 transition-all duration-200 shadow-lg hover:shadow-emerald-900/20 flex flex-col justify-between cursor-pointer group relative"
+                      className="bg-slate-950/70 hover:bg-slate-900 border border-white/10 hover:border-emerald-500/50 rounded-2xl p-2.5 sm:p-4 transition-all duration-200 shadow-lg hover:shadow-emerald-900/20 flex flex-col justify-between cursor-pointer group relative active:scale-[0.99]"
                     >
-                      <div className="space-y-3">
+                      <div className="space-y-2 sm:space-y-3">
                         {/* Header: Bil + Year/Class + Gender Badge */}
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/10 text-slate-300 font-bold">
+                        <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+                          <div className="flex items-center gap-1.5 sm:gap-2">
+                            <span className="text-[10px] font-mono px-1.5 sm:px-2 py-0.5 rounded bg-white/10 text-slate-300 font-bold">
                               #{student.bil}
                             </span>
                             <span
-                              className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border ${
+                              className={`text-[9px] sm:text-[10px] font-black uppercase px-1.5 sm:px-2 py-0.5 rounded-md border ${
                                 isMale
                                   ? 'bg-blue-500/20 text-blue-300 border-blue-400/30'
                                   : 'bg-rose-500/20 text-rose-300 border-rose-400/30'
@@ -515,35 +660,40 @@ Alamat: ${s.fullAddress || '-'}`;
                             >
                               {student.gender}
                             </span>
+                            {classCode && (
+                              <span className="text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-md bg-emerald-500/25 text-emerald-300 border border-emerald-400/40">
+                                {classCode}
+                              </span>
+                            )}
                           </div>
 
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 truncate max-w-[120px] sm:max-w-[180px]">
                               {student.year} • {student.className}
                             </span>
                           </div>
                         </div>
 
                         {/* Main Student Info with Avatar / Photo & Quick Camera Button */}
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2.5 sm:gap-3">
                           {/* Student Photo or Gender Avatar */}
                           <div className="relative group/avatar flex-shrink-0">
                             {student.photoUrl ? (
                               <img
                                 src={student.photoUrl}
                                 alt={student.name}
-                                className="w-14 h-16 sm:w-16 sm:h-18 rounded-2xl object-cover border-2 border-emerald-400/60 shadow-lg shadow-emerald-950/40 bg-slate-950"
+                                className="w-12 h-14 sm:w-16 sm:h-18 rounded-xl sm:rounded-2xl object-cover border-2 border-emerald-400/60 shadow-md shadow-emerald-950/40 bg-slate-950"
                               />
                             ) : (
                               <div
-                                className={`w-14 h-16 sm:w-16 sm:h-18 rounded-2xl border flex flex-col items-center justify-center shadow-inner transition ${
+                                className={`w-12 h-14 sm:w-16 sm:h-18 rounded-xl sm:rounded-2xl border flex flex-col items-center justify-center shadow-inner transition ${
                                   isMale
                                     ? 'bg-gradient-to-b from-blue-950/80 to-slate-950 border-blue-400/40 text-blue-300'
                                     : 'bg-gradient-to-b from-rose-950/80 to-slate-950 border-rose-400/40 text-rose-300'
                                 }`}
                               >
-                                <User className="w-6 h-6 sm:w-7 sm:h-7 mb-0.5" />
-                                <span className="text-[9px] font-black uppercase tracking-tight">
+                                <User className="w-5 h-5 sm:w-7 sm:h-7 mb-0.5" />
+                                <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-tight">
                                   {isMale ? 'Lelaki' : 'Perempuan'}
                                 </span>
                               </div>
@@ -557,19 +707,19 @@ Alamat: ${s.fullAddress || '-'}`;
                                 setPhotoModalStudent(student);
                                 setIsPhotoModalOpen(true);
                               }}
-                              className="absolute -bottom-1 -right-1 p-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-lg border border-emerald-300 transition active:scale-95"
+                              className="absolute -bottom-1 -right-1 p-1 sm:p-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg sm:rounded-xl shadow-lg border border-emerald-300 transition active:scale-95"
                               title="Tangkap / Muat Naik Gambar Murid (Kamera)"
                             >
-                              <Camera className="w-3 h-3" />
+                              <Camera className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                             </button>
                           </div>
 
                           {/* Student Name & IC & APDM ID */}
                           <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-black text-white group-hover:text-emerald-300 transition leading-snug line-clamp-2">
+                            <h4 className="text-xs sm:text-sm font-black text-white group-hover:text-emerald-300 transition leading-snug line-clamp-2">
                               {student.name}
                             </h4>
-                            <div className="flex flex-col gap-0.5 mt-1 text-xs text-slate-300 font-mono">
+                            <div className="flex flex-col gap-0.5 mt-0.5 sm:mt-1 text-[11px] sm:text-xs text-slate-300 font-mono">
                               <span>
                                 KP: <strong className="text-slate-100">{student.ic || '-'}</strong>
                               </span>
@@ -580,10 +730,41 @@ Alamat: ${s.fullAddress || '-'}`;
                               )}
                             </div>
                           </div>
+
+                          {/* Mobile Action Buttons (WhatsApp & Phone Call) shown directly on the right in Phone mode */}
+                          {(student.parent1Phone || student.parent2Phone) && (
+                            <div
+                              className="flex sm:hidden flex-col items-center gap-1.5 flex-shrink-0"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setContactModalStudent(student);
+                                  setContactModalType('whatsapp');
+                                }}
+                                className="w-8 h-8 rounded-xl bg-emerald-500/25 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 flex items-center justify-center border border-emerald-400/40 transition active:scale-95 shadow-sm"
+                                title="Pilihan WhatsApp Penjaga (Bapa / Ibu)"
+                              >
+                                <MessageCircle className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setContactModalStudent(student);
+                                  setContactModalType('call');
+                                }}
+                                className="w-8 h-8 rounded-xl bg-blue-500/25 hover:bg-blue-500 text-blue-300 hover:text-slate-950 flex items-center justify-center border border-blue-400/40 transition active:scale-95 shadow-sm"
+                                title="Pilihan Panggilan Telefon Penjaga (Bapa / Ibu)"
+                              >
+                                <Phone className="w-4 h-4" />
+                              </button>
+                            </div>
+                          )}
                         </div>
 
-                        {/* Teacher & Parent Quick Info */}
-                        <div className="space-y-1.5 pt-2 border-t border-white/10 text-xs text-slate-300">
+                        {/* Teacher & Parent Quick Info (Hidden on Mobile, shown on tablet/desktop) */}
+                        <div className="hidden sm:block space-y-1.5 pt-2 border-t border-white/10 text-xs text-slate-300">
                           {student.classTeacher && (
                             <div className="flex items-center gap-1.5 text-slate-400 text-[11px]">
                               <GraduationCap className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
@@ -612,9 +793,9 @@ Alamat: ${s.fullAddress || '-'}`;
                         </div>
                       </div>
 
-                      {/* Card Footer Actions */}
+                      {/* Card Footer Actions (Hidden on Mobile, shown on tablet/desktop) */}
                       <div
-                        className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between gap-1.5"
+                        className="hidden sm:flex mt-3 pt-2.5 border-t border-white/10 items-center justify-between gap-1.5"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <button
@@ -640,28 +821,34 @@ Alamat: ${s.fullAddress || '-'}`;
                           <span className="hidden sm:inline">Foto</span>
                         </button>
 
-                        {/* WhatsApp Parent Button */}
-                        {cleanPhone1 && (
-                          <a
-                            href={`https://wa.me/${cleanPhone1}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                        {/* WhatsApp Parent Button with Choices */}
+                        {(student.parent1Phone || student.parent2Phone) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setContactModalStudent(student);
+                              setContactModalType('whatsapp');
+                            }}
                             className="p-1.5 bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 rounded-xl transition border border-emerald-400/30"
-                            title={`WhatsApp Penjaga (${student.parent1Name}): ${student.parent1Phone}`}
+                            title="Pilihan WhatsApp Penjaga (Bapa / Ibu)"
                           >
                             <MessageCircle className="w-3.5 h-3.5" />
-                          </a>
+                          </button>
                         )}
 
-                        {/* Call Parent Button */}
-                        {student.parent1Phone && (
-                          <a
-                            href={`tel:${student.parent1Phone}`}
+                        {/* Call Parent Button with Choices */}
+                        {(student.parent1Phone || student.parent2Phone) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setContactModalStudent(student);
+                              setContactModalType('call');
+                            }}
                             className="p-1.5 bg-blue-500/20 hover:bg-blue-500 text-blue-300 hover:text-slate-950 rounded-xl transition border border-blue-400/30"
-                            title={`Hubungi Penjaga (${student.parent1Name}): ${student.parent1Phone}`}
+                            title="Pilihan Panggilan Telefon Penjaga (Bapa / Ibu)"
                           >
                             <Phone className="w-3.5 h-3.5" />
-                          </a>
+                          </button>
                         )}
                       </div>
                     </div>
@@ -673,13 +860,13 @@ Alamat: ${s.fullAddress || '-'}`;
         </div>
 
         {/* Footer */}
-        <div className="bg-slate-950/80 px-4 sm:px-6 py-3 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400 flex-shrink-0">
-          <span>
-            Pangkalan Data Murid SK Merbau Pulas (KBA5012) • Sumber: Kementerian Pendidikan Malaysia (APDM)
+        <div className="bg-slate-950/80 px-3 sm:px-6 py-2 sm:py-3 border-t border-white/10 flex items-center justify-between gap-2 text-[11px] sm:text-xs text-slate-400 flex-shrink-0">
+          <span className="truncate">
+            <span className="hidden sm:inline">Pangkalan Data Murid </span>SK Merbau Pulas (KBA5012) • Sumber: APDM
           </span>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition"
+            className="px-3.5 py-1.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition text-xs flex-shrink-0"
           >
             Tutup
           </button>
@@ -687,21 +874,230 @@ Alamat: ${s.fullAddress || '-'}`;
       </div>
 
       {/* ========================================================================= */}
+      {/* CONTACT SELECTION MODAL (WHATSAPP / PANGGILAN BAPA & IBU / PENJAGA)       */}
+      {/* ========================================================================= */}
+      {contactModalStudent && (
+        <div
+          className="fixed inset-0 z-[75] bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fadeIn"
+          onClick={() => setContactModalStudent(null)}
+        >
+          <div
+            className="bg-slate-900 border-t sm:border border-white/20 rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl overflow-hidden relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 p-4 sm:p-5 border-b border-white/15 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg border ${
+                    contactModalType === 'call'
+                      ? 'bg-blue-600/30 text-blue-300 border-blue-400/40'
+                      : 'bg-emerald-600/30 text-emerald-300 border-emerald-400/40'
+                  }`}
+                >
+                  {contactModalType === 'call' ? (
+                    <Phone className="w-5 h-5" />
+                  ) : (
+                    <MessageCircle className="w-5 h-5" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-base sm:text-lg font-black text-white truncate">
+                    {contactModalType === 'call'
+                      ? 'Pilihan Panggilan Telefon'
+                      : 'Pilihan WhatsApp Penjaga'}
+                  </h3>
+                  <p className="text-xs text-emerald-300 font-bold truncate">
+                    {contactModalStudent.name}
+                  </p>
+                  <p className="text-[11px] text-slate-300 truncate">
+                    {contactModalStudent.year} • {contactModalStudent.className}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setContactModalStudent(null)}
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition flex-shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Body: Parent/Guardian Selection List */}
+            <div className="p-4 sm:p-5 space-y-3 max-h-[70vh] overflow-y-auto">
+              <p className="text-xs text-slate-300 leading-relaxed font-medium">
+                Pilih nombor bapa, ibu atau penjaga yang ingin dihubungi:
+              </p>
+
+              {/* 1. Penjaga 1 (Bapa / Penjaga Utama) */}
+              {contactModalStudent.parent1Phone ? (
+                <div className="bg-slate-950/80 border border-white/10 hover:border-emerald-500/40 rounded-2xl p-3.5 space-y-2.5 transition">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-300 border border-blue-400/30 flex items-center justify-center flex-shrink-0 font-black text-[11px]">
+                        {contactModalStudent.parent1Rel?.toUpperCase().includes('IBU')
+                          ? 'IBU'
+                          : 'BAPA'}
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-white/10 text-slate-300">
+                          {contactModalStudent.parent1Rel || 'Penjaga 1 (Utama)'}
+                        </span>
+                        <h4 className="text-xs sm:text-sm font-black text-white truncate mt-0.5">
+                          {contactModalStudent.parent1Name || 'Penjaga 1'}
+                        </h4>
+                      </div>
+                    </div>
+                    <span className="text-xs font-mono font-bold text-yellow-300 bg-yellow-500/10 px-2 py-1 rounded-lg border border-yellow-400/20 flex-shrink-0">
+                      {contactModalStudent.parent1Phone}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <a
+                      href={`https://wa.me/${formatCleanPhone(contactModalStudent.parent1Phone)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setContactModalStudent(null)}
+                      className={`py-2.5 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 shadow-md border ${
+                        contactModalType !== 'call'
+                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400/60 ring-2 ring-emerald-400/30'
+                          : 'bg-emerald-600/30 hover:bg-emerald-600 text-emerald-200 hover:text-white border-emerald-400/40'
+                      }`}
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      <span>WhatsApp</span>
+                    </a>
+                    <a
+                      href={`tel:${contactModalStudent.parent1Phone}`}
+                      onClick={() => setContactModalStudent(null)}
+                      className={`py-2.5 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 shadow-md border ${
+                        contactModalType === 'call'
+                          ? 'bg-blue-600 hover:bg-blue-500 text-white border-blue-400/60 ring-2 ring-blue-400/30'
+                          : 'bg-blue-600/30 hover:bg-blue-600 text-blue-200 hover:text-white border-blue-400/40'
+                      }`}
+                    >
+                      <Phone className="w-4 h-4" />
+                      <span>Panggil</span>
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-950/40 border border-white/5 rounded-2xl p-3 text-xs text-slate-400 flex items-center justify-between">
+                  <span>Penjaga 1: {contactModalStudent.parent1Name || 'Tiada Nama'}</span>
+                  <span className="italic text-[11px] text-slate-300">(Tiada No. Tel)</span>
+                </div>
+              )}
+
+              {/* 2. Penjaga 2 (Ibu / Penjaga Kedua) */}
+              {contactModalStudent.parent2Phone ? (
+                <div className="bg-slate-950/80 border border-white/10 hover:border-emerald-500/40 rounded-2xl p-3.5 space-y-2.5 transition">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-300 border border-rose-400/30 flex items-center justify-center flex-shrink-0 font-black text-[11px]">
+                        {contactModalStudent.parent2Rel?.toUpperCase().includes('BAPA')
+                          ? 'BAPA'
+                          : 'IBU'}
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-white/10 text-slate-300">
+                          {contactModalStudent.parent2Rel ||
+                            (contactModalStudent.parent1Rel?.toUpperCase().includes('BAPA')
+                              ? 'IBU KANDUNG'
+                              : 'Penjaga 2')}
+                        </span>
+                        <h4 className="text-xs sm:text-sm font-black text-white truncate mt-0.5">
+                          {contactModalStudent.parent2Name || 'Penjaga 2'}
+                        </h4>
+                      </div>
+                    </div>
+                    <span className="text-xs font-mono font-bold text-yellow-300 bg-yellow-500/10 px-2 py-1 rounded-lg border border-yellow-400/20 flex-shrink-0">
+                      {contactModalStudent.parent2Phone}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <a
+                      href={`https://wa.me/${formatCleanPhone(contactModalStudent.parent2Phone)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setContactModalStudent(null)}
+                      className={`py-2.5 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 shadow-md border ${
+                        contactModalType !== 'call'
+                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400/60 ring-2 ring-emerald-400/30'
+                          : 'bg-emerald-600/30 hover:bg-emerald-600 text-emerald-200 hover:text-white border-emerald-400/40'
+                      }`}
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      <span>WhatsApp</span>
+                    </a>
+                    <a
+                      href={`tel:${contactModalStudent.parent2Phone}`}
+                      onClick={() => setContactModalStudent(null)}
+                      className={`py-2.5 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 shadow-md border ${
+                        contactModalType === 'call'
+                          ? 'bg-blue-600 hover:bg-blue-500 text-white border-blue-400/60 ring-2 ring-blue-400/30'
+                          : 'bg-blue-600/30 hover:bg-blue-600 text-blue-200 hover:text-white border-blue-400/40'
+                      }`}
+                    >
+                      <Phone className="w-4 h-4" />
+                      <span>Panggil</span>
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-950/40 border border-white/5 rounded-2xl p-3 text-xs text-slate-400 flex items-center justify-between">
+                  <span>Penjaga 2: {contactModalStudent.parent2Name || 'Tiada Maklumat'}</span>
+                  <span className="italic text-[11px] text-slate-300">(Tiada No. Tel)</span>
+                </div>
+              )}
+
+              {!contactModalStudent.parent1Phone && !contactModalStudent.parent2Phone && (
+                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-400/20 text-center text-xs text-amber-200">
+                  Tiada nombor telefon bapa, ibu atau penjaga didaftarkan dalam sistem APDM bagi murid ini.
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="bg-slate-950 p-3 sm:p-4 border-t border-white/10 flex items-center justify-between gap-2">
+              <button
+                onClick={() => {
+                  setSelectedStudent(contactModalStudent);
+                  setContactModalStudent(null);
+                }}
+                className="text-xs text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-white/5 transition"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>Lihat Profil Penuh APDM</span>
+              </button>
+              <button
+                onClick={() => setContactModalStudent(null)}
+                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl text-xs transition"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
       {/* DETAILED STUDENT PROFILE MODAL (PROFIL LENGKAP APDM) */}
       {/* ========================================================================= */}
       {selectedStudent && (
-        <div className="fixed inset-0 z-[70] overflow-y-auto bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 lg:p-6 animate-fadeIn">
-          <div className="bg-slate-900 border border-white/25 rounded-3xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden relative">
+        <div className="fixed inset-0 z-[70] overflow-hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-0 sm:p-4 lg:p-6 animate-fadeIn">
+          <div className="bg-slate-900 border-0 sm:border sm:border-white/25 rounded-none sm:rounded-3xl w-full max-w-4xl h-[100dvh] sm:h-auto sm:max-h-[92vh] flex flex-col shadow-2xl overflow-hidden relative">
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 p-4 sm:p-6 border-b border-white/15 flex flex-col sm:flex-row sm:items-start justify-between gap-4 flex-shrink-0">
-              <div className="flex items-start gap-4">
+            <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 px-3 py-3 sm:p-6 border-b border-white/15 flex items-start justify-between gap-3 flex-shrink-0">
+              <div className="flex items-start gap-3 sm:gap-4 min-w-0">
                 {/* Large Portrait Photo or Gender Avatar */}
                 <div className="relative flex-shrink-0 flex flex-col items-center">
                   {selectedStudent.photoUrl ? (
                     <img
                       src={selectedStudent.photoUrl}
                       alt={selectedStudent.name}
-                      className="w-20 h-24 sm:w-24 sm:h-28 rounded-2xl object-cover border-2 border-emerald-400 shadow-2xl shadow-emerald-950/60 bg-slate-950"
+                      className="w-16 h-20 sm:w-24 sm:h-28 rounded-2xl object-cover border-2 border-emerald-400 shadow-2xl shadow-emerald-950/60 bg-slate-950"
                     />
                   ) : (
                     <div

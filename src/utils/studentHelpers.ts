@@ -145,3 +145,76 @@ export const getYearTheme = (yearStr: string) => {
   }
 };
 
+export interface ClassPillItem {
+  code: string;
+  label: string;
+  fullName: string;
+  shortDescription: string;
+}
+
+export const ORDERED_CLASS_PILLS: ClassPillItem[] = [
+  { code: '6IS', label: '6IS', fullName: 'Tahun Enam Ibnu Sina', shortDescription: 'Tahun 6 Ibnu Sina' },
+  { code: '6IK', label: '6IK', fullName: 'Tahun Enam Ibnu Khaldun', shortDescription: 'Tahun 6 Ibnu Khaldun' },
+  { code: '5IS', label: '5IS', fullName: 'Tahun Lima Ibnu Sina', shortDescription: 'Tahun 5 Ibnu Sina' },
+  { code: '5IK', label: '5IK', fullName: 'Tahun Lima Ibnu Khaldun', shortDescription: 'Tahun 5 Ibnu Khaldun' },
+  { code: '4IS', label: '4IS', fullName: 'Tahun Empat Ibnu Sina', shortDescription: 'Tahun 4 Ibnu Sina' },
+  { code: '4IK', label: '4IK', fullName: 'Tahun Empat Ibnu Khaldun', shortDescription: 'Tahun 4 Ibnu Khaldun' },
+  { code: '3IS', label: '3IS', fullName: 'Tahun Tiga Ibnu Sina', shortDescription: 'Tahun 3 Ibnu Sina' },
+  { code: '3IK', label: '3IK', fullName: 'Tahun Tiga Ibnu Khaldun', shortDescription: 'Tahun 3 Ibnu Khaldun' },
+  { code: '2IS', label: '2IS', fullName: 'Tahun Dua Ibnu Sina', shortDescription: 'Tahun 2 Ibnu Sina' },
+  { code: '2IK', label: '2IK', fullName: 'Tahun Dua Ibnu Khaldun', shortDescription: 'Tahun 2 Ibnu Khaldun' },
+  { code: '1IS', label: '1IS', fullName: 'Tahun Satu Ibnu Sina', shortDescription: 'Tahun 1 Ibnu Sina' },
+  { code: '1IK', label: '1IK', fullName: 'Tahun Satu Ibnu Khaldun', shortDescription: 'Tahun 1 Ibnu Khaldun' },
+  { code: 'P.In', label: 'P.In', fullName: 'Pra Sekolah Intan', shortDescription: 'Pra Intan' },
+  { code: 'P.Ber', label: 'P.Ber', fullName: 'Pra Sekolah Berlian', shortDescription: 'Pra Berlian' },
+];
+
+export const getStudentClassCode = (student: { year?: string; className?: string }): string => {
+  const y = (student.year || '').toUpperCase().trim();
+  const c = (student.className || '').toUpperCase().trim();
+
+  // Tahun 6
+  if (y.includes('6') || y.includes('ENAM')) {
+    if (c.includes('SINA')) return '6IS';
+    if (c.includes('KHALDUN')) return '6IK';
+    return '6IS';
+  }
+  // Tahun 5
+  if (y.includes('5') || y.includes('LIMA')) {
+    if (c.includes('SINA')) return '5IS';
+    if (c.includes('KHALDUN')) return '5IK';
+    return '5IS';
+  }
+  // Tahun 4
+  if (y.includes('4') || y.includes('EMPAT')) {
+    if (c.includes('SINA')) return '4IS';
+    if (c.includes('KHALDUN')) return '4IK';
+    return '4IS';
+  }
+  // Tahun 3
+  if (y.includes('3') || y.includes('TIGA')) {
+    if (c.includes('SINA')) return '3IS';
+    if (c.includes('KHALDUN')) return '3IK';
+    return '3IS';
+  }
+  // Tahun 2
+  if (y.includes('2') || y.includes('DUA')) {
+    if (c.includes('SINA')) return '2IS';
+    if (c.includes('KHALDUN')) return '2IK';
+    return '2IS';
+  }
+  // Tahun 1
+  if (y.includes('1') || y.includes('SATU')) {
+    if (c.includes('SINA')) return '1IS';
+    if (c.includes('KHALDUN')) return '1IK';
+    return '1IS';
+  }
+  // Pra Sekolah
+  if (y.includes('PRA') || c.includes('PRA')) {
+    if (c.includes('INTAN')) return 'P.In';
+    if (c.includes('BERLIAN')) return 'P.Ber';
+    return 'P.In';
+  }
+  return '';
+};
+
