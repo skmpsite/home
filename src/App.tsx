@@ -749,6 +749,7 @@ export default function App() {
             latestNews={newsList}
             upcomingEvents={events}
             staffList={staffList}
+            studentsList={studentsList}
             onNavigate={setActiveTab}
             onSelectNews={(news) => {
               setSelectedNewsReader(news);

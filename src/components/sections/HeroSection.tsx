@@ -1,6 +1,8 @@
-import React from 'react';
-import { SchoolProfile, NewsItem, CalendarEvent, Staff } from '../../types';
+import React, { useMemo } from 'react';
+import { SchoolProfile, NewsItem, CalendarEvent, Staff, StudentRecord } from '../../types';
 import { initialSchoolProfile } from '../../data/initialData';
+import { isAdministrator } from '../../utils/staffHelpers';
+import { getStudentsList } from '../../utils/storage';
 import {
   Bell,
   Megaphone,
@@ -22,7 +24,9 @@ import {
   CheckCircle2,
   MessageSquare,
   Share2,
-  ShieldCheck
+  ShieldCheck,
+  GraduationCap,
+  Briefcase
 } from 'lucide-react';
 import { TabType } from '../Navbar';
 import { getSafeNewsImageUrl, SECONDARY_FALLBACK_PHOTOS } from '../../utils/imageHelpers';
@@ -34,6 +38,7 @@ interface HeroSectionProps {
   latestNews: NewsItem[];
   upcomingEvents: CalendarEvent[];
   staffList?: Staff[];
+  studentsList?: StudentRecord[];
   onNavigate: (tab: TabType) => void;
   onSelectNews: (news: NewsItem) => void;
 }
@@ -43,6 +48,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   latestNews,
   upcomingEvents,
   staffList,
+  studentsList,
   onNavigate,
   onSelectNews
 }) => {
@@ -55,6 +61,37 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   const displayTitle = profile.principalTitle || (guruBesarFromStaff ? guruBesarFromStaff.position : 'Guru Besar (DG48)');
   const displayBadge = profile.principalBadge || 'Perutusan & Kata Alu-Aluan';
   const pinnedNews = latestNews.filter((n) => n.isPinned)[0] || latestNews[0];
+
+  // Pengiraan Dinamik Data: Pentadbir, Guru, Staf (daripada Carta Organisasi) & Murid (daripada HEM)
+  const pentadbirCount = useMemo(() => {
+    const list = staffList && staffList.length > 0 ? staffList : [];
+    const count = list.filter((s) => isAdministrator(s, profile)).length;
+    return count > 0 ? count : 4;
+  }, [staffList, profile]);
+
+  const guruCount = useMemo(() => {
+    const list = staffList && staffList.length > 0 ? staffList : [];
+    const count = list.filter(
+      (s) => !isAdministrator(s, profile) && (s.category === 'guru' || (s.grade && s.grade.toUpperCase().includes('DG')))
+    ).length;
+    return count > 0 ? count : 24;
+  }, [staffList, profile]);
+
+  const stafCount = useMemo(() => {
+    const list = staffList && staffList.length > 0 ? staffList : [];
+    const count = list.filter(
+      (s) => s.category === 'staf' || s.category === 'akp' || (!isAdministrator(s, profile) && !(s.grade && s.grade.toUpperCase().includes('DG')))
+    ).length;
+    return count > 0 ? count : 4;
+  }, [staffList, profile]);
+
+  const muridCount = useMemo(() => {
+    if (studentsList && studentsList.length > 0) {
+      return studentsList.length;
+    }
+    const stored = getStudentsList();
+    return stored && stored.length > 0 ? stored.length : 375;
+  }, [studentsList]);
 
   const videoTag = profile.officialVideoTag || 'Tayangan Rasmi Sekolah';
   const videoTitle = profile.officialVideoTitle || 'Video Alu-Aluan & Profil SK Merbau Pulas';
@@ -116,45 +153,73 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         </div>
       </div>
 
-      {/* Quick Statistics Strip */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white/10 backdrop-blur-md p-5 rounded-2xl border border-white/10 shadow-lg hover:bg-white/15 transition flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-500/20 border border-blue-400/30 text-blue-300 flex items-center justify-center font-bold">
-            <Users className="w-6 h-6 text-blue-300" />
+      {/* Quick Statistics Strip: Pentadbir, Guru, Staf & Murid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* 1. Pentadbir */}
+        <div
+          onClick={() => onNavigate('organisasi')}
+          className="bg-white/10 backdrop-blur-md p-5 rounded-2xl border border-white/10 shadow-lg hover:bg-white/15 hover:border-blue-400/40 transition cursor-pointer flex items-center gap-4 group"
+          title="Klik untuk melihat Barisan Pentadbir di Carta Organisasi"
+        >
+          <div className="w-12 h-12 rounded-xl bg-blue-500/20 border border-blue-400/30 text-blue-300 flex items-center justify-center font-bold group-hover:scale-105 transition flex-shrink-0">
+            <ShieldCheck className="w-6 h-6 text-blue-300" />
           </div>
           <div>
-            <span className="text-2xl font-black text-white leading-none">{profile.statsMurid || '485'}</span>
-            <p className="text-xs font-semibold text-slate-300 mt-0.5">Murid Terdaftar</p>
+            <span className="text-2xl sm:text-3xl font-black text-white leading-none block group-hover:text-blue-300 transition">
+              {pentadbirCount}
+            </span>
+            <p className="text-xs font-semibold text-slate-300 mt-1">Pentadbir</p>
           </div>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-md p-5 rounded-2xl border border-white/10 shadow-lg hover:bg-white/15 transition flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-yellow-500/20 border border-yellow-400/30 text-yellow-300 flex items-center justify-center font-bold">
-            <UserCheck className="w-6 h-6 text-yellow-300" />
+        {/* 2. Guru Pendidik */}
+        <div
+          onClick={() => onNavigate('organisasi')}
+          className="bg-white/10 backdrop-blur-md p-5 rounded-2xl border border-white/10 shadow-lg hover:bg-white/15 hover:border-yellow-400/40 transition cursor-pointer flex items-center gap-4 group"
+          title="Klik untuk melihat Barisan Guru di Carta Organisasi"
+        >
+          <div className="w-12 h-12 rounded-xl bg-yellow-500/20 border border-yellow-400/30 text-yellow-300 flex items-center justify-center font-bold group-hover:scale-105 transition flex-shrink-0">
+            <GraduationCap className="w-6 h-6 text-yellow-300" />
           </div>
           <div>
-            <span className="text-2xl font-black text-white leading-none">{profile.statsGuru || '32'}</span>
-            <p className="text-xs font-semibold text-slate-300 mt-0.5">Guru Pendidik</p>
+            <span className="text-2xl sm:text-3xl font-black text-white leading-none block group-hover:text-yellow-300 transition">
+              {guruCount}
+            </span>
+            <p className="text-xs font-semibold text-slate-300 mt-1">Guru Pendidik</p>
           </div>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-md p-5 rounded-2xl border border-white/10 shadow-lg hover:bg-white/15 transition flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 flex items-center justify-center font-bold">
-            <Award className="w-6 h-6 text-emerald-300" />
+        {/* 3. Staf Sokongan (AKP) */}
+        <div
+          onClick={() => onNavigate('organisasi')}
+          className="bg-white/10 backdrop-blur-md p-5 rounded-2xl border border-white/10 shadow-lg hover:bg-white/15 hover:border-emerald-400/40 transition cursor-pointer flex items-center gap-4 group"
+          title="Klik untuk melihat Staf Sokongan di Carta Organisasi"
+        >
+          <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 flex items-center justify-center font-bold group-hover:scale-105 transition flex-shrink-0">
+            <Briefcase className="w-6 h-6 text-emerald-300" />
           </div>
           <div>
-            <span className="text-2xl font-black text-white leading-none">{profile.statsAnugerah || '18'}</span>
-            <p className="text-xs font-semibold text-slate-300 mt-0.5">Anugerah Tertiari</p>
+            <span className="text-2xl sm:text-3xl font-black text-white leading-none block group-hover:text-emerald-300 transition">
+              {stafCount}
+            </span>
+            <p className="text-xs font-semibold text-slate-300 mt-1">Staf Sokongan</p>
           </div>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-md p-5 rounded-2xl border border-white/10 shadow-lg hover:bg-white/15 transition flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 flex items-center justify-center font-bold">
-            <Download className="w-6 h-6 text-indigo-300" />
+        {/* 4. Murid Terdaftar */}
+        <div
+          onClick={() => onNavigate('hem')}
+          className="bg-white/10 backdrop-blur-md p-5 rounded-2xl border border-white/10 shadow-lg hover:bg-white/15 hover:border-indigo-400/40 transition cursor-pointer flex items-center gap-4 group"
+          title="Klik untuk melihat pengurusan Hal Ehwal Murid (HEM)"
+        >
+          <div className="w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 flex items-center justify-center font-bold group-hover:scale-105 transition flex-shrink-0">
+            <Users className="w-6 h-6 text-indigo-300" />
           </div>
           <div>
-            <span className="text-2xl font-black text-white leading-none">{profile.statsDokumen || '24+'}</span>
-            <p className="text-xs font-semibold text-slate-300 mt-0.5">Dokumen & Borang</p>
+            <span className="text-2xl sm:text-3xl font-black text-white leading-none block group-hover:text-indigo-300 transition">
+              {muridCount}
+            </span>
+            <p className="text-xs font-semibold text-slate-300 mt-1">Murid Terdaftar</p>
           </div>
         </div>
       </div>
