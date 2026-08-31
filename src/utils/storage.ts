@@ -477,7 +477,12 @@ export function getAbsenceRecords(): StudentAbsenceRecord[] {
   if (!Array.isArray(list)) {
     return initialAbsenceRecords;
   }
-  return list;
+  // Filter out any previous dummy seed records so default starts fresh at 0
+  const cleaned = list.filter((r) => r.id !== 'abs-001' && r.id !== 'abs-002' && r.id !== 'abs-003');
+  if (cleaned.length !== list.length) {
+    setStored(KEYS.ABSENCE_RECORDS, cleaned);
+  }
+  return cleaned;
 }
 
 export function saveAbsenceRecords(records: StudentAbsenceRecord[]): void {

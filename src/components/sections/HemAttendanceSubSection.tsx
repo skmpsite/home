@@ -34,6 +34,7 @@ import {
   FileCheck
 } from 'lucide-react';
 import { StudentRecord, StudentAbsenceRecord } from '../../types';
+import { sortYears, sortClasses, sortClassBreakdown, getYearTheme } from '../../utils/studentHelpers';
 
 interface HemAttendanceSubSectionProps {
   students: StudentRecord[];
@@ -121,6 +122,7 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
   const [attendanceViewTab, setAttendanceViewTab] = useState<'borang' | 'analisis' | 'senarai'>('borang');
 
   // Filter for class analysis & records table
+  const [filterDateMode, setFilterDateMode] = useState<'selected' | 'semua'>('selected');
   const [filterClass, setFilterClass] = useState<string>('semua');
   const [filterReason, setFilterReason] = useState<string>('semua');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -171,16 +173,16 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
   const [formSubmitting, setFormSubmitting] = useState<boolean>(false);
   const [formError, setFormError] = useState<string>('');
 
-  // Extract unique years
+  // Extract unique years according to strict hierarchy: Tahun 6, 5, 4, 3, 2, 1, Pra Sekolah
   const availableYears = useMemo(() => {
     const set = new Set<string>();
     students.forEach((s) => {
       if (s.year) set.add(s.year);
     });
-    return Array.from(set).sort();
+    return sortYears(Array.from(set));
   }, [students]);
 
-  // Extract classes available for selected year
+  // Extract classes available for selected year according to strict hierarchy: Ibnu Sina, Ibnu Khaldun, Pra Intan, Pra Berlian
   const availableClassesForYear = useMemo(() => {
     if (!formYear) return [];
     const set = new Set<string>();
@@ -189,7 +191,7 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
         set.add(s.className);
       }
     });
-    return Array.from(set).sort();
+    return sortClasses(Array.from(set));
   }, [students, formYear]);
 
   // Students in selected year and class
@@ -403,26 +405,31 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
       }
     });
 
-    return Object.keys(classMap)
-      .map((key) => {
-        const item = classMap[key];
-        const absent = item.absentStudents.length;
-        const present = Math.max(0, item.total - absent);
-        const pct = item.total > 0 ? ((present / item.total) * 100).toFixed(1) : '100.0';
-        return {
-          key,
-          ...item,
-          absentCount: absent,
-          presentCount: present,
-          percentage: pct
-        };
-      })
-      .sort((a, b) => a.key.localeCompare(b.key));
+    const breakdownList = Object.keys(classMap).map((key) => {
+      const item = classMap[key];
+      const absent = item.absentStudents.length;
+      const present = Math.max(0, item.total - absent);
+      const pct = item.total > 0 ? ((present / item.total) * 100).toFixed(1) : '100.0';
+      return {
+        key,
+        ...item,
+        absentCount: absent,
+        presentCount: present,
+        percentage: pct
+      };
+    });
+
+    return sortClassBreakdown(breakdownList);
   }, [students, absentStudentIds]);
 
   // Filtered absence list for table / search
   const filteredAbsenceRecordsList = useMemo(() => {
     return absenceRecords.filter((rec) => {
+      // Date filter based on selectedDate (Ahad - Khamis or custom date)
+      if (filterDateMode === 'selected') {
+        const isWithinRange = selectedDate >= rec.dateFrom && selectedDate <= rec.dateTo;
+        if (!isWithinRange) return false;
+      }
       if (filterClass !== 'semua') {
         const classKey = `${rec.year} - ${rec.className}`;
         if (classKey !== filterClass && rec.className !== filterClass) return false;
@@ -440,7 +447,7 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
       }
       return true;
     });
-  }, [absenceRecords, filterClass, filterReason, searchQuery]);
+  }, [absenceRecords, filterDateMode, selectedDate, filterClass, filterReason, searchQuery]);
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -946,42 +953,25 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
                     </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* Option 1: Gunakan Kamera Telefon / Komputer */}
-                    <label className="border border-emerald-500/40 hover:border-emerald-400 bg-emerald-950/30 hover:bg-emerald-900/40 rounded-2xl p-4 sm:p-5 flex flex-col items-center justify-center gap-2 cursor-pointer transition text-center shadow-lg group">
-                      <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 group-hover:bg-emerald-500/30 flex items-center justify-center text-emerald-300 transition">
-                        <Camera className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold text-white block">Ambil Foto (Kamera)</span>
-                        <span className="text-[10.5px] text-emerald-300/80">Tangkap gambar resit MC secara terus</span>
-                      </div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={handleFileUpload}
-                        className="hidden"
-                      />
-                    </label>
-
-                    {/* Option 2: Muat Naik Fail Dokumen / Galeri */}
-                    <label className="border border-purple-500/40 hover:border-purple-400 bg-purple-950/30 hover:bg-purple-900/40 rounded-2xl p-4 sm:p-5 flex flex-col items-center justify-center gap-2 cursor-pointer transition text-center shadow-lg group">
-                      <div className="w-12 h-12 rounded-2xl bg-purple-500/20 group-hover:bg-purple-500/30 flex items-center justify-center text-purple-300 transition">
-                        <Upload className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold text-white block">Muat Naik Fail / PDF</span>
-                        <span className="text-[10.5px] text-purple-300/80">Pilih gambar atau PDF dari peranti</span>
-                      </div>
-                      <input
-                        type="file"
-                        accept="image/*,application/pdf"
-                        onChange={handleFileUpload}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
+                  <label className="border-2 border-dashed border-white/20 hover:border-emerald-400 bg-slate-800/40 hover:bg-emerald-950/20 rounded-2xl p-6 sm:p-7 flex flex-col items-center justify-center gap-2.5 cursor-pointer transition text-center shadow-lg group">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 group-hover:bg-emerald-500/30 flex items-center justify-center text-emerald-300 transition shadow-inner">
+                      <Upload className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <span className="text-xs sm:text-sm font-bold text-white block">
+                        Klik atau Tarik Fail Slip Cuti Sakit / Surat Rasmi Waris ke Sini
+                      </span>
+                      <span className="text-[10.5px] text-slate-400 block mt-0.5">
+                        Menyokong imej (JPG, PNG) daripada galeri / tangkap foto kamera, atau fail dokumen PDF
+                      </span>
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </label>
                 )}
               </div>
 
@@ -1046,6 +1036,7 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
               {allClassesBreakdown.map((item) => {
                 const pct = Number(item.percentage);
+                const yearTheme = getYearTheme(item.year);
                 let badgeColor = 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40';
                 let barColor = 'bg-emerald-500';
                 if (pct < 90) {
@@ -1059,33 +1050,33 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
                 return (
                   <div
                     key={item.key}
-                    className="bg-white/5 hover:bg-white/10 p-4 sm:p-5 rounded-2xl border border-white/10 space-y-3 transition shadow-lg relative overflow-hidden"
+                    className={`p-4 sm:p-5 rounded-2xl border ${yearTheme.cardBorder} ${yearTheme.cardBg} space-y-3 transition shadow-lg relative overflow-hidden`}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 bg-blue-500/20 text-blue-300 rounded border border-blue-400/30">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <span className={`inline-block text-[10px] font-extrabold uppercase px-2 py-0.5 rounded border ${yearTheme.badge}`}>
                           {item.year}
                         </span>
-                        <h5 className="text-base font-black text-white mt-1">{item.className}</h5>
-                        <p className="text-[11px] text-slate-300 truncate">
+                        <h5 className={`text-base font-black mt-1 ${yearTheme.headerAccent} truncate`}>{item.className}</h5>
+                        <p className="text-[11px] text-slate-300 truncate mt-0.5" title={item.classTeacher}>
                           Guru: <strong>{item.classTeacher}</strong>
                         </p>
                       </div>
 
-                      <div className={`px-2.5 py-1 rounded-xl text-xs font-black border ${badgeColor}`}>
+                      <div className={`flex-shrink-0 whitespace-nowrap px-3 py-1.5 rounded-xl text-xs font-black border shadow-sm ${badgeColor} text-center`}>
                         {item.percentage}%
                       </div>
                     </div>
 
                     {/* Progress Bar */}
                     <div className="space-y-1">
-                      <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden border border-white/10">
+                      <div className="w-full h-2.5 bg-slate-950/80 rounded-full overflow-hidden border border-white/10">
                         <div
                           className={`h-full ${barColor} transition-all duration-500`}
                           style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
                         />
                       </div>
-                      <div className="flex items-center justify-between text-[10px] text-slate-300 font-semibold">
+                      <div className="flex items-center justify-between text-[10px] text-slate-300 font-semibold pt-0.5">
                         <span className="text-emerald-400 font-bold">Hadir: {item.presentCount}</span>
                         <span className="text-slate-400">Jumlah: {item.total}</span>
                         <span className="text-rose-400 font-bold">Tidak Hadir: {item.absentCount}</span>
@@ -1100,10 +1091,10 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
                           {item.absentStudents.map((st) => (
                             <div
                               key={st.id}
-                              className="text-[11px] bg-rose-950/40 px-2 py-1 rounded border border-rose-500/30 text-slate-200 flex items-center justify-between"
+                              className="text-[11px] bg-rose-950/60 px-2.5 py-1 rounded-lg border border-rose-500/30 text-slate-200 flex items-center justify-between shadow-sm"
                             >
-                              <span className="truncate">{st.name}</span>
-                              <span className="text-[9px] bg-rose-500/30 text-rose-200 px-1 rounded">Cuti/MC</span>
+                              <span className="truncate font-medium">{st.name}</span>
+                              <span className="text-[9px] bg-rose-500/30 text-rose-200 px-1.5 py-0.5 rounded font-bold">Cuti/MC</span>
                             </div>
                           ))}
                         </div>
@@ -1124,22 +1115,64 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
         <div className="bg-slate-900/80 backdrop-blur-md rounded-3xl p-6 sm:p-8 border border-white/15 shadow-2xl text-white space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-4">
             <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-500/20 text-purple-300 border border-purple-400/30 mb-1.5">
+                <FileCheck className="w-3.5 h-3.5 text-purple-400" />
+                <span>Pengesahan Dokumen Rasmi</span>
+              </div>
               <h4 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
-                <FileCheck className="w-5 h-5 text-purple-400" />
                 <span>Senarai Rekod Ketidakhadiran & Bukti Slip MC</span>
               </h4>
               <p className="text-xs sm:text-sm text-slate-300 mt-1">
-                Semakan dokumen perakuan waris, slip cuti sakit (MC) dan rekod ketidakhadiran murid SKMP.
+                Semakan dokumen perakuan waris, slip cuti sakit (MC) dan rekod ketidakhadiran murid SKMP mengikut tarikh.
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={() => window.print()}
-                className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1.5 border border-white/15 transition"
+                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1.5 border border-white/15 transition shadow"
               >
                 <Printer className="w-3.5 h-3.5 text-yellow-300" />
                 <span>Cetak Senarai</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Date Mode Switcher */}
+          <div className="p-3 bg-slate-950/60 rounded-2xl border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+              <span className="text-slate-300">
+                Tarikh Terpilih:{' '}
+                <strong className="text-yellow-300 font-mono">
+                  {selectedDate} ({schoolWeekDays.find((d) => d.dateStr === selectedDate)?.label || 'Hari Persekolahan'})
+                </strong>
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-white/10">
+              <button
+                type="button"
+                onClick={() => setFilterDateMode('selected')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                  filterDateMode === 'selected'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <span>Tapis Hari Dipilih ({dailyAbsenceRecords.length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilterDateMode('semua')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                  filterDateMode === 'semua'
+                    ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <span>Semua Tarikh ({absenceRecords.length})</span>
               </button>
             </div>
           </div>
@@ -1304,12 +1337,28 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
               })}
             </div>
           ) : (
-            <div className="p-8 text-center bg-white/5 rounded-2xl border border-white/10 space-y-2 text-slate-300">
-              <FileCheck className="w-8 h-8 text-slate-400 mx-auto opacity-70" />
-              <p className="text-sm font-bold">Tiada rekod ketidakhadiran dijumpai.</p>
-              <p className="text-xs text-slate-400">
-                Semua murid dikira hadir sekiranya tiada permohonan ketidakhadiran.
+            <div className="p-10 text-center bg-slate-950/40 rounded-2xl border border-white/10 space-y-3 text-slate-300">
+              <div className="w-14 h-14 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center mx-auto">
+                <CheckCircle2 className="w-7 h-7" />
+              </div>
+              <h5 className="text-base font-bold text-white">
+                {filterDateMode === 'selected'
+                  ? `Tiada Rekod Ketidakhadiran Pada ${selectedDate}`
+                  : 'Tiada Rekod Ketidakhadiran Dijumpai'}
+              </h5>
+              <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+                Peratusan kehadiran adalah 100% penuh. Semua murid dianggap hadir ke sekolah sehingga ada borang makluman atau slip cuti sakit (MC) yang dihantar oleh waris.
               </p>
+              {filterDateMode === 'selected' && (
+                <button
+                  type="button"
+                  onClick={() => setFilterDateMode('semua')}
+                  className="mt-2 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold border border-white/10 transition"
+                >
+                  <Eye className="w-3.5 h-3.5 text-purple-300" />
+                  <span>Semak Semua Tarikh Yang Pernah Dihantar</span>
+                </button>
+              )}
             </div>
           )}
         </div>
