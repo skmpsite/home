@@ -16,7 +16,8 @@ import {
   Trash2,
   User,
   ShieldCheck,
-  Eye
+  Smartphone,
+  Info
 } from 'lucide-react';
 
 interface StudentPhotoCaptureModalProps {
@@ -37,6 +38,7 @@ export const StudentPhotoCaptureModal: React.FC<StudentPhotoCaptureModalProps> =
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isInitializingCamera, setIsInitializingCamera] = useState(false);
+  const [isVideoReady, setIsVideoReady] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -46,47 +48,89 @@ export const StudentPhotoCaptureModal: React.FC<StudentPhotoCaptureModalProps> =
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const nativeCameraInputRef = useRef<HTMLInputElement | null>(null);
 
   // Stop camera stream cleanly
   const stopCamera = useCallback(() => {
+    setIsVideoReady(false);
     if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
+      stream.getTracks().forEach((track) => {
+        try {
+          track.stop();
+        } catch (e) {
+          console.warn('Error stopping track', e);
+        }
+      });
       setStream(null);
     }
   }, [stream]);
 
-  // Start camera stream
+  // Start camera stream with robust mobile fallbacks
   const startCamera = useCallback(async () => {
     stopCamera();
     setCameraError(null);
     setIsInitializingCamera(true);
+    setIsVideoReady(false);
 
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Kamera tidak disokong oleh pelayar web ini.');
+        throw new Error('Kamera langsung tidak disokong oleh pelayar ini. Sila guna fungsi "Kamera Telefon Pintar".');
       }
 
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: facingMode,
-          width: { ideal: 720 },
-          height: { ideal: 960 }
-        },
-        audio: false
-      });
+      let mediaStream: MediaStream | null = null;
+
+      // Primary attempt: standard facingMode
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: facingMode },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: false
+        });
+      } catch (e1) {
+        console.warn('Primary camera constraints failed, attempting fallback constraint:', e1);
+        // Fallback 1: simple facingMode
+        try {
+          mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: facingMode },
+            audio: false
+          });
+        } catch (e2) {
+          console.warn('Fallback 1 failed, attempting universal video stream:', e2);
+          // Fallback 2: universal video
+          mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false
+          });
+        }
+      }
+
+      if (!mediaStream) {
+        throw new Error('Gagal memulakan suapan video.');
+      }
 
       setStream(mediaStream);
+
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
+        // Explicitly trigger play for mobile browsers (iOS Safari & Android Chrome)
+        try {
+          await videoRef.current.play();
+          setIsVideoReady(true);
+        } catch (playErr) {
+          console.warn('Video play delayed, waiting for user/metadata:', playErr);
+        }
       }
     } catch (err: any) {
       console.error('Gagal memulakan kamera:', err);
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setCameraError('Kebenaran akses kamera ditolak. Sila benarkan akses kamera dalam tetapan pelayar anda.');
+        setCameraError('Kebenaran akses kamera ditolak. Sila benarkan akses kamera dalam tetapan pelayar atau klik "Guna Kamera Telefon Pintar".');
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
         setCameraError('Tiada peranti kamera dikesan pada peranti anda.');
       } else {
-        setCameraError('Gagal mengakses kamera: ' + (err.message || 'Ralat tidak diketahui'));
+        setCameraError('Kamera tidak dapat dipaparkan: ' + (err.message || 'Sila guna butang "Kamera Telefon Pintar".'));
       }
     } finally {
       setIsInitializingCamera(false);
@@ -106,10 +150,15 @@ export const StudentPhotoCaptureModal: React.FC<StudentPhotoCaptureModalProps> =
     };
   }, [isOpen, activeTab, capturedPhoto, startCamera, stopCamera]);
 
-  // Effect to attach video stream when ref mounts
+  // Effect to attach video stream when ref mounts or stream updates
   useEffect(() => {
     if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
+      videoRef.current.play().then(() => {
+        setIsVideoReady(true);
+      }).catch((e) => {
+        console.warn('Auto play caught on ref update:', e);
+      });
     }
   }, [stream]);
 
@@ -304,20 +353,31 @@ export const StudentPhotoCaptureModal: React.FC<StudentPhotoCaptureModalProps> =
 
         {/* Tab Selection */}
         {!capturedPhoto && (
-          <div className="p-3 bg-slate-950/60 border-b border-white/10 flex items-center justify-center gap-2">
+          <div className="p-2 sm:p-3 bg-slate-950/60 border-b border-white/10 flex flex-wrap items-center justify-center gap-2">
             <button
               onClick={() => {
                 setActiveTab('camera');
                 setCameraError(null);
               }}
-              className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 border ${
+              className={`flex-1 min-w-[130px] py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 border ${
                 activeTab === 'camera'
                   ? 'bg-emerald-600 text-white border-emerald-400 shadow-md'
                   : 'bg-white/5 hover:bg-white/10 text-slate-300 border-white/10'
               }`}
             >
               <Camera className="w-4 h-4" />
-              <span>Tangkap Guna Kamera</span>
+              <span>Kamera Langsung</span>
+            </button>
+
+            {/* Direct Native Phone Camera Trigger Button */}
+            <button
+              type="button"
+              onClick={() => nativeCameraInputRef.current?.click()}
+              className="flex-1 min-w-[130px] py-2 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 border bg-blue-600 hover:bg-blue-500 text-white border-blue-400 shadow-md active:scale-95"
+              title="Buka aplikasi kamera terus pada telefon pintar anda"
+            >
+              <Smartphone className="w-4 h-4 text-yellow-300 animate-pulse" />
+              <span>Kamera Telefon (HD)</span>
             </button>
 
             <button
@@ -325,17 +385,34 @@ export const StudentPhotoCaptureModal: React.FC<StudentPhotoCaptureModalProps> =
                 setActiveTab('upload');
                 stopCamera();
               }}
-              className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 border ${
+              className={`flex-1 min-w-[120px] py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 border ${
                 activeTab === 'upload'
                   ? 'bg-emerald-600 text-white border-emerald-400 shadow-md'
                   : 'bg-white/5 hover:bg-white/10 text-slate-300 border-white/10'
               }`}
             >
               <Upload className="w-4 h-4" />
-              <span>Muat Naik Fail Gambar</span>
+              <span>Muat Naik Fail</span>
             </button>
           </div>
         )}
+
+        {/* Hidden inputs for Native Smartphone Camera and File Upload */}
+        <input
+          ref={nativeCameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={handleFileUpload}
+          className="hidden"
+        />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileUpload}
+          className="hidden"
+        />
 
         {/* Main Body Content */}
         <div className="p-4 sm:p-6 flex flex-col items-center justify-center space-y-4">
@@ -410,12 +487,30 @@ export const StudentPhotoCaptureModal: React.FC<StudentPhotoCaptureModalProps> =
                   </div>
                 )}
 
-                {/* Video element */}
+                {/* Video element with mobile inline play support */}
                 <video
                   ref={videoRef}
                   autoPlay
                   playsInline
                   muted
+                  onLoadedMetadata={() => {
+                    if (videoRef.current) {
+                      videoRef.current.play().then(() => {
+                        setIsVideoReady(true);
+                      }).catch((e) => {
+                        console.warn('Play on metadata loaded:', e);
+                      });
+                    }
+                  }}
+                  onCanPlay={() => {
+                    if (videoRef.current) {
+                      videoRef.current.play().then(() => {
+                        setIsVideoReady(true);
+                      }).catch((e) => {
+                        console.warn('Play on can play:', e);
+                      });
+                    }
+                  }}
                   className={`w-full h-full object-cover ${
                     facingMode === 'user' ? 'scale-x-[-1]' : ''
                   }`}
@@ -445,7 +540,7 @@ export const StudentPhotoCaptureModal: React.FC<StudentPhotoCaptureModalProps> =
                 {isInitializingCamera && (
                   <div className="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center space-y-2 z-10">
                     <RefreshCw className="w-6 h-6 text-emerald-400 animate-spin" />
-                    <p className="text-xs text-slate-300">Menghidupkan kamera...</p>
+                    <p className="text-xs text-slate-300 font-medium">Menghidupkan kamera...</p>
                   </div>
                 )}
 
@@ -453,47 +548,75 @@ export const StudentPhotoCaptureModal: React.FC<StudentPhotoCaptureModalProps> =
                   <div className="absolute inset-0 bg-slate-950/95 p-4 flex flex-col items-center justify-center text-center space-y-3 z-20">
                     <AlertCircle className="w-8 h-8 text-rose-400" />
                     <p className="text-xs text-rose-300 font-medium leading-relaxed">{cameraError}</p>
-                    <button
-                      onClick={startCamera}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition"
-                    >
-                      Cuba Lagi
-                    </button>
+                    <div className="flex flex-col gap-2 w-full max-w-[200px]">
+                      <button
+                        type="button"
+                        onClick={() => nativeCameraInputRef.current?.click()}
+                        className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 shadow-md"
+                      >
+                        <Smartphone className="w-3.5 h-3.5" />
+                        <span>Buka Kamera Telefon</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={startCamera}
+                        className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-bold rounded-xl transition"
+                      >
+                        Cuba Lagi
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
 
               {/* Camera Trigger Buttons */}
-              <div className="w-full flex items-center justify-center gap-3 pt-2">
+              <div className="w-full flex items-center justify-center gap-2 sm:gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => handleSnapWithTimer(3)}
                   disabled={Boolean(cameraError) || isInitializingCamera || countdown !== null}
-                  className="py-2.5 px-4 bg-white/10 hover:bg-white/20 text-yellow-300 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 border border-white/10"
+                  className="py-2.5 px-3 sm:px-4 bg-white/10 hover:bg-white/20 text-yellow-300 rounded-2xl text-xs font-bold transition flex items-center gap-1 border border-white/10"
                   title="Tangkap dengan kiraan masa 3 saat"
                 >
-                  <span>Pemasa 3s</span>
+                  <span>3s</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={takeSnapshot}
                   disabled={Boolean(cameraError) || isInitializingCamera || countdown !== null}
-                  className="py-3 px-6 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-2xl text-sm font-black transition flex items-center gap-2 border border-emerald-400 shadow-xl shadow-emerald-950/50 active:scale-95"
+                  className="py-3 px-5 sm:px-6 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-2xl text-sm font-black transition flex items-center gap-2 border border-emerald-400 shadow-xl shadow-emerald-950/50 active:scale-95"
                 >
                   <Camera className="w-5 h-5" />
-                  <span>Tangkap Gambar</span>
+                  <span>Tangkap</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={toggleFacingMode}
                   disabled={Boolean(cameraError) || isInitializingCamera}
-                  className="py-2.5 px-4 bg-white/10 hover:bg-white/20 text-slate-300 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 border border-white/10"
+                  className="py-2.5 px-3 sm:px-4 bg-white/10 hover:bg-white/20 text-slate-300 rounded-2xl text-xs font-bold transition flex items-center gap-1 border border-white/10"
                   title="Tukar Kamera"
                 >
                   <FlipHorizontal className="w-4 h-4" />
-                  <span className="hidden sm:inline">Tukar Kamera</span>
+                  <span className="hidden sm:inline">Tukar</span>
+                </button>
+              </div>
+
+              {/* Mobile Tip / Fallback Box */}
+              <div className="w-full bg-slate-950/50 border border-white/10 rounded-2xl p-3 flex items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2 text-slate-300">
+                  <Smartphone className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                  <span className="text-[11px] leading-tight">
+                    Jika skrin kamera gelap pada telefon anda, gunakan kamera terus:
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => nativeCameraInputRef.current?.click()}
+                  className="flex-shrink-0 px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold rounded-lg transition border border-blue-400 active:scale-95"
+                >
+                  Guna Kamera Telefon
                 </button>
               </div>
             </div>
