@@ -32,11 +32,14 @@ import {
   ListOrdered,
   Move,
   Info,
-  ShieldCheck
+  ShieldCheck,
+  Utensils
 } from 'lucide-react';
 import { getNavIcon } from '../../utils/iconMap';
 import { initialTeacherLinks } from '../../data/initialData';
+import { StudentRecord, StudentAbsenceRecord } from '../../types';
 import { StudentSearchPortalModal } from './StudentSearchPortalModal';
+import { TeacherRmtSubSection } from './TeacherRmtSubSection';
 
 interface TeacherSectionProps {
   profile?: SchoolProfile;
@@ -48,6 +51,15 @@ interface TeacherSectionProps {
   userRole?: 'admin' | 'guru' | null;
   onOpenLogin?: () => void;
   onNavigate?: (tab: any) => void;
+  onOpenRmtPortal?: () => void;
+  onOpenStudentPortal?: () => void;
+  students?: StudentRecord[];
+  absenceRecords?: StudentAbsenceRecord[];
+  onAddAbsenceRecord?: (
+    record: Omit<StudentAbsenceRecord, 'id' | 'refNo' | 'createdAt'>
+  ) => StudentAbsenceRecord;
+  onUpdateAbsenceRecord?: (record: StudentAbsenceRecord) => void;
+  onDeleteAbsenceRecord?: (id: string) => void;
 }
 
 type CategoryType = 'semua' | 'kurikulum' | 'hem' | 'kokurikulum' | 'umum';
@@ -104,9 +116,17 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
   isTeacher,
   userRole,
   onOpenLogin,
-  onNavigate
+  onNavigate,
+  onOpenRmtPortal,
+  onOpenStudentPortal,
+  students,
+  absenceRecords,
+  onAddAbsenceRecord,
+  onUpdateAbsenceRecord,
+  onDeleteAbsenceRecord
 }) => {
   const [activeCategory, setActiveCategory] = useState<CategoryType>('semua');
+  const [hemSubTab, setHemSubTab] = useState<'pautan' | 'rmt'>('pautan');
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isReorderMode, setIsReorderMode] = useState(false);
@@ -119,9 +139,21 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
 
   const canAccess = isAdmin || isTeacher || userRole === 'admin' || userRole === 'guru';
 
-  // Link Management State with auto-preservation of Student Search Portal
-  const ensureStudentPortalIncluded = (inputLinks: TeacherLinkItem[]): TeacherLinkItem[] => {
-    const list = [...inputLinks];
+  const handleOpenRmt = () => {
+    setActiveCategory('hem');
+    setHemSubTab('rmt');
+  };
+
+  const handleOpenStudent = () => {
+    if (onOpenStudentPortal) {
+      onOpenStudentPortal();
+    }
+    setIsStudentSearchPortalOpen(true);
+  };
+
+  // Link Management State with auto-preservation of Student Search Portal & RMT Portal
+  const ensureEssentialPortalsIncluded = (inputLinks: TeacherLinkItem[]): TeacherLinkItem[] => {
+    let list = [...inputLinks];
     const hasStudentPortal = list.some(
       (l) =>
         l.id === 'tlink-h-carian' ||
@@ -148,12 +180,40 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
         list.push(defaultStudentPortalLink);
       }
     }
+
+    const hasRmtPortal = list.some(
+      (l) =>
+        l.id === 'tlink-h4' ||
+        l.id === 'tlink-h-rmt' ||
+        l.title.toLowerCase().includes('rmt') ||
+        l.title.toLowerCase().includes('makanan tambahan') ||
+        Boolean(l.badge?.toLowerCase().includes('rmt'))
+    );
+    if (!hasRmtPortal) {
+      const defaultRmtLink = initialTeacherLinks.find((l) => l.id === 'tlink-h4') || {
+        id: 'tlink-h4',
+        title: 'Portal RMT & Program Susu Sekolah',
+        category: 'hem' as const,
+        url: 'https://apdm.moe.gov.my',
+        description: 'Pangkalan data lengkap 89 murid penerima Rancangan Makanan Tambahan, rekod kehadiran & jadual menu kantin.',
+        badge: 'RMT (89 Murid)',
+        iconName: 'HeartHandshake',
+        order: 10
+      };
+      const hemIdx = list.findIndex((l) => l.category === 'hem');
+      if (hemIdx !== -1) {
+        list.splice(hemIdx + 1, 0, defaultRmtLink);
+      } else {
+        list.push(defaultRmtLink);
+      }
+    }
+
     return list;
   };
 
   const [links, setLinks] = useState<TeacherLinkItem[]>(() => {
     if (controlledLinks && controlledLinks.length > 0) {
-      return ensureStudentPortalIncluded(controlledLinks);
+      return ensureEssentialPortalsIncluded(controlledLinks);
     }
     return initialTeacherLinks;
   });
@@ -161,7 +221,7 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
   // Sync if controlledLinks changes
   React.useEffect(() => {
     if (controlledLinks && controlledLinks.length > 0) {
-      setLinks(ensureStudentPortalIncluded(controlledLinks));
+      setLinks(ensureEssentialPortalsIncluded(controlledLinks));
     }
   }, [controlledLinks]);
 
@@ -730,7 +790,7 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                       {catMeta.label}
                     </h3>
                     <span className="text-xs px-2.5 py-0.5 rounded-full bg-white/10 text-slate-300 font-bold border border-white/10">
-                      {sectionLinks.length} Pautan
+                      {catKey === 'hem' && hemSubTab === 'rmt' ? '89 Murid' : `${sectionLinks.length} Pautan`}
                     </span>
                   </div>
                   <p className="text-xs text-slate-400">
@@ -739,7 +799,16 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                 </div>
               </div>
 
-              {isAdmin && (
+              {isAdmin && catKey !== 'hem' && (
+                <button
+                  onClick={() => handleOpenAdd(catKey)}
+                  className="self-start sm:self-auto text-xs px-3 py-1.5 bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white rounded-xl border border-white/10 flex items-center gap-1.5 transition"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Tambah Dalam {catMeta.label}</span>
+                </button>
+              )}
+              {isAdmin && catKey === 'hem' && hemSubTab === 'pautan' && (
                 <button
                   onClick={() => handleOpenAdd(catKey)}
                   className="self-start sm:self-auto text-xs px-3 py-1.5 bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white rounded-xl border border-white/10 flex items-center gap-1.5 transition"
@@ -750,8 +819,54 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
               )}
             </div>
 
-            {/* Links Cards Grid */}
-            {sectionLinks.length === 0 ? (
+            {/* HEM Sub-Menu: Switch between Main HEM System Links and RMT Students List */}
+            {catKey === 'hem' && (
+              <div className="flex flex-wrap items-center justify-between gap-3 p-2 bg-slate-950/80 rounded-2xl border border-emerald-500/20 backdrop-blur-md">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setHemSubTab('pautan')}
+                    className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer ${
+                      hemSubTab === 'pautan'
+                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/40 border border-emerald-400/40'
+                        : 'bg-white/5 hover:bg-white/10 text-slate-300'
+                    }`}
+                  >
+                    <Layers className="w-3.5 h-3.5 text-emerald-300" />
+                    <span>1. Pautan & Sistem Utama HEM ({sectionLinks.length})</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setHemSubTab('rmt')}
+                    className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer ${
+                      hemSubTab === 'rmt'
+                        ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-md shadow-amber-500/30 border border-amber-300'
+                        : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-400/20'
+                    }`}
+                  >
+                    <Utensils className="w-3.5 h-3.5 text-amber-400" />
+                    <span>2. Sub-Menu: Senarai Murid Terlibat RMT (89 Murid)</span>
+                  </button>
+                </div>
+
+                <span className="text-[11px] text-slate-400 hidden sm:inline">
+                  {hemSubTab === 'pautan'
+                    ? 'Portal sistem kebajikan, disiplin & SPBT'
+                    : 'Pangkalan data lengkap 89 penerima RMT SK Merbau Pulas'}
+                </span>
+              </div>
+            )}
+
+            {/* If HEM and RMT tab is selected, render TeacherRmtSubSection */}
+            {catKey === 'hem' && hemSubTab === 'rmt' ? (
+              <TeacherRmtSubSection
+                coordinatorName={profile?.hemCoordinator || 'Puan Fazilah binti Mat'}
+                students={students}
+                absenceRecords={absenceRecords}
+                onAddAbsenceRecord={onAddAbsenceRecord}
+              />
+            ) : sectionLinks.length === 0 ? (
               <div className="bg-slate-900/40 border border-dashed border-white/10 rounded-3xl p-8 text-center text-slate-400">
                 <p className="text-sm">Tiada pautan ditemui dalam bahagian ini.</p>
                 {isAdmin && (
@@ -778,6 +893,16 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                     link.url.includes('1eODYEpiGFEVRe6RjoxZrPX3bPXpGYOR7l9PaGi8EKEo') ||
                     link.title.toLowerCase().includes('carian murid');
 
+                  const isRmtPortalLink =
+                    link.id === 'tlink-h4' ||
+                    link.id === 'tlink-h-rmt' ||
+                    link.id.includes('rmt') ||
+                    link.title.toLowerCase().includes('rmt') ||
+                    link.title.toLowerCase().includes('makanan tambahan') ||
+                    link.title.toLowerCase().includes('susu') ||
+                    Boolean(link.badge?.toLowerCase().includes('rmt')) ||
+                    link.description.toLowerCase().includes('makanan tambahan');
+
                   return (
                     <div
                       key={link.id}
@@ -793,6 +918,8 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                           ? 'border-2 border-amber-400 bg-amber-950/20 scale-[1.02] shadow-amber-500/20'
                           : isStudentPortalLink
                           ? 'border-emerald-500/40 hover:border-emerald-400 bg-gradient-to-b from-slate-900/95 via-emerald-950/20 to-slate-900/95'
+                          : isRmtPortalLink
+                          ? 'border-amber-500/40 hover:border-amber-400 bg-gradient-to-b from-slate-900/95 via-amber-950/20 to-slate-900/95'
                           : 'border-white/15 hover:border-white/30'
                       }`}
                     >
@@ -883,7 +1010,13 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                       {/* Card Header & Content */}
                       <div className="space-y-3">
                         <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-center gap-3">
+                          <div
+                            onClick={() => {
+                              if (isStudentPortalLink) handleOpenStudent();
+                              else if (isRmtPortalLink) handleOpenRmt();
+                            }}
+                            className={`flex items-center gap-3 ${isStudentPortalLink || isRmtPortalLink ? 'cursor-pointer' : ''}`}
+                          >
                             <div className={`w-11 h-11 rounded-2xl ${catMeta.iconBgClass} p-2.5 flex items-center justify-center flex-shrink-0 shadow-md group-hover:scale-105 transition`}>
                               <IconComponent className="w-full h-full text-white" />
                             </div>
@@ -915,7 +1048,13 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                           )}
                         </div>
 
-                        <div>
+                        <div
+                          onClick={() => {
+                            if (isStudentPortalLink) handleOpenStudent();
+                            else if (isRmtPortalLink) handleOpenRmt();
+                          }}
+                          className={isStudentPortalLink || isRmtPortalLink ? 'cursor-pointer' : ''}
+                        >
                           <h4 className="text-sm sm:text-base font-black text-white group-hover:text-yellow-300 transition leading-snug">
                             {link.title}
                           </h4>
@@ -930,11 +1069,26 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                         {isStudentPortalLink ? (
                           <button
                             type="button"
-                            onClick={() => setIsStudentSearchPortalOpen(true)}
-                            className={`flex-1 py-2.5 px-4 rounded-2xl text-xs font-black flex items-center justify-center gap-2 transition ${catMeta.btnClass}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenStudent();
+                            }}
+                            className={`flex-1 py-2.5 px-4 rounded-2xl text-xs font-black flex items-center justify-center gap-2 transition ${catMeta.btnClass} active:scale-95 cursor-pointer`}
                           >
                             <span>Buka Portal</span>
                             <Search className="w-3.5 h-3.5" />
+                          </button>
+                        ) : isRmtPortalLink ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenRmt();
+                            }}
+                            className="flex-1 py-2.5 px-4 rounded-2xl text-xs font-black flex items-center justify-center gap-2 transition bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-400 hover:to-emerald-500 text-slate-950 shadow-md shadow-amber-500/20 active:scale-95 cursor-pointer"
+                          >
+                            <span>Buka Portal</span>
+                            <Utensils className="w-3.5 h-3.5" />
                           </button>
                         ) : (
                           <a

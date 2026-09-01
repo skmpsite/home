@@ -277,7 +277,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">
-            {latestNews.slice(0, 4).map((news) => (
+            {(latestNews || []).slice(0, 4).map((news) => (
               <div
                 key={news.id}
                 onClick={() => onSelectNews(news)}
@@ -339,7 +339,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           </div>
 
           <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 p-4 shadow-lg space-y-3">
-            {upcomingEvents.slice(0, 4).map((evt) => (
+            {(upcomingEvents || []).slice(0, 4).map((evt) => (
               <div
                 key={evt.id}
                 className="p-3.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition flex items-start gap-3.5"

@@ -815,9 +815,9 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
 
   return (
     <>
-      {/* 1. ROBOT BERPAUT MENGINTAI DI TEPI BINGKAI WEB (Bahagian Atas Sebelah Kanan - Tidak Mengganggu Kandungan Web) */}
+      {/* 1. ROBOT BERPAUT MENGINTAI DI TEPI BINGKAI WEB (Bahagian Atas Sebelah Kanan - Padat & Ringkas Pada Telefon) */}
       {!isOpen && (
-        <div className="fixed right-0 top-16 sm:top-20 md:top-24 z-50 flex items-center select-none pointer-events-auto">
+        <div className="fixed right-0 top-20 sm:top-24 z-40 sm:z-50 flex items-center select-none pointer-events-auto">
           {/* Peeking Speech Bubble (HANYA MUNCUL DI DESKTOP BILA DIHALAKAN TETIKUS - TIADA ISU TERLEKAT DI TELEFON) */}
           <AnimatePresence>
             {isPeekingHovered && !isOpen && (
@@ -841,7 +841,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
             )}
           </AnimatePresence>
 
-          {/* Animated Robot Peeking Body (Hides behind wall, slides out full head with a cheerful smile, then hides back) */}
+          {/* Animated Robot Peeking Body (Padat di telefon: hanya muncul sedikit di tepi skrin agar tidak mengganggu) */}
           <motion.div
             id="sweetbot-peek-btn"
             onClick={() => {
@@ -851,18 +851,18 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
             onMouseEnter={() => setIsPeekingHovered(true)}
             onMouseLeave={() => setIsPeekingHovered(false)}
             onTouchStart={() => setIsPeekingHovered(false)}
-            initial={{ x: 52 }}
+            initial={{ x: 34 }}
             animate={
               isPeekingHovered
                 ? {
                     x: 0,
                     rotate: 0,
-                    scale: 1.08
+                    scale: 1.05
                   }
                 : {
-                    x: [52, 52, 0, 0, 0, 52, 52],
-                    rotate: [0, 0, -4, 2, -2, 0, 0],
-                    y: [0, 0, -6, -3, -6, 0, 0]
+                    x: [34, 34, 0, 0, 0, 34, 34],
+                    rotate: [0, 0, -3, 2, -2, 0, 0],
+                    y: [0, 0, -4, -2, -4, 0, 0]
                   }
             }
             transition={
@@ -874,12 +874,12 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
                     y: { repeat: Infinity, duration: 7.5, times: [0, 0.22, 0.36, 0.55, 0.68, 0.8, 1], ease: 'easeInOut' }
                   }
             }
-            className="cursor-pointer group relative flex items-center focus:outline-none pr-0"
-            title="Sweetbot sedang mengintai & tersenyum! Klik untuk buka perbualan AI."
+            className="cursor-pointer group relative flex items-center focus:outline-none pr-0 touch-manipulation"
+            title="Sweetbot AI • SK Merbau Pulas (Klik untuk buka)"
           >
             {/* Clinging Wall Tabs / Handles for easy clicking even when mostly hidden */}
-            <div className="relative bg-gradient-to-l from-blue-800 via-indigo-700 to-amber-500 p-1.5 rounded-l-3xl shadow-[-10px_0px_30px_rgba(37,99,235,0.45)] border-l-2 border-y-2 border-yellow-300 flex items-center group-hover:shadow-[-12px_0px_35px_rgba(234,179,8,0.5)] transition-all duration-300">
-              {/* Vertical Quick Badge on the outermost peeking edge */}
+            <div className="relative bg-gradient-to-l from-blue-800 via-indigo-700 to-amber-500 p-1 sm:p-1.5 rounded-l-2xl sm:rounded-l-3xl shadow-[-6px_0px_20px_rgba(37,99,235,0.4)] sm:shadow-[-10px_0px_30px_rgba(37,99,235,0.45)] border-l-2 border-y-2 border-yellow-300 flex items-center group-hover:shadow-[-12px_0px_35px_rgba(234,179,8,0.5)] transition-all duration-300">
+              {/* Vertical Quick Badge on the outermost peeking edge (Desktop only) */}
               <div className="absolute -left-5 top-1/2 -translate-y-1/2 hidden md:flex flex-col items-center bg-blue-950/90 border border-yellow-400/40 rounded-l-lg py-1 px-1 shadow-md opacity-75 group-hover:opacity-100 transition">
                 <Bot className="w-3 h-3 text-cyan-300" />
                 <span className="text-[8px] font-black text-yellow-300 uppercase tracking-tighter [writing-mode:vertical-lr] rotate-180 mt-0.5">
@@ -887,16 +887,16 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
                 </span>
               </div>
 
-              {/* Cute SVG Robot Peeking Head */}
-              <div className="w-16 h-20 sm:w-18 sm:h-22 bg-gradient-to-b from-slate-900 via-blue-950 to-slate-900 rounded-l-2xl flex flex-col items-center justify-center p-2 relative overflow-hidden border border-blue-400/40">
+              {/* Cute SVG Robot Peeking Head (Kecil & Kemas pada Smartphone) */}
+              <div className="w-11 h-15 sm:w-18 sm:h-22 bg-gradient-to-b from-slate-900 via-blue-950 to-slate-900 rounded-l-xl sm:rounded-l-2xl flex flex-col items-center justify-center p-1 sm:p-2 relative overflow-hidden border border-blue-400/40">
                 {/* Robot Antenna with blinking signal beacon */}
-                <div className="absolute top-1 flex flex-col items-center">
-                  <div className="w-2.5 h-2.5 rounded-full bg-yellow-400 animate-ping shadow-[0_0_10px_#facc15]" />
-                  <div className="w-1 h-2 bg-yellow-300 rounded-full" />
+                <div className="absolute top-0.5 sm:top-1 flex flex-col items-center">
+                  <div className="w-1.5 h-1.5 sm:w-2.5 sm:h-2.5 rounded-full bg-yellow-400 animate-ping shadow-[0_0_8px_#facc15]" />
+                  <div className="w-0.5 sm:w-1 h-1 sm:h-2 bg-yellow-300 rounded-full" />
                 </div>
 
                 {/* Robot Screen Face */}
-                <div className="w-12 h-9 sm:w-14 sm:h-10 bg-slate-950 rounded-lg border border-cyan-400/50 flex items-center justify-around px-1.5 shadow-[inset_0_0_10px_rgba(6,182,212,0.4)] mt-2">
+                <div className="w-8 h-6 sm:w-14 sm:h-10 bg-slate-950 rounded-md sm:rounded-lg border border-cyan-400/50 flex items-center justify-around px-1 sm:px-1.5 shadow-[inset_0_0_8px_rgba(6,182,212,0.4)] mt-1.5 sm:mt-2">
                   {/* Glowing Animated Robot Left Eye (Natural lifelike blinking & looking) */}
                   <motion.div
                     animate={
@@ -917,9 +917,9 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
                         ? { repeat: Infinity, duration: 3.2, times: [0, 0.7, 0.74, 0.78, 0.86, 0.9, 1], ease: 'easeInOut' }
                         : { repeat: Infinity, duration: 7.5, times: [0, 0.2, 0.32, 0.35, 0.38, 0.52, 0.55, 0.58, 0.62, 0.75, 0.85, 1], ease: 'easeInOut' }
                     }
-                    className="w-3.5 h-4 bg-cyan-300 rounded-full shadow-[0_0_8px_#22d3ee] flex items-center justify-center relative overflow-hidden"
+                    className="w-2 h-2.5 sm:w-3.5 sm:h-4 bg-cyan-300 rounded-full shadow-[0_0_6px_#22d3ee] flex items-center justify-center relative overflow-hidden"
                   >
-                    <span className="w-1.5 h-1.5 bg-white rounded-full self-start mr-0.5 mt-0.5 shadow-sm" />
+                    <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-white rounded-full self-start mr-0.5 mt-0.5 shadow-sm" />
                   </motion.div>
 
                   {/* Glowing Animated Robot Right Eye (Natural lifelike blinking & looking) */}
@@ -942,9 +942,9 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
                         ? { repeat: Infinity, duration: 3.2, times: [0, 0.7, 0.74, 0.78, 0.86, 0.9, 1], ease: 'easeInOut' }
                         : { repeat: Infinity, duration: 7.5, times: [0, 0.2, 0.32, 0.35, 0.38, 0.52, 0.55, 0.58, 0.62, 0.75, 0.85, 1], ease: 'easeInOut' }
                     }
-                    className="w-3.5 h-4 bg-cyan-300 rounded-full shadow-[0_0_8px_#22d3ee] flex items-center justify-center relative overflow-hidden"
+                    className="w-2 h-2.5 sm:w-3.5 sm:h-4 bg-cyan-300 rounded-full shadow-[0_0_6px_#22d3ee] flex items-center justify-center relative overflow-hidden"
                   >
-                    <span className="w-1.5 h-1.5 bg-white rounded-full self-start mr-0.5 mt-0.5 shadow-sm" />
+                    <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-white rounded-full self-start mr-0.5 mt-0.5 shadow-sm" />
                   </motion.div>
                 </div>
 
@@ -963,10 +963,10 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
                       ? { duration: 0.2 }
                       : { repeat: Infinity, duration: 7.5, times: [0, 0.22, 0.36, 0.55, 0.68, 0.8, 1], ease: 'easeInOut' }
                   }
-                  className="flex justify-between w-11 mt-0.5"
+                  className="flex justify-between w-7 sm:w-11 mt-0.5"
                 >
-                  <div className="w-2 h-1 bg-pink-400 rounded-full blur-[0.5px] shadow-[0_0_5px_#f472b6]" />
-                  <div className="w-2 h-1 bg-pink-400 rounded-full blur-[0.5px] shadow-[0_0_5px_#f472b6]" />
+                  <div className="w-1 h-0.5 sm:w-2 sm:h-1 bg-pink-400 rounded-full blur-[0.5px] shadow-[0_0_4px_#f472b6]" />
+                  <div className="w-1 h-0.5 sm:w-2 sm:h-1 bg-pink-400 rounded-full blur-[0.5px] shadow-[0_0_4px_#f472b6]" />
                 </motion.div>
 
                 {/* Robot Mouth (Expands into a joyful, beaming smile to user when emerging) */}
@@ -989,22 +989,22 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
                       ? { duration: 0.25 }
                       : { repeat: Infinity, duration: 7.5, times: [0, 0.22, 0.36, 0.55, 0.68, 0.8, 1], ease: 'easeInOut' }
                   }
-                  className="h-1.5 w-4 rounded-full mt-0.5 shadow-[0_0_8px_rgba(250,204,21,0.7)] flex items-center justify-center"
+                  className="h-1 sm:h-1.5 w-2.5 sm:w-4 rounded-full mt-0.5 shadow-[0_0_6px_rgba(250,204,21,0.7)] flex items-center justify-center"
                 />
 
                 {/* Robot Claws / Hands Clutching The Wall Edge */}
-                <div className="absolute -left-1 top-6 w-2.5 h-4 bg-yellow-400 rounded-r-md shadow-md border-r border-yellow-200" />
-                <div className="absolute -left-1 bottom-4 w-2.5 h-4 bg-yellow-400 rounded-r-md shadow-md border-r border-yellow-200" />
+                <div className="absolute -left-0.5 sm:-left-1 top-4 sm:top-6 w-1.5 sm:w-2.5 h-3 sm:h-4 bg-yellow-400 rounded-r-md shadow-md border-r border-yellow-200" />
+                <div className="absolute -left-0.5 sm:-left-1 bottom-3 sm:bottom-4 w-1.5 sm:w-2.5 h-3 sm:h-4 bg-yellow-400 rounded-r-md shadow-md border-r border-yellow-200" />
 
                 {/* Sweetbot Badge Text */}
-                <span className="text-[8px] font-black tracking-tighter text-yellow-300 mt-1 uppercase">
+                <span className="text-[6px] sm:text-[8px] font-black tracking-tighter text-yellow-300 mt-0.5 sm:mt-1 uppercase">
                   Sweetbot
                 </span>
               </div>
             </div>
 
             {/* Glowing Accent Ring */}
-            <div className="absolute -inset-1 bg-blue-500/20 rounded-l-3xl -z-10 animate-pulse" />
+            <div className="absolute -inset-1 bg-blue-500/20 rounded-l-2xl sm:rounded-l-3xl -z-10 animate-pulse" />
           </motion.div>
         </div>
       )}
@@ -1019,40 +1019,40 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
               scale: 1,
               y: 0,
               x: 0,
-              height: isMinimized ? 'auto' : '620px'
+              height: isMinimized ? 'auto' : '600px'
             }}
             exit={{ opacity: 0, scale: 0.85, y: 50, x: 20 }}
             transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-            className={`fixed bottom-4 right-4 z-50 w-[95vw] sm:w-[420px] max-w-[440px] bg-slate-900/95 backdrop-blur-2xl border-2 border-blue-400/50 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.7)] flex flex-col overflow-hidden text-slate-100 font-sans transition-all duration-300`}
-            style={{ maxHeight: '90vh' }}
+            className={`fixed bottom-2 right-2 sm:bottom-4 sm:right-4 z-50 w-[94vw] sm:w-[420px] max-w-[440px] bg-slate-900/95 backdrop-blur-2xl border-2 border-blue-400/50 rounded-2xl sm:rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.7)] flex flex-col overflow-hidden text-slate-100 font-sans transition-all duration-300`}
+            style={{ maxHeight: '86vh' }}
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 p-4 border-b border-blue-500/30 flex items-center justify-between relative select-none">
-              <div className="flex items-center gap-3">
+            <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 p-3 sm:p-4 border-b border-blue-500/30 flex items-center justify-between relative select-none">
+              <div className="flex items-center gap-2.5 sm:gap-3">
                 {/* Robot Avatar Mini with Status Ping */}
                 <div className="relative">
-                  <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-600 to-yellow-400 p-0.5 shadow-lg flex items-center justify-center">
-                    <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center relative overflow-hidden">
-                      <Bot className="w-6 h-6 text-cyan-300 animate-bounce" />
+                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-600 to-yellow-400 p-0.5 shadow-lg flex items-center justify-center">
+                    <div className="w-full h-full bg-slate-950 rounded-[10px] sm:rounded-[14px] flex items-center justify-center relative overflow-hidden">
+                      <Bot className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-300 animate-bounce" />
                     </div>
                   </div>
-                  <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-slate-900 rounded-full flex items-center justify-center">
-                    <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />
+                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 sm:w-3.5 sm:h-3.5 bg-emerald-500 border-2 border-slate-900 rounded-full flex items-center justify-center">
+                    <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-white rounded-full animate-ping" />
                   </span>
                 </div>
 
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="text-base font-black text-white tracking-wide">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <h4 className="text-sm sm:text-base font-black text-white tracking-wide">
                       Sweetbot AI
                     </h4>
-                    <span className="px-2 py-0.5 bg-yellow-400/20 text-yellow-300 border border-yellow-400/40 text-[10px] font-black rounded-full uppercase tracking-wider">
+                    <span className="px-1.5 sm:px-2 py-0.5 bg-yellow-400/20 text-yellow-300 border border-yellow-400/40 text-[9px] sm:text-[10px] font-black rounded-full uppercase tracking-wider">
                       SKMP
                     </span>
                   </div>
-                  <p className="text-[11px] text-blue-200 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse" />
-                    Pembantu Maya Rasmi SK Merbau Pulas
+                  <p className="text-[10px] sm:text-[11px] text-blue-200 flex items-center gap-1 sm:gap-1.5">
+                    <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400 inline-block animate-pulse" />
+                    Pembantu Maya SK Merbau Pulas
                   </p>
                 </div>
               </div>
@@ -1063,44 +1063,44 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
                 <button
                   type="button"
                   onClick={() => setSpeechEnabled(!speechEnabled)}
-                  className={`p-2 rounded-xl transition ${
+                  className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition ${
                     speechEnabled
                       ? 'bg-blue-600/60 text-yellow-300 hover:bg-blue-500/80'
                       : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                   }`}
                   title={speechEnabled ? 'Suara Aktif (Klik untuk Matikan)' : 'Suara Dimatikan (Klik untuk Aktifkan)'}
                 >
-                  {speechEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+                  {speechEnabled ? <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                 </button>
 
                 {/* Reset Chat */}
                 <button
                   type="button"
                   onClick={handleResetChat}
-                  className="p-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl transition"
+                  className="p-1.5 sm:p-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg sm:rounded-xl transition"
                   title="Kosongkan Perbualan"
                 >
-                  <RefreshCw className="w-4 h-4" />
+                  <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </button>
 
                 {/* Minimize Toggle */}
                 <button
                   type="button"
                   onClick={() => setIsMinimized(!isMinimized)}
-                  className="p-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl transition"
+                  className="p-1.5 sm:p-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg sm:rounded-xl transition"
                   title={isMinimized ? 'Besarkan' : 'Kecilkan'}
                 >
-                  {isMinimized ? <Maximize2 className="w-4 h-4" /> : <Minimize2 className="w-4 h-4" />}
+                  {isMinimized ? <Maximize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Minimize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                 </button>
 
                 {/* Close Button */}
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="p-2 bg-rose-600/80 hover:bg-rose-500 text-white rounded-xl transition ml-1"
+                  className="p-1.5 sm:p-2 bg-rose-600/80 hover:bg-rose-500 text-white rounded-lg sm:rounded-xl transition ml-0.5 sm:ml-1"
                   title="Tutup Sweetbot"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </button>
               </div>
             </div>

@@ -55,6 +55,7 @@ interface HemSectionProps {
   isTeacher?: boolean;
   userRole?: 'admin' | 'guru' | null;
   onOpenStudentPortal?: () => void;
+  onOpenRmtPortal?: () => void;
 }
 
 export const HemSection: React.FC<HemSectionProps> = ({
@@ -70,10 +71,17 @@ export const HemSection: React.FC<HemSectionProps> = ({
   isAdmin = false,
   isTeacher = false,
   userRole,
-  onOpenStudentPortal
+  onOpenStudentPortal,
+  onOpenRmtPortal
 }) => {
   const data = hemData || initialHemData;
   const [activeSubTab, setActiveSubTab] = useState<'semua' | 'kehadiran' | 'disiplin' | 'kebajikan' | '3k'>(initialSubTab);
+
+  const handleOpenRmt = () => {
+    if (onOpenRmtPortal) {
+      onOpenRmtPortal();
+    }
+  };
 
   // Auto-hide penerangan HEM selepas 5 saat dan gantikan dengan butang anak panah ringkas
   const [showHemIntro, setShowHemIntro] = useState<boolean>(true);
@@ -669,11 +677,14 @@ export const HemSection: React.FC<HemSectionProps> = ({
 
             {/* RMT & Program Susu Sekolah */}
             <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-lg space-y-4 hover:border-yellow-400/40 transition flex flex-col justify-between">
-              <div className="space-y-3">
+              <div 
+                onClick={handleOpenRmt}
+                className="space-y-3 cursor-pointer"
+              >
                 <div className="w-10 h-10 bg-amber-500/20 text-amber-300 rounded-2xl flex items-center justify-center font-bold border border-amber-400/30">
                   <Utensils className="w-5 h-5 text-amber-300" />
                 </div>
-                <h4 className="font-extrabold text-white text-base">
+                <h4 className="font-extrabold text-white text-base hover:text-amber-300 transition">
                   {data.kebajikan?.rmtTitle || 'Rancangan Makanan Tambahan (RMT) & Susu'}
                 </h4>
                 <p className="text-xs text-slate-200 leading-relaxed">
@@ -699,35 +710,49 @@ export const HemSection: React.FC<HemSectionProps> = ({
                 </div>
               </div>
 
-              <button
-                onClick={() =>
-                  setSelectedDetailModal({
-                    title: 'Rancangan Makanan Tambahan (RMT) & Susu Sekolah',
-                    category: 'Kebajikan Makanan',
-                    icon: Utensils,
-                    content: (
-                      <div className="space-y-4 text-xs text-slate-200">
-                        <div className="p-3 bg-amber-500/10 border border-amber-400/30 rounded-xl text-amber-200">
-                          🥣 <strong>Objektif RMT:</strong> Memastikan murid daripada keluarga B40 dan berkeperluan khusus mendapat bekalan nutrien secukupnya untuk kecerdasan minda dan kecergasan jasmani di sekolah.
-                        </div>
+              <div className="space-y-2 pt-2 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenRmt();
+                  }}
+                  className="w-full py-2.5 px-3 bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-400 hover:to-emerald-500 text-slate-950 font-black text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 active:scale-95 cursor-pointer"
+                >
+                  <Utensils className="w-4 h-4 text-slate-950" />
+                  <span>Buka Portal RMT (89 Murid)</span>
+                </button>
 
-                        <h5 className="font-black text-white text-sm">Jadual Menu Sihat RMT SKMP:</h5>
-                        <ul className="list-disc list-inside space-y-1 text-slate-300">
-                          {data.kebajikan?.rmtMenu?.map((m, idx) => (
-                            <li key={idx}>
-                              <strong>{m.day}:</strong> {m.menu}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )
-                  })
-                }
-                className="w-full py-2.5 px-3 bg-white/10 hover:bg-yellow-400 hover:text-blue-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
-              >
-                <span>Info Menu & Kelayakan RMT</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
+                <button
+                  onClick={() =>
+                    setSelectedDetailModal({
+                      title: 'Rancangan Makanan Tambahan (RMT) & Susu Sekolah',
+                      category: 'Kebajikan Makanan',
+                      icon: Utensils,
+                      content: (
+                        <div className="space-y-4 text-xs text-slate-200">
+                          <div className="p-3 bg-amber-500/10 border border-amber-400/30 rounded-xl text-amber-200">
+                            🥣 <strong>Objektif RMT:</strong> Memastikan murid daripada keluarga B40 dan berkeperluan khusus mendapat bekalan nutrien secukupnya untuk kecerdasan minda dan kecergasan jasmani di sekolah.
+                          </div>
+
+                          <h5 className="font-black text-white text-sm">Jadual Menu Sihat RMT SKMP:</h5>
+                          <ul className="list-disc list-inside space-y-1 text-slate-300">
+                            {data.kebajikan?.rmtMenu?.map((m, idx) => (
+                              <li key={idx}>
+                                <strong>{m.day}:</strong> {m.menu}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )
+                    })
+                  }
+                  className="w-full py-2 px-3 bg-white/10 hover:bg-white/20 text-slate-200 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
+                >
+                  <span>Info Menu & Kelayakan RMT</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
 
             {/* BAP & Bantuan Khas */}

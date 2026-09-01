@@ -114,34 +114,6 @@ export default function App() {
     );
   });
 
-  // Listen to popstate and hashchange to allow seamless switching
-  useEffect(() => {
-    const handleUrlChange = () => {
-      const search = (window.location.search || '').toLowerCase();
-      const hash = (window.location.hash || '').toLowerCase();
-      const pathname = (window.location.pathname || '').toLowerCase();
-      const tvActive = (
-        search.includes('view=tv') ||
-        search.includes('tv=1') ||
-        search.includes('tv=true') ||
-        search.includes('signage=1') ||
-        hash === '#tv' ||
-        hash === '#/tv' ||
-        hash.includes('view=tv') ||
-        pathname.endsWith('/tv') ||
-        pathname.endsWith('/tv.html')
-      );
-      setIsTvMode(tvActive);
-    };
-
-    window.addEventListener('popstate', handleUrlChange);
-    window.addEventListener('hashchange', handleUrlChange);
-    return () => {
-      window.removeEventListener('popstate', handleUrlChange);
-      window.removeEventListener('hashchange', handleUrlChange);
-    };
-  }, []);
-
   // Main Data States
   const [profile, setProfile] = useState<SchoolProfile>(loadProfile);
   const [staffList, setStaffList] = useState<Staff[]>(loadStaff);
@@ -163,9 +135,90 @@ export default function App() {
   const [studentsList, setStudentsList] = useState<StudentRecord[]>(getStudentsList);
   const [absenceRecords, setAbsenceRecords] = useState<StudentAbsenceRecord[]>(getAbsenceRecords);
 
-  // UI States
-  const [activeTab, setActiveTab] = useState<TabType>('utama');
-  const [hemSubTab, setHemSubTab] = useState<'semua' | 'kehadiran' | 'disiplin' | 'kebajikan' | '3k'>('semua');
+  // UI States (with automatic deep link parsing for shared WhatsApp forms and tabs)
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    if (typeof window === 'undefined') return 'utama';
+    const search = (window.location.search || '').toLowerCase();
+    const hash = (window.location.hash || '').toLowerCase();
+    if (
+      search.includes('tab=hem') ||
+      search.includes('subtab=kehadiran') ||
+      search.includes('view=borang') ||
+      search.includes('form=kehadiran') ||
+      search.includes('borang=kehadiran') ||
+      hash.includes('borang') ||
+      hash.includes('kehadiran') ||
+      hash === '#hem'
+    ) {
+      return 'hem';
+    }
+    if (search.includes('tab=profil') || hash === '#profil') return 'profil';
+    if (search.includes('tab=akademik') || hash === '#akademik') return 'akademik';
+    if (search.includes('tab=kokurikulum') || hash === '#kokurikulum') return 'kokurikulum';
+    if (search.includes('tab=berita') || hash === '#berita') return 'berita';
+    if (search.includes('tab=hubungi') || hash === '#hubungi') return 'hubungi';
+    return 'utama';
+  });
+
+  const [hemSubTab, setHemSubTab] = useState<'semua' | 'kehadiran' | 'disiplin' | 'kebajikan' | '3k'>(() => {
+    if (typeof window === 'undefined') return 'semua';
+    const search = (window.location.search || '').toLowerCase();
+    const hash = (window.location.hash || '').toLowerCase();
+    if (
+      search.includes('subtab=kehadiran') ||
+      search.includes('view=borang') ||
+      search.includes('form=kehadiran') ||
+      search.includes('borang=kehadiran') ||
+      hash.includes('borang') ||
+      hash.includes('kehadiran')
+    ) {
+      return 'kehadiran';
+    }
+    return 'semua';
+  });
+
+  // Listen to popstate and hashchange to allow seamless switching
+  useEffect(() => {
+    const handleUrlChange = () => {
+      const search = (window.location.search || '').toLowerCase();
+      const hash = (window.location.hash || '').toLowerCase();
+      const pathname = (window.location.pathname || '').toLowerCase();
+      const tvActive = (
+        search.includes('view=tv') ||
+        search.includes('tv=1') ||
+        search.includes('tv=true') ||
+        search.includes('signage=1') ||
+        hash === '#tv' ||
+        hash === '#/tv' ||
+        hash.includes('view=tv') ||
+        pathname.endsWith('/tv') ||
+        pathname.endsWith('/tv.html')
+      );
+      setIsTvMode(tvActive);
+
+      // Deep link tab change
+      if (
+        search.includes('subtab=kehadiran') ||
+        search.includes('view=borang') ||
+        search.includes('form=kehadiran') ||
+        search.includes('borang=kehadiran') ||
+        hash.includes('borang') ||
+        hash.includes('kehadiran')
+      ) {
+        setActiveTab('hem');
+        setHemSubTab('kehadiran');
+      } else if (search.includes('tab=hem') || hash === '#hem') {
+        setActiveTab('hem');
+      }
+    };
+
+    window.addEventListener('popstate', handleUrlChange);
+    window.addEventListener('hashchange', handleUrlChange);
+    return () => {
+      window.removeEventListener('popstate', handleUrlChange);
+      window.removeEventListener('hashchange', handleUrlChange);
+    };
+  }, []);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userRole, setUserRole] = useState<'admin' | 'guru' | null>(null);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
@@ -661,7 +714,8 @@ export default function App() {
       { key: 'kaunseling', title: 'Unit Bimbingan & Kaunseling (UBK)', sub: 'Program Guru Penyayang & Minda Sihat' },
       { key: 'ssdm', title: 'Sistem Sahsiah Diri Murid (SSDM)', sub: 'Rekod Amalan Baik & Intervensi' },
       { key: 'spbt', title: 'Skim Pinjaman Buku Teks (SPBT)', sub: 'Pengagihan & Bilik BOSS' },
-      { key: 'rmt', title: 'Rancangan Makanan Tambahan (RMT)', sub: 'Menu Sihat & Susu Sekolah' },
+      { key: 'rmt', title: 'Portal RMT & Program Susu Sekolah (89 Murid)', sub: 'Penerima RMT, Buku Rekod Makan & Jadual Menu Nutrisi' },
+      { key: 'susu', title: 'Program Susu Sekolah (PSS) & RMT', sub: 'Jadual Agihan Susu UHT & Kelayakan 89 Murid' },
       { key: 'bap', title: 'Bantuan Awal Persekolahan (BAP)', sub: 'Bantuan Tunai RM150 & KWAPM' },
       { key: 'keselamatan', title: 'Keselamatan Murid & 3K', sub: 'Kawalan Pagar, Pelawat & Latihan Kebakaran' },
       { key: 'kesihatan', title: 'Kesihatan Murid & Rawatan Gigi', sub: 'Klinik Bergerak KKM & Imunisasi' },
@@ -669,11 +723,14 @@ export default function App() {
     ];
     hemKeywords.forEach((h, idx) => {
       if (h.key.includes(q) || h.title.toLowerCase().includes(q) || h.sub.toLowerCase().includes(q)) {
+        let destinationTab: any = 'hem';
+        if (h.key === 'murid' || h.key === 'carian') destinationTab = 'carian_murid';
+        if (h.key === 'rmt' || h.key === 'susu') destinationTab = 'portal_rmt';
         results.push({
           type: 'pengumuman',
           title: h.title,
           subtitle: h.sub,
-          linkTab: h.key === 'murid' || h.key === 'carian' ? ('carian_murid' as any) : 'hem',
+          linkTab: destinationTab,
           id: `hem-${idx}`
         });
       }
@@ -698,6 +755,10 @@ export default function App() {
   const handleSelectSearchResult = (item: SearchResultItem) => {
     if (item.linkTab === ('carian_murid' as any)) {
       setIsGlobalStudentPortalOpen(true);
+      return;
+    }
+    if (item.linkTab === ('portal_rmt' as any)) {
+      setActiveTab('guru');
       return;
     }
     setActiveTab(item.linkTab as TabType);
@@ -791,6 +852,12 @@ export default function App() {
             userRole={userRole}
             onOpenLogin={() => setLoginModalOpen(true)}
             onNavigate={setActiveTab}
+            onOpenStudentPortal={() => setIsGlobalStudentPortalOpen(true)}
+            students={studentsList}
+            absenceRecords={absenceRecords}
+            onAddAbsenceRecord={handleAddAbsenceRecord}
+            onUpdateAbsenceRecord={handleUpdateAbsenceRecord}
+            onDeleteAbsenceRecord={handleDeleteAbsenceRecord}
           />
         )}
 

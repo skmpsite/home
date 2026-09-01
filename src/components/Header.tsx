@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SchoolProfile, SearchResultItem } from '../types';
-import { Search, Lock, UserCheck, MapPin, Phone, Mail, LogOut, ChevronRight, X, ShieldAlert, Menu, Users } from 'lucide-react';
+import { Search, Lock, UserCheck, MapPin, Phone, Mail, LogOut, ChevronRight, X, ShieldAlert, Menu, Users, Utensils } from 'lucide-react';
 
 interface HeaderProps {
   profile: SchoolProfile;
@@ -62,7 +62,7 @@ export const Header: React.FC<HeaderProps> = ({
               Kod Sekolah: {profile.code}
             </span>
 
-            {/* Direct Quick Button: Carian Murid APDM (Boleh diakses terus dari semua peranti) */}
+            {/* Direct Quick Button: Carian Murid APDM */}
             {onOpenStudentPortal && (
               <button
                 type="button"
