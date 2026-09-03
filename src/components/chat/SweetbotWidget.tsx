@@ -23,7 +23,10 @@ import {
   Mic,
   MicOff,
   HelpCircle,
-  School
+  School,
+  Search,
+  Utensils,
+  Laptop
 } from 'lucide-react';
 import {
   SchoolProfile,
@@ -45,6 +48,7 @@ interface Message {
   text: string;
   timestamp: string;
   actionTag?: string;
+  actionType?: 'carian_murid' | 'kehadiran_rmt' | 'tempahan_ict';
 }
 
 interface SweetbotWidgetProps {
@@ -60,6 +64,11 @@ interface SweetbotWidgetProps {
   systemLinks?: SystemLink[];
   hemData?: HemData;
   onNavigateSection?: (sectionId: string) => void;
+  isAdmin?: boolean;
+  userRole?: 'admin' | 'guru' | null;
+  onOpenStudentPortal?: () => void;
+  onOpenRmtPortal?: () => void;
+  onOpenIctBooking?: () => void;
 }
 
 export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
@@ -74,7 +83,12 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
   documents = [],
   systemLinks = [],
   hemData,
-  onNavigateSection
+  onNavigateSection,
+  isAdmin = false,
+  userRole = null,
+  onOpenStudentPortal,
+  onOpenRmtPortal,
+  onOpenIctBooking
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -618,11 +632,22 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
       const data = await res.json();
       const botReply = data.reply || 'Hai! Sweetbot sedia membantu anda. Boleh saya bantu dengan maklumat lain? 🤖';
 
+      let detectedAction: Message['actionType'] = undefined;
+      const lowerReq = textToSend.toLowerCase();
+      if (lowerReq.includes('carian murid') || lowerReq.includes('cari murid') || lowerReq.includes('pangkalan data murid')) {
+        detectedAction = 'carian_murid';
+      } else if (lowerReq.includes('kehadiran rmt') || lowerReq.includes('rmt murid') || lowerReq.includes('menu rmt') || lowerReq.includes('makanan tambahan')) {
+        detectedAction = 'kehadiran_rmt';
+      } else if (lowerReq.includes('tempahan bilik ict') || lowerReq.includes('tempahan ict') || lowerReq.includes('makmal komputer') || lowerReq.includes('tempahan bilik')) {
+        detectedAction = 'tempahan_ict';
+      }
+
       const botMessage: Message = {
         id: 'bot-' + Date.now(),
         sender: 'bot',
         text: botReply,
-        timestamp: new Date().toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })
+        timestamp: new Date().toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' }),
+        actionType: detectedAction
       };
 
       setMessages((prev) => [...prev, botMessage]);
@@ -645,6 +670,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
       const pentadbir = staffList.filter((s) => s.category === 'pentadbir');
 
       let fallbackText = `Hai! Saya **Sweetbot** 🤖✨, Pembantu Maya Rasmi ${currentSchoolName}.\n\nSekolah sentiasa mengutamakan kecemerlangan modal insan berteraskan motto *"${currentMotto}"*.\n\n🎯 **Visi:** ${currentVision}\n🚀 **Misi:** ${currentMission}\n\nSila kemukakan sebarang soalan mengenai guru, takwim, dokumen atau pembelajaran! 🌟🎒`;
+      let fallbackAction: Message['actionType'] = undefined;
 
       if (
         lower.includes('pk 1') ||
@@ -757,10 +783,17 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
         fallbackText = `🤝 **Unit Bimbingan & Kaunseling (UBK) ${currentSchoolName}:**\n\n• **Guru Bimbingan & Kaunseling:** Cikgu Zulkifli bin Ibrahim\n• **Perkhidmatan:** Bimbingan individu/kelompok, Program Guru Penyayang, Ujian Minda Sihat & Kelab Pembimbing Rakan Sebaya (PRS).\n\nSila layari menu **Hal Ehwal Murid (HEM)** untuk maklumat lanjut!`;
       } else if (lower.includes('ssdm')) {
         fallbackText = `🌟 **Sistem Sahsiah Diri Murid (SSDM 2.0):**\n\nSistem rasmi KPM untuk merekodkan amalan baik murid, mata merit, serta pengurusan intervensi sahsiah berhemah secara berpusat. Boleh dilayari melalui menu **Hal Ehwal Murid (HEM)**.`;
+      } else if (lower.includes('carian murid') || lower.includes('cari murid') || lower.includes('pangkalan data murid') || lower.includes('data murid')) {
+        fallbackText = `Berikut ialah maklumat capaian pantas ke **Pangkalan Data & Carian Murid APDM SK Merbau Pulas**:\n\n👥 **Jumlah Murid:** 375 orang (Tahun 1 hingga Tahun 6)\n🔍 **Fungsi Carian:** Carian segera mengikut Nama Murid, No. Kad Pengenalan / MyKid, Kelas, atau Nama Penjaga & Telefon.\n\nSila klik butang di bawah untuk membuka portal carian murid sekarang.`;
+        fallbackAction = 'carian_murid';
+      } else if (lower.includes('kehadiran rmt') || lower.includes('rmt') || lower.includes('makanan tambahan') || lower.includes('menu rmt')) {
+        fallbackText = `Berikut ialah maklumat capaian pantas ke **Portal Kehadiran & Pengurusan RMT SK Merbau Pulas**:\n\n🍱 **Murid Penerima Layak:** 89 orang murid\n👩‍🏫 **Penyelaras RMT:** Puan Fazilah binti Mat\n📋 **Ciri Sistem:** Semakan senarai murid layak mengikut kelas, paparan jadual menu nutrisi harian, serta perekodan kehadiran/ketidakhadiran murid RMT harian.\n\nSila klik butang di bawah untuk membuka portal kehadiran RMT.`;
+        fallbackAction = 'kehadiran_rmt';
+      } else if (lower.includes('tempahan') || lower.includes('bilik ict') || lower.includes('makmal komputer') || lower.includes('projektor') || lower.includes('alatan ict')) {
+        fallbackText = `Berikut ialah maklumat capaian pantas ke **Sistem Tempahan Bilik Khas & Alatan ICT SK Merbau Pulas**:\n\n💻 **Makmal Komputer (Bilik ICT 1):** 30 unit PC Murid, Smart TV 65", berhawa dingin.\n📺 **Bilik Akses Digital & Media:** 15 PC rujukan & projektor interaktif.\n📽️ **Peminjaman Alatan:** 3 unit projektor LCD mudah alih, kabel HDMI/VGA & wayar penyambung.\n🏛️ **Dewan Terbuka:** Sistem siaraya (PA system) & skrin layar perhimpunan.\n\nSila klik butang di bawah untuk membuat tempahan bilik ICT sekarang.`;
+        fallbackAction = 'tempahan_ict';
       } else if (lower.includes('spbt') || lower.includes('buku teks')) {
         fallbackText = `📚 **Skim Pinjaman Buku Teks (SPBT) ${currentSchoolName}:**\n\n• **Kelayakan:** 100% murid warganegara Malaysia (Tahun 1 hingga 6).\n• **Penyelaras:** Cikgu Nurul Ain binti Mahadzir.\n• **Bilik BOSS:** Bilik Operasi SPBT Sekolah.\n• **Syarat:** Buku wajib dibalut plastik jernih dan dijaga dengan cermat!`;
-      } else if (lower.includes('rmt') || lower.includes('susu') || lower.includes('makanan tambahan')) {
-        fallbackText = `🥣 **Rancangan Makanan Tambahan (RMT) & Susu Sekolah:**\n\n• **Sasaran:** Murid berkeperluan khas & keluarga B40/miskin tegar.\n• **Penyelaras:** Puan Fazilah binti Mat.\n• **Menu:** 20 menu seimbang berkhasiat mengikut standard KKM & KPM di kantin sekolah.`;
       } else if (lower.includes('bap') || lower.includes('bantuan awal persekolahan') || lower.includes('kwapm') || lower.includes('bantuan')) {
         fallbackText = `💵 **Bantuan Awal Persekolahan (BAP) & Kebajikan:**\n\n• **BAP:** RM150 secara 'one-off' untuk setiap murid warganegara tanpa had pendapatan.\n• **KWAPM & e-Kasih:** Bantuan pakaian dan kelengkapan sekolah untuk murid miskin.\n• Bantuan diagihkan secara telus kepada ibu bapa/penjaga yang sah.`;
       } else if (lower.includes('3k') || lower.includes('keselamatan') || lower.includes('kesihatan') || lower.includes('kebersihan') || lower.includes('fire drill')) {
@@ -775,13 +808,81 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
         id: 'bot-' + Date.now(),
         sender: 'bot',
         text: fallbackText,
-        timestamp: new Date().toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })
+        timestamp: new Date().toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' }),
+        actionType: fallbackAction
       };
       setMessages((prev) => [...prev, fallbackMsg]);
       speakText(fallbackMsg.text, fallbackMsg.id);
     } finally {
       setIsTyping(false);
     }
+  };
+
+  const isTeacherOrAdmin = Boolean(isAdmin || userRole === 'guru' || userRole === 'admin');
+
+  const handleQuickPortalAction = (type: 'carian_murid' | 'kehadiran_rmt' | 'tempahan_ict') => {
+    unlockAudioContext();
+    if (type === 'carian_murid') {
+      const userMsg: Message = {
+        id: 'user-' + Date.now(),
+        sender: 'user',
+        text: '🔍 Cari Murid',
+        timestamp: new Date().toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })
+      };
+      const botMsg: Message = {
+        id: 'bot-' + (Date.now() + 1),
+        sender: 'bot',
+        text: `Berikut ialah capaian pantas ke **Pangkalan Data & Carian Murid APDM SK Merbau Pulas** (375 murid berdaftar dari Tahun 1 hingga 6).\n\nCikgu boleh membuat semakan maklumat murid mengikut **Nama**, **No. Kad Pengenalan / MyKid**, **Kelas**, atau **Nama Penjaga & Telefon**.\n\nSila klik butang di bawah untuk membuka portal carian murid sekarang:`,
+        timestamp: new Date().toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' }),
+        actionType: 'carian_murid'
+      };
+      setMessages((prev) => [...prev, userMsg, botMsg]);
+      speakText('Berikut ialah capaian pantas ke pangkalan data carian murid SK Merbau Pulas.', botMsg.id);
+      if (onOpenStudentPortal) {
+        onOpenStudentPortal();
+      }
+    } else if (type === 'kehadiran_rmt') {
+      const userMsg: Message = {
+        id: 'user-' + Date.now(),
+        sender: 'user',
+        text: '🍱 RMT',
+        timestamp: new Date().toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })
+      };
+      const botMsg: Message = {
+        id: 'bot-' + (Date.now() + 1),
+        sender: 'bot',
+        text: `Berikut ialah capaian pantas ke **Portal Kehadiran & Pengurusan RMT SK Merbau Pulas** (89 orang murid penerima layak).\n\nCikgu boleh menyemak senarai penerima bantuan mengikut kelas, jadual menu nutrisi harian, serta mencatat kehadiran atau ketidakhadiran murid RMT.\n\nSila klik butang di bawah untuk membuka portal kehadiran RMT:`,
+        timestamp: new Date().toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' }),
+        actionType: 'kehadiran_rmt'
+      };
+      setMessages((prev) => [...prev, userMsg, botMsg]);
+      speakText('Berikut ialah capaian pantas ke portal kehadiran dan pengurusan RMT murid.', botMsg.id);
+      if (onOpenRmtPortal) {
+        onOpenRmtPortal();
+      }
+    } else if (type === 'tempahan_ict') {
+      const userMsg: Message = {
+        id: 'user-' + Date.now(),
+        sender: 'user',
+        text: '💻 ICT',
+        timestamp: new Date().toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })
+      };
+      const botMsg: Message = {
+        id: 'bot-' + (Date.now() + 1),
+        sender: 'bot',
+        text: `Berikut ialah capaian pantas ke **Sistem Tempahan Bilik Khas & Alatan ICT SK Merbau Pulas**.\n\nKemudahan yang boleh ditempah meliputi:\n• **Makmal Komputer Komprehensif** (30 unit PC & Smart TV)\n• **Bilik Akses Digital & Media**\n• **Peminjaman Projektor LCD Bergerak & Skrin Layar**\n• **Dewan Terbuka (Siaraya & Sistem Audio)**\n\nSila klik butang di bawah untuk membuka borang tempahan bilik ICT:`,
+        timestamp: new Date().toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' }),
+        actionType: 'tempahan_ict'
+      };
+      setMessages((prev) => [...prev, userMsg, botMsg]);
+      speakText('Berikut ialah capaian pantas ke sistem tempahan bilik ICT dan peralatan sekolah.', botMsg.id);
+      if (onOpenIctBooking) {
+        onOpenIctBooking();
+      }
+    }
+
+    // Auto-tutup chat box untuk memberi laluan kepada paparan yang telah dibuka di latar belakang
+    setIsOpen(false);
   };
 
   const handleCopyMessage = (id: string, text: string) => {
@@ -1109,6 +1210,47 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
             {!isMinimized && (
               <>
                 <div className="flex-1 overflow-y-auto p-4 space-y-3.5 scrollbar-thin scrollbar-thumb-blue-600 scrollbar-track-slate-800/50">
+                  {/* Carian Pantas (Guru & Admin) Top Banner */}
+                  {isTeacherOrAdmin && (
+                    <div className="bg-gradient-to-r from-amber-950/70 via-slate-900 to-blue-950/70 border border-amber-500/40 rounded-2xl p-3 text-xs shadow-md">
+                      <div className="flex items-center justify-between gap-1.5 text-amber-300 font-bold mb-2">
+                        <div className="flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-yellow-300 animate-pulse" />
+                          <span>Carian Pantas (Guru & Pentadbir):</span>
+                        </div>
+                        <span className="text-[9px] bg-amber-500/20 text-amber-200 border border-amber-400/30 px-2 py-0.5 rounded-full font-black">
+                          Akses Guru Aktif
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleQuickPortalAction('carian_murid')}
+                          className="p-2 bg-emerald-950/80 hover:bg-emerald-850 active:scale-95 border border-emerald-400/40 rounded-xl text-[11px] font-bold text-emerald-200 hover:text-white transition flex flex-col items-center justify-center gap-1 text-center shadow-sm cursor-pointer"
+                        >
+                          <Search className="w-4 h-4 text-emerald-300" />
+                          <span className="leading-tight">Cari Murid</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleQuickPortalAction('kehadiran_rmt')}
+                          className="p-2 bg-amber-950/80 hover:bg-amber-850 active:scale-95 border border-amber-400/40 rounded-xl text-[11px] font-bold text-amber-200 hover:text-white transition flex flex-col items-center justify-center gap-1 text-center shadow-sm cursor-pointer"
+                        >
+                          <Utensils className="w-4 h-4 text-amber-300" />
+                          <span className="leading-tight">RMT</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleQuickPortalAction('tempahan_ict')}
+                          className="p-2 bg-blue-950/80 hover:bg-blue-850 active:scale-95 border border-blue-400/40 rounded-xl text-[11px] font-bold text-blue-200 hover:text-white transition flex flex-col items-center justify-center gap-1 text-center shadow-sm cursor-pointer"
+                        >
+                          <Laptop className="w-4 h-4 text-blue-300" />
+                          <span className="leading-tight">ICT</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Quick Topics Banner */}
                   <div className="bg-gradient-to-r from-blue-950/80 to-indigo-950/80 border border-blue-500/20 rounded-2xl p-3 text-xs">
                     <div className="flex items-center gap-1.5 text-yellow-300 font-bold mb-2">
@@ -1209,6 +1351,51 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
                               )}
                             </div>
                           )}
+
+                          {/* Quick Action Portal Buttons for Bot Messages */}
+                          {msg.sender === 'bot' && (
+                            <div className="mt-2.5 pt-2 border-t border-slate-700/50 flex flex-wrap gap-1.5">
+                              {(msg.actionType === 'carian_murid' || msg.text.toLowerCase().includes('carian murid') || msg.text.toLowerCase().includes('pangkalan data murid')) && onOpenStudentPortal && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    onOpenStudentPortal();
+                                    setIsOpen(false);
+                                  }}
+                                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-lg text-[11px] font-bold flex items-center gap-1.5 shadow-md shadow-emerald-950/40 cursor-pointer transition"
+                                >
+                                  <Search className="w-3.5 h-3.5 text-emerald-200" />
+                                  <span>Buka Portal Carian Murid</span>
+                                </button>
+                              )}
+                              {(msg.actionType === 'kehadiran_rmt' || msg.text.toLowerCase().includes('kehadiran rmt') || msg.text.toLowerCase().includes('portal rmt')) && onOpenRmtPortal && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    onOpenRmtPortal();
+                                    setIsOpen(false);
+                                  }}
+                                  className="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 active:scale-95 text-white rounded-lg text-[11px] font-bold flex items-center gap-1.5 shadow-md shadow-amber-950/40 cursor-pointer transition"
+                                >
+                                  <Utensils className="w-3.5 h-3.5 text-amber-200" />
+                                  <span>Buka Portal Kehadiran RMT</span>
+                                </button>
+                              )}
+                              {(msg.actionType === 'tempahan_ict' || msg.text.toLowerCase().includes('tempahan bilik ict') || msg.text.toLowerCase().includes('tempahan bilik khas') || msg.text.toLowerCase().includes('borang tempahan bilik ict')) && onOpenIctBooking && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    onOpenIctBooking();
+                                    setIsOpen(false);
+                                  }}
+                                  className="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white rounded-lg text-[11px] font-bold flex items-center gap-1.5 shadow-md shadow-blue-950/40 cursor-pointer transition"
+                                >
+                                  <Laptop className="w-3.5 h-3.5 text-blue-200" />
+                                  <span>Buka Borang Tempahan Bilik ICT</span>
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -1283,6 +1470,39 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
 
                 {/* Input Area */}
                 <div className="p-3 bg-slate-950/90 border-t border-slate-800 flex flex-col gap-2">
+                  {/* Carian Pantas (Guru & Admin) Quick Bar in Chat Box */}
+                  {isTeacherOrAdmin && (
+                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 pt-0.5 px-0.5">
+                      <button
+                        type="button"
+                        onClick={() => handleQuickPortalAction('carian_murid')}
+                        className="px-2.5 py-1 bg-emerald-950/90 hover:bg-emerald-850 active:scale-95 border border-emerald-400/40 rounded-lg text-[11px] font-bold text-emerald-200 hover:text-white transition flex items-center gap-1.5 flex-shrink-0 shadow-sm cursor-pointer"
+                        title="Pangkalan Data Carian Murid APDM (375 Murid)"
+                      >
+                        <Search className="w-3 h-3 text-emerald-300" />
+                        <span>Cari Murid</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickPortalAction('kehadiran_rmt')}
+                        className="px-2.5 py-1 bg-amber-950/90 hover:bg-amber-850 active:scale-95 border border-amber-400/40 rounded-lg text-[11px] font-bold text-amber-200 hover:text-white transition flex items-center gap-1.5 flex-shrink-0 shadow-sm cursor-pointer"
+                        title="Portal Kehadiran & Pengurusan RMT (89 Murid)"
+                      >
+                        <Utensils className="w-3 h-3 text-amber-300" />
+                        <span>RMT</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickPortalAction('tempahan_ict')}
+                        className="px-2.5 py-1 bg-blue-950/90 hover:bg-blue-850 active:scale-95 border border-blue-400/40 rounded-lg text-[11px] font-bold text-blue-200 hover:text-white transition flex items-center gap-1.5 flex-shrink-0 shadow-sm cursor-pointer"
+                        title="Tempahan Bilik Khas & Alatan ICT Sekolah"
+                      >
+                        <Laptop className="w-3 h-3 text-blue-300" />
+                        <span>ICT</span>
+                      </button>
+                    </div>
+                  )}
+
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();

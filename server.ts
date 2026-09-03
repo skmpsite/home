@@ -332,6 +332,11 @@ async function startServer() {
      * Sistem Sahsiah Diri Murid (SSDM 2.0), Unit Bimbingan & Kaunseling (UBK), Program 3K (Kebersihan, Kesihatan & Keselamatan).
      * Portal idMe KPM, Aplikasi Pangkalan Data Murid (APDM), DELIMa KPM, SPLKPM, HRMIS.
 
+4. **CIRI CAPAIAN PANTAS GURU & PENTADBIR (PORTAL KHAS)**:
+   - **Carian Murid**: Pangkalan Data APDM SKMP mengandungi 375 orang murid berdaftar dari Tahun 1 hingga 6. Guru dan pentadbir boleh menyemak maklumat murid mengikut nama, no. Kad Pengenalan/MyKid, kelas, dan telefon penjaga.
+   - **Kehadiran RMT Murid**: Program Rancangan Makanan Tambahan (RMT) mempunyai 89 orang murid penerima layak. Guru boleh menyemak senarai murid, jadual menu nutrisi harian, dan mencatat rekod ketidakhadiran murid RMT.
+   - **Tempahan Bilik ICT**: Meliputi tempahan Makmal Komputer Komprehensif (30 PC & Smart TV), Bilik Akses Media, Dewan Terbuka, dan peminjaman Projektor LCD Mudah Alih & kelengkapan ICT.
+
 🚨 PRINSIP KECERDIKAN BERFIKIR & KETEPATAN JAWAPAN SPESIFIK (PRECISE & DIRECT):
 1. **JAWAP TERUS KEPADA SOALAN (DIRECT & CONCISE)**:
    - Apabila pengguna bertanyakan soalan yang spesifik (cth: "Siapakah Penolong Kanan 1 / PK Pentadbiran?", "Siapa Guru Besar?", "Apakah visi sekolah?", "Siapa YDP PIBG?"), anda WAJIB menjawab secara TERUS, TEPAT, dan SPESIFIK mengenai individu atau fakta yang ditanya SAHAJA.

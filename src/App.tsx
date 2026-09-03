@@ -91,6 +91,9 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { SweetbotWidget } from './components/chat/SweetbotWidget';
 import { StudentSearchPortalModal } from './components/sections/StudentSearchPortalModal';
+import { TeacherRmtSubSection } from './components/sections/TeacherRmtSubSection';
+import { IctBookingModal } from './components/sections/IctBookingModal';
+import { Utensils, X as CloseIcon } from 'lucide-react';
 import { Footer } from './components/Footer';
 import TvApp from './TvApp';
 
@@ -226,6 +229,8 @@ export default function App() {
   const [selectedNewsReader, setSelectedNewsReader] = useState<NewsItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isGlobalStudentPortalOpen, setIsGlobalStudentPortalOpen] = useState(false);
+  const [isGlobalRmtPortalOpen, setIsGlobalRmtPortalOpen] = useState(false);
+  const [isGlobalIctModalOpen, setIsGlobalIctModalOpen] = useState(false);
 
   // Ref to prevent overlapping in-flight fetch requests
   const isSyncingRef = useRef(false);
@@ -1065,6 +1070,57 @@ export default function App() {
         onClose={() => setIsGlobalStudentPortalOpen(false)}
       />
 
+      {/* Global RMT Management Modal Popup (Kehadiran RMT Murid) */}
+      {isGlobalRmtPortalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border border-white/20 rounded-3xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-white/10 bg-slate-950/60">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-600 flex items-center justify-center text-white shadow-lg shadow-amber-900/40">
+                  <Utensils className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                    Portal Rancangan Makanan Tambahan (RMT)
+                    <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 font-black">
+                      89 Murid Layak
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Pangkalan data murid, semakan kelayakan, menu & perekodan ketidakhadiran RMT
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsGlobalRmtPortalOpen(false)}
+                className="p-2 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition cursor-pointer"
+                title="Tutup Modal"
+              >
+                <CloseIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
+              <TeacherRmtSubSection
+                coordinatorName={profile?.hemCoordinator || 'Puan Fazilah binti Mat'}
+                students={studentsList}
+                absenceRecords={absenceRecords}
+                onAddAbsenceRecord={handleAddAbsenceRecord}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Global ICT Booking Modal (Tempahan Bilik ICT) */}
+      <IctBookingModal
+        isOpen={isGlobalIctModalOpen}
+        onClose={() => setIsGlobalIctModalOpen(false)}
+      />
+
       {/* Sweetbot AI Robot Assistant (Peeking on the screen edge) */}
       <SweetbotWidget
         profile={profile}
@@ -1078,6 +1134,11 @@ export default function App() {
         documents={documents}
         systemLinks={systemLinks}
         hemData={hemData}
+        isAdmin={isAdmin}
+        userRole={userRole}
+        onOpenStudentPortal={() => setIsGlobalStudentPortalOpen(true)}
+        onOpenRmtPortal={() => setIsGlobalRmtPortalOpen(true)}
+        onOpenIctBooking={() => setIsGlobalIctModalOpen(true)}
         onNavigateSection={(sectionId) => {
           setActiveTab(sectionId as any);
           window.scrollTo({ top: 0, behavior: 'smooth' });
