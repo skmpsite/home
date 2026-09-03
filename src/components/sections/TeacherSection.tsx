@@ -126,7 +126,7 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
   onDeleteAbsenceRecord
 }) => {
   const [activeCategory, setActiveCategory] = useState<CategoryType>('semua');
-  const [hemSubTab, setHemSubTab] = useState<'pautan' | 'rmt'>('pautan');
+  const [isRmtPortalOpen, setIsRmtPortalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isReorderMode, setIsReorderMode] = useState(false);
@@ -140,8 +140,10 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
   const canAccess = isAdmin || isTeacher || userRole === 'admin' || userRole === 'guru';
 
   const handleOpenRmt = () => {
-    setActiveCategory('hem');
-    setHemSubTab('rmt');
+    if (onOpenRmtPortal) {
+      onOpenRmtPortal();
+    }
+    setIsRmtPortalOpen(true);
   };
 
   const handleOpenStudent = () => {
@@ -790,7 +792,7 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                       {catMeta.label}
                     </h3>
                     <span className="text-xs px-2.5 py-0.5 rounded-full bg-white/10 text-slate-300 font-bold border border-white/10">
-                      {catKey === 'hem' && hemSubTab === 'rmt' ? '89 Murid' : `${sectionLinks.length} Pautan`}
+                      {sectionLinks.length} Pautan
                     </span>
                   </div>
                   <p className="text-xs text-slate-400">
@@ -799,16 +801,7 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                 </div>
               </div>
 
-              {isAdmin && catKey !== 'hem' && (
-                <button
-                  onClick={() => handleOpenAdd(catKey)}
-                  className="self-start sm:self-auto text-xs px-3 py-1.5 bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white rounded-xl border border-white/10 flex items-center gap-1.5 transition"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Tambah Dalam {catMeta.label}</span>
-                </button>
-              )}
-              {isAdmin && catKey === 'hem' && hemSubTab === 'pautan' && (
+              {isAdmin && (
                 <button
                   onClick={() => handleOpenAdd(catKey)}
                   className="self-start sm:self-auto text-xs px-3 py-1.5 bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white rounded-xl border border-white/10 flex items-center gap-1.5 transition"
@@ -819,54 +812,7 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
               )}
             </div>
 
-            {/* HEM Sub-Menu: Switch between Main HEM System Links and RMT Students List */}
-            {catKey === 'hem' && (
-              <div className="flex flex-wrap items-center justify-between gap-3 p-2 bg-slate-950/80 rounded-2xl border border-emerald-500/20 backdrop-blur-md">
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setHemSubTab('pautan')}
-                    className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer ${
-                      hemSubTab === 'pautan'
-                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/40 border border-emerald-400/40'
-                        : 'bg-white/5 hover:bg-white/10 text-slate-300'
-                    }`}
-                  >
-                    <Layers className="w-3.5 h-3.5 text-emerald-300" />
-                    <span>1. Pautan & Sistem Utama HEM ({sectionLinks.length})</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setHemSubTab('rmt')}
-                    className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer ${
-                      hemSubTab === 'rmt'
-                        ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-md shadow-amber-500/30 border border-amber-300'
-                        : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-400/20'
-                    }`}
-                  >
-                    <Utensils className="w-3.5 h-3.5 text-amber-400" />
-                    <span>2. Sub-Menu: Senarai Murid Terlibat RMT (89 Murid)</span>
-                  </button>
-                </div>
-
-                <span className="text-[11px] text-slate-400 hidden sm:inline">
-                  {hemSubTab === 'pautan'
-                    ? 'Portal sistem kebajikan, disiplin & SPBT'
-                    : 'Pangkalan data lengkap 89 penerima RMT SK Merbau Pulas'}
-                </span>
-              </div>
-            )}
-
-            {/* If HEM and RMT tab is selected, render TeacherRmtSubSection */}
-            {catKey === 'hem' && hemSubTab === 'rmt' ? (
-              <TeacherRmtSubSection
-                coordinatorName={profile?.hemCoordinator || 'Puan Fazilah binti Mat'}
-                students={students}
-                absenceRecords={absenceRecords}
-                onAddAbsenceRecord={onAddAbsenceRecord}
-              />
-            ) : sectionLinks.length === 0 ? (
+            {sectionLinks.length === 0 ? (
               <div className="bg-slate-900/40 border border-dashed border-white/10 rounded-3xl p-8 text-center text-slate-400">
                 <p className="text-sm">Tiada pautan ditemui dalam bahagian ini.</p>
                 {isAdmin && (
@@ -879,7 +825,7 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
                 {sectionLinks.map((link, idx) => {
                   const IconComponent = getNavIcon(link.iconName || 'Globe');
                   const isCopied = copiedId === link.id;
@@ -911,7 +857,35 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                       onDragOver={(e) => handleDragOver(e, link.id)}
                       onDragLeave={handleDragLeave}
                       onDrop={(e) => handleDrop(e, link.id, link.category)}
-                      className={`bg-slate-900/85 backdrop-blur-md rounded-3xl p-5 border transition-all duration-200 shadow-xl hover:shadow-2xl flex flex-col justify-between group space-y-4 relative ${
+                      onClick={() => {
+                        if (isStudentPortalLink) handleOpenStudent();
+                        else if (isRmtPortalLink) handleOpenRmt();
+                        else {
+                          const formatted = formatExternalUrl(link.url);
+                          if (formatted && formatted !== '#') {
+                            window.open(formatted, '_blank', 'noopener,noreferrer');
+                          } else {
+                            showToast('Pautan portal ini belum diisi atau sedang dikemas kini.');
+                          }
+                        }
+                      }}
+                      title={link.description ? `${link.title} - ${link.description}` : link.title}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          if (isStudentPortalLink) handleOpenStudent();
+                          else if (isRmtPortalLink) handleOpenRmt();
+                          else {
+                            const formatted = formatExternalUrl(link.url);
+                            if (formatted && formatted !== '#') {
+                              window.open(formatted, '_blank', 'noopener,noreferrer');
+                            }
+                          }
+                        }
+                      }}
+                      className={`bg-slate-900/85 hover:bg-slate-800/95 backdrop-blur-md rounded-2xl p-3.5 sm:p-4 border transition-all duration-200 shadow-sm hover:shadow-xl group relative cursor-pointer hover:-translate-y-0.5 active:scale-[0.99] flex flex-col justify-between gap-2.5 ${
                         isDraggingThis
                           ? 'opacity-40 scale-95 border-dashed border-amber-400'
                           : isDragOverThis
@@ -920,45 +894,41 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                           ? 'border-emerald-500/40 hover:border-emerald-400 bg-gradient-to-b from-slate-900/95 via-emerald-950/20 to-slate-900/95'
                           : isRmtPortalLink
                           ? 'border-amber-500/40 hover:border-amber-400 bg-gradient-to-b from-slate-900/95 via-amber-950/20 to-slate-900/95'
-                          : 'border-white/15 hover:border-white/30'
+                          : 'border-white/15 hover:border-white/40'
                       }`}
                     >
                       {/* Drag handle & Order Controls for Admin */}
                       {isAdmin && (
-                        <div className="flex items-center justify-between pb-2 border-b border-white/10 text-xs text-slate-400">
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center justify-between pb-2 mb-1 border-b border-white/10 text-xs text-slate-400"
+                        >
                           {/* Drag Grip Handle */}
                           <div
                             className="flex items-center gap-1.5 cursor-grab active:cursor-grabbing text-slate-400 hover:text-amber-400 transition"
-                            title="Klik & heret (Drag & Drop) untuk susun kedudukan pautan ini"
+                            title="Klik & heret untuk susun kedudukan pautan ini"
                           >
-                            <GripVertical className="w-4 h-4 text-amber-400" />
-                            <span className="text-[11px] font-black text-amber-400/90 font-mono bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-400/20">
+                            <GripVertical className="w-3.5 h-3.5 text-amber-400" />
+                            <span className="text-[10px] font-black text-amber-400/90 font-mono bg-amber-500/10 px-1.5 py-0.2 rounded border border-amber-400/20">
                               #{idx + 1}
-                            </span>
-                            <span className="text-[10px] text-slate-400 hidden sm:inline">
-                              Heret
                             </span>
                           </div>
 
-                          {/* Quick Position Reorder Buttons: Paling Awal, Naik, Turun, Paling Akhir */}
-                          <div className="flex items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-white/10">
-                            {/* Pindah ke Paling Awal */}
+                          {/* Quick Position Reorder Buttons */}
+                          <div className="flex items-center gap-0.5 bg-slate-950/80 p-0.5 rounded-lg border border-white/10">
                             <button
                               type="button"
                               onClick={() => handleMoveToStart(link.id, link.category, link.title)}
                               disabled={isFirst}
                               title="Pindah ke Paling Hadapan (Awal)"
-                              className={`p-1 rounded text-[10px] flex items-center gap-0.5 transition ${
+                              className={`p-1 rounded text-[10px] transition ${
                                 isFirst
                                   ? 'opacity-30 cursor-not-allowed text-slate-600'
                                   : 'hover:bg-amber-500 hover:text-slate-950 text-amber-400'
                               }`}
                             >
-                              <ArrowUpToLine className="w-3.5 h-3.5" />
-                              <span className="font-bold text-[9px] hidden xl:inline">Awal</span>
+                              <ArrowUpToLine className="w-3 h-3" />
                             </button>
-
-                            {/* Naik 1 Kedudukan */}
                             <button
                               type="button"
                               onClick={() => handleMoveStepUp(link.id, link.category)}
@@ -970,10 +940,8 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                                   : 'hover:bg-white/15 text-slate-300 hover:text-white'
                               }`}
                             >
-                              <ChevronUp className="w-3.5 h-3.5" />
+                              <ChevronUp className="w-3 h-3" />
                             </button>
-
-                            {/* Turun 1 Kedudukan */}
                             <button
                               type="button"
                               onClick={() => handleMoveStepDown(link.id, link.category)}
@@ -985,144 +953,123 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                                   : 'hover:bg-white/15 text-slate-300 hover:text-white'
                               }`}
                             >
-                              <ChevronDown className="w-3.5 h-3.5" />
+                              <ChevronDown className="w-3 h-3" />
                             </button>
-
-                            {/* Pindah ke Paling Akhir */}
                             <button
                               type="button"
                               onClick={() => handleMoveToEnd(link.id, link.category, link.title)}
                               disabled={isLast}
                               title="Pindah ke Paling Belakang (Akhir)"
-                              className={`p-1 rounded text-[10px] flex items-center gap-0.5 transition ${
+                              className={`p-1 rounded text-[10px] transition ${
                                 isLast
                                   ? 'opacity-30 cursor-not-allowed text-slate-600'
                                   : 'hover:bg-amber-500 hover:text-slate-950 text-amber-400'
                               }`}
                             >
-                              <ArrowDownToLine className="w-3.5 h-3.5" />
-                              <span className="font-bold text-[9px] hidden xl:inline">Akhir</span>
+                              <ArrowDownToLine className="w-3 h-3" />
+                            </button>
+                          </div>
+
+                          {/* Admin Edit & Delete */}
+                          <div className="flex items-center gap-0.5">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEdit(link)}
+                              title="Sunting Nama & Pautan (Admin)"
+                              className="p-1 hover:bg-white/15 text-amber-400 hover:text-amber-300 rounded transition"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteLink(link.id)}
+                              title="Padam Pautan"
+                              className="p-1 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded transition"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </div>
                       )}
 
-                      {/* Card Header & Content */}
-                      <div className="space-y-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div
-                            onClick={() => {
-                              if (isStudentPortalLink) handleOpenStudent();
-                              else if (isRmtPortalLink) handleOpenRmt();
-                            }}
-                            className={`flex items-center gap-3 ${isStudentPortalLink || isRmtPortalLink ? 'cursor-pointer' : ''}`}
-                          >
-                            <div className={`w-11 h-11 rounded-2xl ${catMeta.iconBgClass} p-2.5 flex items-center justify-center flex-shrink-0 shadow-md group-hover:scale-105 transition`}>
-                              <IconComponent className="w-full h-full text-white" />
-                            </div>
-                            <div>
-                              <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${catMeta.badgeClass}`}>
-                                {link.badge || catMeta.label}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Edit / Delete for Admin */}
-                          {isAdmin && (
-                            <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition">
-                              <button
-                                onClick={() => handleOpenEdit(link)}
-                                title="Sunting Pautan"
-                                className="p-1.5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteLink(link.id)}
-                                title="Padam Pautan"
-                                className="p-1.5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
+                      {/* Tooltip Tajuk Penuh Muncul Semasa Kursor di-Hover Pada Kotak */}
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center z-40 pointer-events-none transition-all duration-200 drop-shadow-2xl min-w-[180px] max-w-[280px]">
+                        <div className="bg-slate-950/95 text-slate-100 text-[11px] px-3 py-1.5 rounded-xl border border-white/20 shadow-2xl text-center backdrop-blur-md">
+                          <p className="font-extrabold text-amber-300 leading-snug">{link.title}</p>
+                          {link.description && (
+                            <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-2 leading-relaxed">{link.description}</p>
                           )}
                         </div>
-
-                        <div
-                          onClick={() => {
-                            if (isStudentPortalLink) handleOpenStudent();
-                            else if (isRmtPortalLink) handleOpenRmt();
-                          }}
-                          className={isStudentPortalLink || isRmtPortalLink ? 'cursor-pointer' : ''}
-                        >
-                          <h4 className="text-sm sm:text-base font-black text-white group-hover:text-yellow-300 transition leading-snug">
-                            {link.title}
-                          </h4>
-                          <p className="text-xs text-slate-300 font-normal mt-1 leading-relaxed line-clamp-2">
-                            {link.description}
-                          </p>
-                        </div>
+                        <div className="w-2 h-2 bg-slate-950 border-r border-b border-white/20 transform rotate-45 -mt-1"></div>
                       </div>
 
-                      {/* Card Bottom Actions */}
-                      <div className="pt-3 border-t border-white/10 flex items-center gap-2">
-                        {isStudentPortalLink ? (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenStudent();
-                            }}
-                            className={`flex-1 py-2.5 px-4 rounded-2xl text-xs font-black flex items-center justify-center gap-2 transition ${catMeta.btnClass} active:scale-95 cursor-pointer`}
-                          >
-                            <span>Buka Portal</span>
-                            <Search className="w-3.5 h-3.5" />
-                          </button>
-                        ) : isRmtPortalLink ? (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenRmt();
-                            }}
-                            className="flex-1 py-2.5 px-4 rounded-2xl text-xs font-black flex items-center justify-center gap-2 transition bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-400 hover:to-emerald-500 text-slate-950 shadow-md shadow-amber-500/20 active:scale-95 cursor-pointer"
-                          >
-                            <span>Buka Portal</span>
-                            <Utensils className="w-3.5 h-3.5" />
-                          </button>
-                        ) : (
-                          <a
-                            href={formatExternalUrl(link.url)}
-                            target={formatExternalUrl(link.url) !== '#' ? "_blank" : undefined}
-                            rel="noopener noreferrer"
-                            onClick={(e) => {
-                              if (formatExternalUrl(link.url) === '#') {
-                                e.preventDefault();
-                                showToast('Pautan portal ini belum diisi atau sedang dikemas kini.');
-                              }
-                            }}
-                            className={`flex-1 py-2.5 px-4 rounded-2xl text-xs font-black flex items-center justify-center gap-2 transition ${catMeta.btnClass}`}
-                          >
-                            <span>Buka Portal</span>
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
-                        )}
+                      {/* Interactive Link Body: Icon + Lencana Sebagai Butang Utama (Tajuk Muncul Semasa Hover) */}
+                      <div className="flex items-center justify-between gap-2.5 min-w-0">
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <div className={`w-9 h-9 rounded-xl ${catMeta.iconBgClass} p-2 flex items-center justify-center flex-shrink-0 shadow-md group-hover:scale-105 group-hover:shadow-lg transition-transform duration-200`}>
+                            <IconComponent className="w-full h-full text-white" />
+                          </div>
 
-                        <button
-                          onClick={() => handleCopy(formatExternalUrl(link.url), link.id)}
-                          title="Salin Pautan URL"
-                          className={`p-2.5 rounded-2xl text-xs font-bold border transition flex items-center justify-center ${
-                            isCopied
-                              ? 'bg-emerald-500 text-slate-950 border-emerald-400'
-                              : 'bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white border-white/10'
-                          }`}
-                        >
-                          {isCopied ? (
-                            <Check className="w-4 h-4 text-slate-950" />
-                          ) : (
-                            <Copy className="w-4 h-4" />
-                          )}
-                        </button>
+                          <div className="min-w-0 flex-1">
+                            {/* Tulisan Lencana Sebagai Butang Utama */}
+                            <div className="flex items-center gap-1.5">
+                              <span className={`text-xs sm:text-sm font-black tracking-wide truncate ${
+                                link.badge 
+                                  ? `px-2 py-0.5 rounded-lg border shadow-xs ${catMeta.badgeClass} group-hover:brightness-125`
+                                  : 'text-white group-hover:text-amber-300'
+                              } transition-all`}>
+                                {link.badge?.trim() || link.title}
+                              </span>
+                            </div>
+
+                            {/* Tajuk Penuh: Tersembunyi & Hanya Muncul Semasa Kursor di-Hover Pada Kotak */}
+                            <p className="text-[11px] text-slate-300 group-hover:text-amber-200/95 font-medium leading-snug line-clamp-2 max-h-0 opacity-0 group-hover:max-h-12 group-hover:opacity-100 overflow-hidden transition-all duration-200 mt-0 group-hover:mt-1 pointer-events-none">
+                              {link.title}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Quick Actions: Copy button & Launch indicator icon */}
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCopy(formatExternalUrl(link.url), link.id);
+                            }}
+                            title="Salin Pautan URL"
+                            className={`p-1.5 rounded-lg text-xs font-bold border transition flex items-center justify-center cursor-pointer ${
+                              isCopied
+                                ? 'bg-emerald-500 text-slate-950 border-emerald-400'
+                                : 'bg-white/5 hover:bg-white/15 text-slate-400 hover:text-white border-white/10'
+                            }`}
+                          >
+                            {isCopied ? (
+                              <Check className="w-3.5 h-3.5 text-slate-950" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+
+                          <div
+                            title="Buka pautan ini"
+                            className={`w-7 h-7 rounded-lg flex items-center justify-center transition shadow-sm border ${
+                              isStudentPortalLink
+                                ? 'bg-emerald-600/30 text-emerald-300 border-emerald-500/40 group-hover:bg-emerald-500 group-hover:text-slate-950'
+                                : isRmtPortalLink
+                                ? 'bg-amber-600/30 text-amber-300 border-amber-500/40 group-hover:bg-amber-400 group-hover:text-slate-950'
+                                : 'bg-white/5 text-slate-400 border-white/10 group-hover:bg-amber-400 group-hover:text-slate-950 group-hover:border-amber-300'
+                            }`}
+                          >
+                            {isStudentPortalLink ? (
+                              <Search className="w-3.5 h-3.5" />
+                            ) : isRmtPortalLink ? (
+                              <Utensils className="w-3.5 h-3.5" />
+                            ) : (
+                              <ExternalLink className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   );
@@ -1155,21 +1102,24 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
             </div>
 
             <form onSubmit={handleSaveModal} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
-                  Tajuk Portal / Sistem *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="Cth: IDME KPM / e-RPH Skrip"
-                  className="w-full px-3.5 py-2 bg-slate-950 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:border-red-400"
-                />
-              </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">
+                    Lencana / Nama Butang Pautan *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.badge}
+                    onChange={(e) => setFormData({ ...formData, badge: e.target.value })}
+                    placeholder="Cth: e-RPH, IDME, APDM, SSDM"
+                    className="w-full px-3.5 py-2 bg-slate-950 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:border-red-400"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    Nama ringkas lencana ini bertindak sebagai butang utama untuk diklik.
+                  </span>
+                </div>
+
                 <div>
                   <label className="block text-xs font-bold text-slate-300 mb-1">
                     Bahagian Portfolio *
@@ -1190,19 +1140,23 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                     <option value="umum">4. Umum</option>
                   </select>
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Lencana / Label Ringkas
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.badge}
-                    onChange={(e) => setFormData({ ...formData, badge: e.target.value })}
-                    placeholder="Cth: PBD, APDM, HRMIS"
-                    className="w-full px-3.5 py-2 bg-slate-950 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:border-red-400"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">
+                  Tajuk Penuh Portal / Sistem * (Muncul Semasa Hover)
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  placeholder="Cth: IDME KPM (Sistem Pentaksiran Bersepadu)"
+                  className="w-full px-3.5 py-2 bg-slate-950 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:border-red-400"
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  Tajuk penuh hanya akan muncul apabila guru meletakkan kursor (hover) di atas kotak pautan.
+                </span>
               </div>
 
               <div>
@@ -1258,6 +1212,51 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
         isOpen={isStudentSearchPortalOpen}
         onClose={() => setIsStudentSearchPortalOpen(false)}
       />
+
+      {/* RMT Portal & Attendance Modal */}
+      {isRmtPortalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
+          <div className="bg-slate-900 border border-amber-500/30 rounded-3xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-slate-950/90">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-400 shadow-md">
+                  <Utensils className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                    Portal Rancangan Makanan Tambahan (RMT)
+                    <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 font-black">
+                      89 Murid Layak
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Pangkalan data murid, semakan kelayakan, menu & perekodan ketidakhadiran RMT
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsRmtPortalOpen(false)}
+                className="p-2 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition cursor-pointer"
+                title="Tutup Modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
+              <TeacherRmtSubSection
+                coordinatorName={profile?.hemCoordinator || 'Puan Fazilah binti Mat'}
+                students={students}
+                absenceRecords={absenceRecords}
+                onAddAbsenceRecord={onAddAbsenceRecord}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -31,7 +31,11 @@ import {
   ChevronDown,
   ChevronUp,
   X,
-  FileCheck
+  FileCheck,
+  MessageCircle,
+  Copy,
+  ExternalLink,
+  Link
 } from 'lucide-react';
 import { StudentRecord, StudentAbsenceRecord } from '../../types';
 import { sortYears, sortClasses, sortClassBreakdown, getYearTheme } from '../../utils/studentHelpers';
@@ -47,6 +51,7 @@ interface HemAttendanceSubSectionProps {
   isAdmin?: boolean;
   isTeacher?: boolean;
   userRole?: 'admin' | 'guru' | null;
+  onOpenLogin?: () => void;
 }
 
 const REASON_CATEGORIES = [
@@ -66,7 +71,8 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
   onDeleteAbsenceRecord,
   isAdmin = false,
   isTeacher = false,
-  userRole
+  userRole,
+  onOpenLogin
 }) => {
   const isAuthorized = isAdmin || isTeacher || userRole === 'admin' || userRole === 'guru';
 
@@ -79,6 +85,16 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     }, 5000);
     return () => clearTimeout(timer);
   }, []);
+
+  // Active view tab inside Attendance portal
+  const [attendanceViewTab, setAttendanceViewTab] = useState<'borang' | 'analisis' | 'senarai'>('borang');
+
+  // Pastikan waris (bukan guru/admin) hanya melihat borang e-kehadiran
+  useEffect(() => {
+    if (!isAuthorized && attendanceViewTab !== 'borang') {
+      setAttendanceViewTab('borang');
+    }
+  }, [isAuthorized, attendanceViewTab]);
 
   // Selected date for live calculation (Default: Today YYYY-MM-DD)
   const [selectedDate, setSelectedDate] = useState<string>(() => {
@@ -118,8 +134,17 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     });
   }, []);
 
-  // Active view tab inside Attendance portal
-  const [attendanceViewTab, setAttendanceViewTab] = useState<'borang' | 'analisis' | 'senarai'>('borang');
+  // Share to WhatsApp modal states
+  const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
+  const [shareSelectedClassKey, setShareSelectedClassKey] = useState<string>('semua');
+  const [copiedToast, setCopiedToast] = useState<string | null>(null);
+
+  const showCopiedToast = (msg: string) => {
+    setCopiedToast(msg);
+    setTimeout(() => {
+      setCopiedToast(null);
+    }, 3000);
+  };
 
   // Filter for class analysis
   const [analysisClassFilter, setAnalysisClassFilter] = useState<string>('semua');
@@ -425,6 +450,148 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     return sortClassBreakdown(breakdownList);
   }, [students, absentStudentIds]);
 
+  // Generate Direct Link to Form
+  const getFormDirectUrl = (classKey?: string) => {
+    if (typeof window === 'undefined') return '';
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', 'hem');
+    url.searchParams.set('subtab', 'kehadiran');
+    url.searchParams.set('view', 'borang');
+
+    if (classKey && classKey !== 'semua') {
+      const parts = classKey.split(':::');
+      if (parts.length === 2) {
+        url.searchParams.set('year', parts[0]);
+        url.searchParams.set('class', parts[1]);
+      }
+    } else {
+      url.searchParams.delete('year');
+      url.searchParams.delete('class');
+    }
+
+    url.hash = 'borang-kehadiran-waris';
+    return url.toString();
+  };
+
+  const getShareWhatsAppText = (classKey?: string) => {
+    const targetUrl = getFormDirectUrl(classKey);
+    let classTitle = '';
+    if (classKey && classKey !== 'semua') {
+      const parts = classKey.split(':::');
+      if (parts.length === 2) {
+        classTitle = `\n🏫 *Kelas: ${parts[0]} (${parts[1]})*`;
+      }
+    }
+
+    return `📢 *MAKLUMAN KETIDAKHADIRAN MURID SK MERBAU PULAS*${classTitle}
+
+Assalamualaikum & Salam Sejahtera Tuan/Puan Waris Penjaga,
+
+Sekiranya anak jagaan tuan/puan *TIDAK DAPAT HADIR* ke sekolah hari ini, mohon kerjasama untuk mengisi borang makluman rasmi melalui pautan di bawah:
+
+🔗 *Pautan Borang e-Kehadiran Waris:*
+${targetUrl}
+
+📌 *Peringatan Mesra:*
+• Sila lampirkan slip cuti sakit (MC) atau surat rasmi sebagai dokumen sokongan.
+• Maklumat ini diselaraskan terus ke dalam rekod e-Kehadiran / APDM sekolah.
+
+Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.`;
+  };
+
+  const handleDirectWhatsAppShare = (classKey?: string) => {
+    const text = getShareWhatsAppText(classKey || shareSelectedClassKey);
+    const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    window.open(waUrl, '_blank');
+  };
+
+  const handleNativeShare = async (classKey?: string) => {
+    const text = getShareWhatsAppText(classKey || shareSelectedClassKey);
+    const url = getFormDirectUrl(classKey || shareSelectedClassKey);
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Borang Makluman Ketidakhadiran Murid (Waris) SK Merbau Pulas',
+          text: text,
+          url: url
+        });
+        showCopiedToast('Berjaya dikongsi!');
+      } catch (err) {
+        handleDirectWhatsAppShare(classKey);
+      }
+    } else {
+      handleDirectWhatsAppShare(classKey);
+    }
+  };
+
+  const handleCopyText = (classKey?: string) => {
+    const text = getShareWhatsAppText(classKey || shareSelectedClassKey);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text);
+    } else {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+    showCopiedToast('Mesej WhatsApp penuh berjaya disalin!');
+  };
+
+  const handleCopyLinkOnly = (classKey?: string) => {
+    const url = getFormDirectUrl(classKey || shareSelectedClassKey);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url);
+    } else {
+      const textarea = document.createElement('textarea');
+      textarea.value = url;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+    showCopiedToast('Pautan borang berjaya disalin!');
+  };
+
+  // Deep Link Auto-Navigation to Borang and pre-fill class if present
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const search = window.location.search || '';
+    const hash = window.location.hash || '';
+    const params = new URLSearchParams(search);
+
+    const isBorangRequested =
+      params.get('view') === 'borang' ||
+      params.get('form') === 'kehadiran' ||
+      params.get('borang') === 'kehadiran' ||
+      params.get('subtab') === 'kehadiran' ||
+      hash.includes('borang') ||
+      hash.includes('kehadiran');
+
+    if (isBorangRequested) {
+      setAttendanceViewTab('borang');
+
+      const pYear = params.get('year') || params.get('tahun');
+      const pClass = params.get('class') || params.get('kelas');
+      if (pYear) {
+        setFormYear(pYear);
+      }
+      if (pClass) {
+        setFormClass(pClass);
+      }
+
+      // Smooth scroll to the form element
+      const timer = setTimeout(() => {
+        const el = document.getElementById('borang-kehadiran-waris');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   // Filtered breakdown for Analisis Kehadiran Tab
   const filteredClassesBreakdown = useMemo(() => {
     if (analysisClassFilter === 'semua') {
@@ -648,63 +815,108 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
       </div>
 
       {/* Navigation Sub-Tabs Switcher */}
-      <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-900/80 backdrop-blur-md rounded-2xl border border-white/10">
-        <button
-          onClick={() => setAttendanceViewTab('borang')}
-          className={`flex-1 min-w-[160px] py-3 px-4 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition ${
-            attendanceViewTab === 'borang'
-              ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 border border-emerald-400'
-              : 'text-slate-300 hover:text-white hover:bg-white/5'
-          }`}
-        >
-          <FileText className="w-4 h-4" />
-          <span>Borang e-Kehadiran Waris</span>
-          <span className="text-[10px] bg-yellow-400 text-slate-950 px-1.5 py-0.5 rounded font-black">Isi Sini</span>
-        </button>
+      <div className="flex flex-wrap items-center justify-between gap-2 p-1.5 bg-slate-900/80 backdrop-blur-md rounded-2xl border border-white/10">
+        <div className="flex flex-wrap items-center gap-2 flex-1">
+          <button
+            onClick={() => setAttendanceViewTab('borang')}
+            className={`flex-1 min-w-[160px] py-3 px-4 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition ${
+              attendanceViewTab === 'borang'
+                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 border border-emerald-400'
+                : 'text-slate-300 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            <span>Borang e-Kehadiran Waris</span>
+            <span className="text-[10px] bg-yellow-400 text-slate-950 px-1.5 py-0.5 rounded font-black">Isi Sini</span>
+          </button>
 
-        <button
-          onClick={() => setAttendanceViewTab('analisis')}
-          className={`flex-1 min-w-[160px] py-3 px-4 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition ${
-            attendanceViewTab === 'analisis'
-              ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 border border-blue-400'
-              : 'text-slate-300 hover:text-white hover:bg-white/5'
-          }`}
-        >
-          <Building2 className="w-4 h-4" />
-          <span>Analisis Mengikut Kelas ({allClassesBreakdown.length})</span>
-        </button>
+          {/* Tab Analisis dan Senarai Rekod KHAS untuk Admin dan Guru Sahaja */}
+          {isAuthorized && (
+            <>
+              <button
+                onClick={() => setAttendanceViewTab('analisis')}
+                className={`flex-1 min-w-[160px] py-3 px-4 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition ${
+                  attendanceViewTab === 'analisis'
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 border border-blue-400'
+                    : 'text-slate-300 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <Building2 className="w-4 h-4" />
+                <span>Analisis Mengikut Kelas ({allClassesBreakdown.length})</span>
+              </button>
 
-        <button
-          onClick={() => setAttendanceViewTab('senarai')}
-          className={`flex-1 min-w-[160px] py-3 px-4 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition ${
-            attendanceViewTab === 'senarai'
-              ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30 border border-purple-400'
-              : 'text-slate-300 hover:text-white hover:bg-white/5'
-          }`}
-        >
-          <FileCheck className="w-4 h-4" />
-          <span>Senarai Rekod & Bukti Slip MC ({absenceRecords.length})</span>
-        </button>
+              <button
+                onClick={() => setAttendanceViewTab('senarai')}
+                className={`flex-1 min-w-[160px] py-3 px-4 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition ${
+                  attendanceViewTab === 'senarai'
+                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30 border border-purple-400'
+                    : 'text-slate-300 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <FileCheck className="w-4 h-4" />
+                <span>Senarai Rekod & Bukti Slip MC ({absenceRecords.length})</span>
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Akses Status Badge (Untuk Guru & Pentadbir yang Log Masuk) */}
+        {isAuthorized && (
+          <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-[11px] font-bold text-emerald-300">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Akses Guru & Pentadbir</span>
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}
       {/* TAB 1: BORANG E-KEHADIRAN WARIS                                           */}
       {/* ========================================================================= */}
       {attendanceViewTab === 'borang' && (
-        <div className="bg-slate-900/80 backdrop-blur-md rounded-3xl p-6 sm:p-8 border border-white/15 shadow-2xl text-white">
+        <div
+          id="borang-kehadiran-waris"
+          className="bg-slate-900/80 backdrop-blur-md rounded-3xl p-6 sm:p-8 border border-white/15 shadow-2xl text-white scroll-mt-24"
+        >
           <div className="max-w-3xl mx-auto space-y-6">
-            <div className="border-b border-white/10 pb-4">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/20 text-emerald-300 font-bold rounded-full text-xs mb-2">
-                <Send className="w-3.5 h-3.5" />
-                <span>Borang Makluman Rasmi</span>
+            <div className="border-b border-white/10 pb-5 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+              <div className="flex-1">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/20 text-emerald-300 font-bold rounded-full text-xs mb-2 border border-emerald-500/30">
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Borang Makluman Rasmi</span>
+                </div>
+                <h4 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+                  <span>Borang Makluman Ketidakhadiran Murid (Waris)</span>
+                </h4>
+                <p className="text-xs sm:text-sm text-slate-300 mt-1 leading-relaxed">
+                  Ibu bapa dan penjaga diminta mengisi borang ini sekiranya anak jagaan tidak dapat hadir ke sekolah. Sila
+                  lampirkan slip cuti sakit (MC) atau surat rasmi sebagai dokumen sokongan.
+                </p>
               </div>
-              <h4 className="text-xl sm:text-2xl font-black text-white">
-                Borang Makluman Ketidakhadiran Murid (Waris)
-              </h4>
-              <p className="text-xs sm:text-sm text-slate-300 mt-1">
-                Ibu bapa dan penjaga diminta mengisi borang ini sekiranya anak jagaan tidak dapat hadir ke sekolah. Sila
-                lampirkan slip cuti sakit (MC) atau surat rasmi sebagai dokumen sokongan.
-              </p>
+
+              {/* Ikon WhatsApp Ringkas & Salin Pautan */}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  type="button"
+                  id="btn-share-whatsapp-borang"
+                  onClick={() => setIsShareModalOpen(true)}
+                  className="w-10 h-10 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl border border-emerald-400/40 transition active:scale-95 flex items-center justify-center shadow-lg shadow-emerald-950/50 group cursor-pointer"
+                  title="Kongsi Pautan Borang ke WhatsApp"
+                  aria-label="Kongsi Pautan Borang ke WhatsApp"
+                >
+                  <MessageCircle className="w-5 h-5 text-white group-hover:scale-110 transition-transform" />
+                </button>
+
+                <button
+                  type="button"
+                  id="btn-copy-pautan-borang"
+                  onClick={() => handleCopyLinkOnly()}
+                  className="w-10 h-10 bg-slate-800/90 hover:bg-slate-700 text-slate-200 hover:text-white rounded-2xl border border-white/10 transition active:scale-95 flex items-center justify-center shadow-md cursor-pointer"
+                  title="Salin Pautan Terus Borang Ini"
+                  aria-label="Salin Pautan Terus Borang Ini"
+                >
+                  <Copy className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {formError && (
@@ -1045,7 +1257,7 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
       {/* ========================================================================= */}
       {/* TAB 2: ANALISIS & PERATUSAN KEHADIRAN MENGIKUT KELAS                      */}
       {/* ========================================================================= */}
-      {attendanceViewTab === 'analisis' && (
+      {isAuthorized && attendanceViewTab === 'analisis' && (
         <div className="space-y-6">
           <div className="bg-slate-900/80 backdrop-blur-md rounded-3xl p-6 sm:p-8 border border-white/15 shadow-2xl text-white space-y-6">
             {/* Header */}
@@ -1323,7 +1535,7 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
       {/* ========================================================================= */}
       {/* TAB 3: SENARAI REKOD & BUKTI SLIP MC                                      */}
       {/* ========================================================================= */}
-      {attendanceViewTab === 'senarai' && (
+      {isAuthorized && attendanceViewTab === 'senarai' && (
         <div className="bg-slate-900/80 backdrop-blur-md rounded-3xl p-6 sm:p-8 border border-white/15 shadow-2xl text-white space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-4">
             <div>
@@ -1767,6 +1979,142 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 4: KONGSI BORANG KE WHATSAPP GROUP KELAS (GURU KE WARIS)             */}
+      {/* ========================================================================= */}
+      {isShareModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border-2 border-emerald-500/50 rounded-3xl p-5 sm:p-7 max-w-xl w-full text-white shadow-2xl space-y-5 animate-scaleUp max-h-[92vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-400 flex-shrink-0 shadow-lg shadow-emerald-500/20">
+                  <Share2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase mb-1">
+                    <MessageCircle className="w-3 h-3" />
+                    <span>WhatsApp Kelas SKMP</span>
+                  </div>
+                  <h4 className="text-lg sm:text-xl font-black text-white">
+                    Kongsi Borang Makluman Ketidakhadiran
+                  </h4>
+                  <p className="text-xs text-slate-300">
+                    Hantar jemputan pengisian borang terus ke WhatsApp Group kelas ibu bapa / waris.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsShareModalOpen(false)}
+                className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/10 transition"
+                title="Tutup"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Pilihan Sasaran Kelas */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-300">
+                Pilih Sasaran Kelas (Pilihan untuk Guru Kelas):
+              </label>
+              <select
+                value={shareSelectedClassKey}
+                onChange={(e) => setShareSelectedClassKey(e.target.value)}
+                className="w-full bg-slate-800 border border-white/20 rounded-xl px-3.5 py-2.5 text-xs text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              >
+                <option value="semua">📢 Umum / Semua Kelas (Pautan Standard)</option>
+                {allClassesBreakdown.map((c) => {
+                  const key = `${c.year}:::${c.className}`;
+                  return (
+                    <option key={key} value={key}>
+                      🏫 {c.year} - {c.className} ({c.totalStudents} Murid)
+                    </option>
+                  );
+                })}
+              </select>
+              <p className="text-[11px] text-slate-400">
+                {shareSelectedClassKey === 'semua'
+                  ? 'Pautan umum untuk semua murid dan penjaga SK Merbau Pulas.'
+                  : 'Pautan khusus ini akan menetapkan Tahun & Kelas secara automatik apabila waris membuka borang ini.'}
+              </p>
+            </div>
+
+            {/* Pautan Langsung Borang */}
+            <div className="bg-slate-950/80 p-3.5 rounded-2xl border border-white/10 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400 font-bold flex items-center gap-1.5">
+                  <Link className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Pautan Terus (Direct Link):</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleCopyLinkOnly(shareSelectedClassKey)}
+                  className="text-emerald-400 hover:text-emerald-300 text-xs font-bold flex items-center gap-1 transition"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Salin Pautan Sahaja</span>
+                </button>
+              </div>
+              <div className="p-2.5 bg-slate-900 rounded-xl text-xs font-mono text-emerald-300 break-all select-all border border-emerald-500/20">
+                {getFormDirectUrl(shareSelectedClassKey)}
+              </div>
+            </div>
+
+            {/* Kotak Pratonton Mesej WhatsApp */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-300 font-bold flex items-center gap-1.5">
+                  <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Pratonton Mesej WhatsApp:</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleCopyText(shareSelectedClassKey)}
+                  className="text-emerald-400 hover:text-emerald-300 text-xs font-bold flex items-center gap-1 transition"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Salin Mesej Lengkap</span>
+                </button>
+              </div>
+              <div className="p-4 bg-emerald-950/30 border border-emerald-500/30 rounded-2xl text-xs text-slate-200 whitespace-pre-line font-sans leading-relaxed select-text">
+                {getShareWhatsAppText(shareSelectedClassKey)}
+              </div>
+            </div>
+
+            {/* Tindakan Butang */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => handleNativeShare(shareSelectedClassKey)}
+                className="w-full py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs sm:text-sm rounded-2xl shadow-xl shadow-emerald-900/40 border border-emerald-400/40 flex items-center justify-center gap-2 transition active:scale-95"
+              >
+                <Share2 className="w-4 h-4 text-emerald-200" />
+                <span>Buka & Hantar ke WhatsApp</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleCopyText(shareSelectedClassKey)}
+                className="w-full py-3 px-4 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs sm:text-sm rounded-2xl border border-white/10 flex items-center justify-center gap-2 transition active:scale-95"
+              >
+                <Copy className="w-4 h-4 text-slate-300" />
+                <span>Salin Mesej Lengkap</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Toast Notification */}
+      {copiedToast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-emerald-400/50 animate-bounce">
+          <CheckCircle2 className="w-5 h-5 text-white flex-shrink-0" />
+          <span className="text-xs sm:text-sm font-bold">{copiedToast}</span>
         </div>
       )}
     </div>

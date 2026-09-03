@@ -24,8 +24,7 @@ import {
   Activity,
   Calendar,
   Percent,
-  FileCheck,
-  Send
+  FileCheck
 } from 'lucide-react';
 import { HemData, SchoolProfile, Staff, StudentRecord, StudentAbsenceRecord } from '../../types';
 import { initialHemData } from '../../data/initialData';
@@ -56,6 +55,7 @@ interface HemSectionProps {
   userRole?: 'admin' | 'guru' | null;
   onOpenStudentPortal?: () => void;
   onOpenRmtPortal?: () => void;
+  onOpenLogin?: () => void;
 }
 
 export const HemSection: React.FC<HemSectionProps> = ({
@@ -72,8 +72,10 @@ export const HemSection: React.FC<HemSectionProps> = ({
   isTeacher = false,
   userRole,
   onOpenStudentPortal,
-  onOpenRmtPortal
+  onOpenRmtPortal,
+  onOpenLogin
 }) => {
+  const isAuthorized = isAdmin || isTeacher || userRole === 'admin' || userRole === 'guru';
   const data = hemData || initialHemData;
   const [activeSubTab, setActiveSubTab] = useState<'semua' | 'kehadiran' | 'disiplin' | 'kebajikan' | '3k'>(initialSubTab);
 
@@ -264,61 +266,56 @@ export const HemSection: React.FC<HemSectionProps> = ({
           </div>
         </div>
 
-        {/* Sub-Tabs Selector: e-Kehadiran first with badge */}
+        {/* Sub-Tabs Selector: Utama HEM di kiri, e-Kehadiran, dan Carian Murid (Guru/Admin sahaja) */}
         <div className="mt-6 pt-4 border-t border-white/10 flex flex-wrap items-center gap-2">
-          {[
-            {
-              id: 'kehadiran',
-              label: 'e-Kehadiran',
-              icon: UserCheck,
-              badge: `${todayAttendanceStats.percentage}%`
-            },
-            { id: 'semua', label: 'Semua Bidang HEM', icon: HeartHandshake },
-            { id: 'disiplin', label: '1. Disiplin & Sahsiah', icon: Scale },
-            { id: 'kebajikan', label: '2. Kebajikan Murid (SPBT, RMT)', icon: Heart },
-            { id: '3k', label: '3. Keselamatan & Kesihatan (3K)', icon: ShieldCheck }
-          ].map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeSubTab === tab.id;
-            const isAttendance = tab.id === 'kehadiran';
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveSubTab(tab.id as any)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition ${
-                  isActive
-                    ? isAttendance
-                      ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/30 border border-emerald-300'
-                      : 'bg-yellow-400 text-blue-950 shadow-md shadow-yellow-400/20 border border-yellow-300'
-                    : isAttendance
-                    ? 'bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 border border-emerald-400/40'
-                    : 'bg-white/5 hover:bg-white/15 text-slate-200 border border-white/10'
-                }`}
-              >
-                <Icon className={`w-3.5 h-3.5 ${isAttendance && !isActive ? 'text-emerald-400' : ''}`} />
-                <span>{tab.label}</span>
-                {tab.badge && (
-                  <span
-                    className={`text-[10px] px-1.5 py-0.2 rounded font-black ${
-                      isActive ? 'bg-slate-950 text-emerald-300' : 'bg-emerald-500/30 text-emerald-200'
-                    }`}
-                  >
-                    {tab.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+          {/* 1. Menu Utama HEM (Di sebelah kiri menu e-Kehadiran) */}
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('semua')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition cursor-pointer ${
+              activeSubTab === 'semua'
+                ? 'bg-yellow-400 text-blue-950 shadow-md shadow-yellow-400/20 border border-yellow-300'
+                : 'bg-white/5 hover:bg-white/15 text-slate-200 border border-white/10'
+            }`}
+          >
+            <HeartHandshake className="w-3.5 h-3.5" />
+            <span>Utama HEM</span>
+          </button>
 
-          {onOpenStudentPortal && (
+          {/* 2. Menu e-Kehadiran (Dikekalkan) */}
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('kehadiran')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition cursor-pointer ${
+              activeSubTab === 'kehadiran'
+                ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/30 border border-emerald-300'
+                : 'bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 border border-emerald-400/40'
+            }`}
+          >
+            <UserCheck className={`w-3.5 h-3.5 ${activeSubTab !== 'kehadiran' ? 'text-emerald-400' : ''}`} />
+            <span>e-Kehadiran</span>
+            <span
+              className={`text-[10px] px-1.5 py-0.2 rounded font-black ${
+                activeSubTab === 'kehadiran' ? 'bg-slate-950 text-emerald-300' : 'bg-emerald-500/30 text-emerald-200'
+              }`}
+            >
+              {todayAttendanceStats.percentage}%
+            </span>
+          </button>
+
+          {/* 3. Menu Carian Murid (Hanya muncul untuk pengguna log masuk Guru & Admin) */}
+          {isAuthorized && onOpenStudentPortal && (
             <button
               type="button"
               onClick={onOpenStudentPortal}
-              className="ml-auto px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white shadow-md border border-emerald-400/40 transition active:scale-95"
+              className="px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 bg-white/5 hover:bg-emerald-600 hover:text-white text-slate-200 border border-white/10 hover:border-emerald-400/40 transition active:scale-95 cursor-pointer shadow-sm"
               title="Buka Pangkalan Data & Portal Carian Murid SKMP"
             >
-              <Users className="w-3.5 h-3.5 text-emerald-200" />
-              <span>Portal Carian Murid ({students.length})</span>
+              <Users className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Carian Murid</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                {students.length}
+              </span>
             </button>
           )}
         </div>
@@ -346,6 +343,7 @@ export const HemSection: React.FC<HemSectionProps> = ({
           isAdmin={isAdmin}
           isTeacher={isTeacher}
           userRole={userRole}
+          onOpenLogin={onOpenLogin}
         />
       )}
 
@@ -367,17 +365,6 @@ export const HemSection: React.FC<HemSectionProps> = ({
                 Enrolmen: <strong>{todayAttendanceStats.totalStudents} murid</strong> | Hadir: <strong>{todayAttendanceStats.presentCount}</strong> | Tidak Hadir: <strong>{todayAttendanceStats.absentCount}</strong>.
                 Murid yang tidak mengisi borang ketidakhadiran dikira hadir secara automatik.
               </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2.5 z-10">
-              <button
-                type="button"
-                onClick={() => setActiveSubTab('kehadiran')}
-                className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition"
-              >
-                <Send className="w-3.5 h-3.5" />
-                <span>Buka Borang Waris & Analisis Kelas</span>
-              </button>
             </div>
           </div>
 

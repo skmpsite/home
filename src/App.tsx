@@ -890,6 +890,7 @@ export default function App() {
             isTeacher={userRole === 'guru'}
             userRole={userRole}
             onOpenStudentPortal={() => setIsGlobalStudentPortalOpen(true)}
+            onOpenLogin={() => setLoginModalOpen(true)}
           />
         )}
 
