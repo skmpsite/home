@@ -24,10 +24,11 @@ import {
   Activity,
   Calendar,
   Percent,
-  FileCheck
+  FileCheck,
+  CalendarCheck2
 } from 'lucide-react';
-import { HemData, SchoolProfile, Staff, StudentRecord, StudentAbsenceRecord } from '../../types';
-import { initialHemData } from '../../data/initialData';
+import { HemData, SchoolProfile, Staff, StudentRecord, StudentAbsenceRecord, SchoolHoliday } from '../../types';
+import { initialHemData, initialSchoolHolidays } from '../../data/initialData';
 import { initialStudentsList } from '../../data/studentsData';
 import { initialAbsenceRecords } from '../../data/initialAttendance';
 import { HemAttendanceSubSection } from './HemAttendanceSubSection';
@@ -38,6 +39,7 @@ import {
   findPkPentadbiranStaff,
   findPkKokurikulumStaff
 } from '../../utils/staffHelpers';
+import { getActiveSchoolHoliday } from '../../utils/studentHelpers';
 
 interface HemSectionProps {
   hemData?: HemData;
@@ -45,6 +47,8 @@ interface HemSectionProps {
   staffList?: Staff[];
   students?: StudentRecord[];
   absenceRecords?: StudentAbsenceRecord[];
+  schoolHolidays?: SchoolHoliday[];
+  onSaveSchoolHolidays?: (holidays: SchoolHoliday[]) => void;
   onAddAbsenceRecord?: (
     record: Omit<StudentAbsenceRecord, 'id' | 'refNo' | 'createdAt'>
   ) => StudentAbsenceRecord;
@@ -65,6 +69,8 @@ export const HemSection: React.FC<HemSectionProps> = ({
   staffList,
   students = initialStudentsList,
   absenceRecords = initialAbsenceRecords,
+  schoolHolidays = initialSchoolHolidays,
+  onSaveSchoolHolidays,
   onAddAbsenceRecord,
   onUpdateAbsenceRecord,
   onDeleteAbsenceRecord,
@@ -123,6 +129,16 @@ export const HemSection: React.FC<HemSectionProps> = ({
     return undefined;
   }, [staffList, profile]);
 
+  // Check if today is a school holiday (or default weekend Friday & Saturday in Kedah)
+  const todayHoliday = useMemo(() => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${yyyy}-${mm}-${dd}`;
+    return getActiveSchoolHoliday(todayStr, schoolHolidays);
+  }, [schoolHolidays]);
+
   // Today's attendance summary for HEM Sub-tab highlight
   const todayAttendanceStats = useMemo(() => {
     const today = new Date();
@@ -139,18 +155,21 @@ export const HemSection: React.FC<HemSectionProps> = ({
       }
     });
 
-    const absentCount = absentIds.size;
-    const presentCount = Math.max(0, totalStudents - absentCount);
-    const percentage = totalStudents > 0 ? ((presentCount / totalStudents) * 100).toFixed(1) : '100.0';
+    const isHoliday = !!todayHoliday;
+    const absentCount = isHoliday ? totalStudents : absentIds.size;
+    const presentCount = isHoliday ? 0 : Math.max(0, totalStudents - absentCount);
+    const percentage = isHoliday ? '0.0' : totalStudents > 0 ? ((presentCount / totalStudents) * 100).toFixed(1) : '100.0';
 
     return {
       todayStr,
       totalStudents,
       absentCount,
       presentCount,
-      percentage
+      percentage,
+      isHoliday,
+      holidayTitle: todayHoliday?.title
     };
-  }, [students, absenceRecords]);
+  }, [students, absenceRecords, todayHoliday]);
 
   const pkPentadbiranStaff = useMemo(() => {
     if (staffList && staffList.length > 0) {
@@ -330,6 +349,8 @@ export const HemSection: React.FC<HemSectionProps> = ({
         <HemAttendanceSubSection
           students={students}
           absenceRecords={absenceRecords}
+          schoolHolidays={schoolHolidays}
+          onSaveSchoolHolidays={onSaveSchoolHolidays}
           onAddAbsenceRecord={
             onAddAbsenceRecord ||
             ((rec) => {
@@ -355,20 +376,62 @@ export const HemSection: React.FC<HemSectionProps> = ({
       {activeSubTab === 'semua' && (
         <>
           {/* Spotlight Card: e-Kehadiran Portal Trigger */}
-          <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 p-5 sm:p-6 rounded-3xl border border-emerald-500/40 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden">
-            <div className="space-y-1.5 z-10">
-              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-bold border border-emerald-400/30">
-                <UserCheck className="w-3.5 h-3.5" />
-                <span>e-Kehadiran Hari Ini ({todayAttendanceStats.todayStr})</span>
-              </div>
-              <h4 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
-                <span>Peratus Kehadiran Semasa:</span>
-                <span className="text-yellow-400">{todayAttendanceStats.percentage}%</span>
-              </h4>
-              <p className="text-xs text-slate-300 max-w-xl">
-                Enrolmen: <strong>{todayAttendanceStats.totalStudents} murid</strong> | Hadir: <strong>{todayAttendanceStats.presentCount}</strong> | Tidak Hadir: <strong>{todayAttendanceStats.absentCount}</strong>.
-                Murid yang tidak mengisi borang ketidakhadiran dikira hadir secara automatik.
-              </p>
+          <div className={`p-5 sm:p-6 rounded-3xl border shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden transition-all duration-300 ${
+            todayAttendanceStats.isHoliday
+              ? 'bg-gradient-to-r from-amber-950 via-slate-900 to-amber-950 border-amber-400/50 shadow-amber-500/10'
+              : 'bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 border-emerald-500/40'
+          }`}>
+            <div className="space-y-2 z-10">
+              {todayAttendanceStats.isHoliday ? (
+                <>
+                  <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[11px] font-bold border border-amber-400/30">
+                    <CalendarCheck2 className="w-3.5 h-3.5 text-yellow-400" />
+                    <span>Cuti Persekolahan Hari Ini ({todayAttendanceStats.todayStr})</span>
+                  </div>
+                  <h4 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2.5 flex-wrap">
+                    <span className="text-slate-300">Cuti:</span>
+                    <span className="text-yellow-400">{todayAttendanceStats.holidayTitle}</span>
+                  </h4>
+                  <div className="flex flex-wrap items-center gap-2.5 py-0.5">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-black">
+                      Hadir 0%
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-rose-500/20 text-rose-300 border border-rose-400/30 text-xs font-black">
+                      Tidak Hadir 100%
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 max-w-xl">
+                    Enrolmen: <strong>{todayAttendanceStats.totalStudents} murid</strong> | Hadir: <strong>0 (0.0%)</strong> | Tidak Hadir: <strong>{todayAttendanceStats.totalStudents} (100.0%)</strong>.
+                    Hari cuti persekolahan mengikut takwim ({todayAttendanceStats.holidayTitle}). Tiada sesi persekolahan beroperasi pada hari ini.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-bold border border-emerald-400/30">
+                    <UserCheck className="w-3.5 h-3.5" />
+                    <span>e-Kehadiran Hari Ini ({todayAttendanceStats.todayStr})</span>
+                  </div>
+                  <h4 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+                    <span>Peratus Kehadiran Semasa:</span>
+                    <span className="text-yellow-400">{todayAttendanceStats.percentage}%</span>
+                  </h4>
+                  <p className="text-xs text-slate-300 max-w-xl">
+                    Enrolmen: <strong>{todayAttendanceStats.totalStudents} murid</strong> | Hadir: <strong>{todayAttendanceStats.presentCount}</strong> | Tidak Hadir: <strong>{todayAttendanceStats.absentCount}</strong>.
+                    Murid yang tidak mengisi borang ketidakhadiran dikira hadir secara automatik.
+                  </p>
+                </>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2.5 z-10 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setActiveSubTab('kehadiran')}
+                className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/30 transition cursor-pointer"
+              >
+                <UserCheck className="w-4 h-4" />
+                <span>Buka e-Kehadiran</span>
+              </button>
             </div>
           </div>
 

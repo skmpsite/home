@@ -20,7 +20,8 @@ import {
   NavigationMenuItem,
   TeacherLinkItem,
   StudentRecord,
-  StudentAbsenceRecord
+  StudentAbsenceRecord,
+  SchoolHoliday
 } from './types';
 import {
   loadProfile,
@@ -60,6 +61,8 @@ import {
   saveStudentsList,
   getAbsenceRecords,
   saveAbsenceRecords,
+  loadSchoolHolidays,
+  saveSchoolHolidays,
   resetAllToDefault
 } from './utils/storage';
 import {
@@ -137,6 +140,7 @@ export default function App() {
   const [teacherLinks, setTeacherLinks] = useState<TeacherLinkItem[]>(loadTeacherLinks);
   const [studentsList, setStudentsList] = useState<StudentRecord[]>(getStudentsList);
   const [absenceRecords, setAbsenceRecords] = useState<StudentAbsenceRecord[]>(getAbsenceRecords);
+  const [schoolHolidays, setSchoolHolidays] = useState<SchoolHoliday[]>(loadSchoolHolidays);
 
   // UI States (with automatic deep link parsing for shared WhatsApp forms and tabs)
   const [activeTab, setActiveTab] = useState<TabType>(() => {
@@ -429,6 +433,7 @@ export default function App() {
     hemData?: HemData;
     teacherLinks?: TeacherLinkItem[];
     absenceRecords?: StudentAbsenceRecord[];
+    schoolHolidays?: SchoolHoliday[];
   }) => {
     // 1. Push to Google Sheets
     syncBulkDataToGoogleSheets({
@@ -452,6 +457,7 @@ export default function App() {
     if (partialUpdate.hemData) pushToFirestore('school_data', 'hem', partialUpdate.hemData);
     if (partialUpdate.teacherLinks) pushToFirestore('school_data', 'teacher_links', { items: partialUpdate.teacherLinks });
     if (partialUpdate.absenceRecords) pushToFirestore('school_data', 'attendance_absence', { records: partialUpdate.absenceRecords });
+    if (partialUpdate.schoolHolidays) pushToFirestore('school_data', 'school_holidays', { items: partialUpdate.schoolHolidays });
     if (partialUpdate.signageSlides || partialUpdate.signageConfig) {
       pushToFirestore('school_data', 'signage', {
         slides: partialUpdate.signageSlides || signageSlides,
@@ -619,6 +625,12 @@ export default function App() {
     autoPushToCloud({ absenceRecords: updated });
   };
 
+  const handleSaveSchoolHolidays = (holidays: SchoolHoliday[]) => {
+    setSchoolHolidays(holidays);
+    saveSchoolHolidays(holidays);
+    autoPushToCloud({ schoolHolidays: holidays });
+  };
+
   const handleResetAllData = () => {
     resetAllToDefault();
     setProfile(loadProfile());
@@ -637,6 +649,7 @@ export default function App() {
     setHemData(loadHemData());
     setNavigationMenu(loadNavigationMenu());
     setTeacherLinks(loadTeacherLinks());
+    setSchoolHolidays(loadSchoolHolidays());
   };
 
   // Global Search Autocomplete Builder
@@ -896,6 +909,8 @@ export default function App() {
             userRole={userRole}
             onOpenStudentPortal={() => setIsGlobalStudentPortalOpen(true)}
             onOpenLogin={() => setLoginModalOpen(true)}
+            schoolHolidays={schoolHolidays}
+            onSaveSchoolHolidays={handleSaveSchoolHolidays}
           />
         )}
 

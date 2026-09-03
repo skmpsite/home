@@ -409,4 +409,15 @@ export interface StudentAbsenceRecord {
   createdAt: string;
 }
 
+export interface SchoolHoliday {
+  id: string;
+  title: string;
+  dateFrom: string; // YYYY-MM-DD
+  dateTo: string;   // YYYY-MM-DD
+  category?: 'peristiwa' | 'perayaan' | 'penggal' | 'umum' | 'khas';
+  description?: string;
+  createdBy?: string;
+  createdAt: string;
+}
+
 

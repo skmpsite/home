@@ -16,7 +16,8 @@ import {
   SignageSlide,
   SignageConfig,
   HemData,
-  NavigationMenuItem
+  NavigationMenuItem,
+  SchoolHoliday
 } from '../types';
 
 export const initialSchoolProfile: SchoolProfile = {
@@ -1318,6 +1319,36 @@ export const initialNavigationMenu: NavigationMenuItem[] = [
     isVisible: true,
     order: 10,
     requiresAdmin: true
+  }
+];
+
+export const initialSchoolHolidays: SchoolHoliday[] = [
+  {
+    id: 'hol-001',
+    title: 'Cuti Hari Kebangsaan',
+    dateFrom: '2026-08-31',
+    dateTo: '2026-08-31',
+    category: 'umum',
+    description: 'Sambutan Hari Kebangsaan Malaysia ke-69',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'hol-002',
+    title: 'Cuti Hari Malaysia',
+    dateFrom: '2026-09-16',
+    dateTo: '2026-09-16',
+    category: 'umum',
+    description: 'Hari Malaysia',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'hol-003',
+    title: 'Cuti Penggal 2 Persekolahan',
+    dateFrom: '2026-09-18',
+    dateTo: '2026-09-26',
+    category: 'penggal',
+    description: 'Cuti Penggal 2 Sesi Persekolahan Kumpulan A (Kedah)',
+    createdAt: new Date().toISOString()
   }
 ];
 

@@ -1,3 +1,5 @@
+import { SchoolHoliday } from '../types';
+
 /**
  * Helper sorting functions for school Years and Classes
  *
@@ -217,4 +219,60 @@ export const getStudentClassCode = (student: { year?: string; className?: string
   }
   return '';
 };
+
+/**
+ * Helper to check if a date string (YYYY-MM-DD) or Date is a weekend in Kedah (Jumaat = 5, Sabtu = 6)
+ */
+export const isKedahWeekend = (
+  dateOrStr: string | Date
+): { isWeekend: boolean; dayName: 'Jumaat' | 'Sabtu' | '' } => {
+  let dt: Date;
+  if (typeof dateOrStr === 'string') {
+    const parts = dateOrStr.split('-');
+    if (parts.length === 3) {
+      dt = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    } else {
+      dt = new Date(dateOrStr);
+    }
+  } else {
+    dt = dateOrStr;
+  }
+  const day = dt.getDay();
+  if (day === 5) return { isWeekend: true, dayName: 'Jumaat' };
+  if (day === 6) return { isWeekend: true, dayName: 'Sabtu' };
+  return { isWeekend: false, dayName: '' };
+};
+
+/**
+ * Resolves whether a given date is a school holiday (custom holiday or default Friday/Saturday weekend in Kedah)
+ */
+export const getActiveSchoolHoliday = (
+  dateStr: string,
+  schoolHolidays?: SchoolHoliday[]
+): SchoolHoliday | undefined => {
+  if (!dateStr) return undefined;
+
+  // 1. Check custom / Takwim school holidays first
+  if (schoolHolidays && schoolHolidays.length > 0) {
+    const customMatch = schoolHolidays.find((h) => dateStr >= h.dateFrom && dateStr <= h.dateTo);
+    if (customMatch) return customMatch;
+  }
+
+  // 2. Default: Friday (Jumaat) and Saturday (Sabtu) are official weekend holidays in Kedah (Kumpulan A)
+  const weekend = isKedahWeekend(dateStr);
+  if (weekend.isWeekend) {
+    return {
+      id: `weekend-${dateStr}`,
+      title: `Cuti Hujung Minggu (${weekend.dayName})`,
+      dateFrom: dateStr,
+      dateTo: dateStr,
+      category: 'umum',
+      description: `Cuti Hujung Minggu Persekolahan Negeri Kedah (${weekend.dayName})`,
+      createdAt: ''
+    };
+  }
+
+  return undefined;
+};
+
 

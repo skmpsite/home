@@ -43,22 +43,58 @@ export const CokurriculumSection: React.FC<CokurriculumSectionProps> = ({ units,
     return '';
   }, [pkKokurikulumStaff]);
 
-  const filteredUnits = units.filter(
-    (u) => activeCategory === 'semua' || u.category === activeCategory
-  );
-
-  const getCategoryBadge = (cat: string) => {
-    switch (cat) {
-      case 'beruniform':
-        return 'bg-blue-500/20 text-blue-300 border border-blue-400/30';
-      case 'kelab':
-        return 'bg-purple-500/20 text-purple-300 border border-purple-400/30';
-      case 'sukan':
-        return 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30';
+  const renderUnitIcon = (iconName?: string, category?: string) => {
+    switch (iconName) {
+      case 'Shield':
+        return <Shield className="w-4 h-4 text-blue-300" />;
+      case 'Award':
+        return <Award className="w-4 h-4 text-amber-300" />;
+      case 'Heart':
+        return <Heart className="w-4 h-4 text-pink-300" />;
+      case 'BookOpen':
+        return <BookOpen className="w-4 h-4 text-purple-300" />;
+      case 'Cpu':
+        return <Cpu className="w-4 h-4 text-cyan-300" />;
+      case 'Trophy':
+        return <Trophy className="w-4 h-4 text-yellow-300" />;
+      case 'Target':
+        return <Target className="w-4 h-4 text-emerald-300" />;
       default:
-        return 'bg-white/10 text-slate-200 border border-white/20';
+        if (category === 'beruniform') return <Shield className="w-4 h-4 text-blue-300" />;
+        if (category === 'kelab') return <BookOpen className="w-4 h-4 text-purple-300" />;
+        return <Trophy className="w-4 h-4 text-emerald-300" />;
     }
   };
+
+  const categoriesConfig = [
+    {
+      id: 'beruniform' as const,
+      label: 'Badan Beruniform',
+      subtitle: 'Pasukan beruniform memupuk disiplin, kepimpinan, ketahanan diri, dan semangat patriotisme.',
+      icon: Shield,
+      badgeClass: 'bg-blue-500/20 text-blue-300 border border-blue-400/30',
+      iconBoxClass: 'bg-blue-500/20 text-blue-300 border border-blue-400/30',
+      borderHover: 'hover:border-blue-400/50'
+    },
+    {
+      id: 'kelab' as const,
+      label: 'Kelab & Persatuan',
+      subtitle: 'Pengkayaan ilmu, bahasa & sastera, kebudayaan, kesenian, dan kemahiran sains & teknologi (STEM).',
+      icon: BookOpen,
+      badgeClass: 'bg-purple-500/20 text-purple-300 border border-purple-400/30',
+      iconBoxClass: 'bg-purple-500/20 text-purple-300 border border-purple-400/30',
+      borderHover: 'hover:border-purple-400/50'
+    },
+    {
+      id: 'sukan' as const,
+      label: 'Sukan & Permainan',
+      subtitle: 'Pembangunan potensi sukan, kecergasan fizikal, ketangkasan, serta semangat kesukanan yang tinggi.',
+      icon: Trophy,
+      badgeClass: 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30',
+      iconBoxClass: 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30',
+      borderHover: 'hover:border-emerald-400/50'
+    }
+  ];
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -147,73 +183,124 @@ export const CokurriculumSection: React.FC<CokurriculumSectionProps> = ({ units,
       {/* Category Tabs */}
       <div className="flex flex-wrap items-center gap-2">
         {[
-          { id: 'semua', label: 'Semua Unit Kokurikulum' },
-          { id: 'beruniform', label: 'Badan Beruniform' },
-          { id: 'kelab', label: 'Kelab & Persatuan' },
-          { id: 'sukan', label: 'Sukan & Permainan' }
+          { id: 'semua', label: 'Semua Unit Kokurikulum', count: units.length },
+          { id: 'beruniform', label: 'Badan Beruniform', count: units.filter((u) => u.category === 'beruniform').length },
+          { id: 'kelab', label: 'Kelab & Persatuan', count: units.filter((u) => u.category === 'kelab').length },
+          { id: 'sukan', label: 'Sukan & Permainan', count: units.filter((u) => u.category === 'sukan').length }
         ].map((tab) => (
           <button
             key={tab.id}
+            type="button"
             onClick={() => setActiveCategory(tab.id as any)}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition ${
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
               activeCategory === tab.id
                 ? 'bg-yellow-400 text-blue-950 font-black shadow-lg shadow-yellow-400/20'
                 : 'bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10'
             }`}
           >
-            {tab.label}
+            <span>{tab.label}</span>
+            <span
+              className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
+                activeCategory === tab.id
+                  ? 'bg-blue-950/40 text-yellow-300'
+                  : 'bg-white/10 text-slate-300'
+              }`}
+            >
+              {tab.count}
+            </span>
           </button>
         ))}
       </div>
 
-      {/* Units Cards Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredUnits.map((unit) => (
-          <div
-            key={unit.id}
-            className="bg-white/10 backdrop-blur-md rounded-3xl border border-white/10 p-6 shadow-lg hover:shadow-xl transition flex flex-col justify-between space-y-4 group hover:border-yellow-400/50"
-          >
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span
-                  className={`text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-lg ${getCategoryBadge(
-                    unit.category
-                  )}`}
-                >
-                  {unit.category === 'beruniform'
-                    ? 'Badan Beruniform'
-                    : unit.category === 'kelab'
-                    ? 'Kelab & Persatuan'
-                    : 'Sukan & Permainan'}
-                </span>
-                <Sparkles className="w-4 h-4 text-yellow-400" />
+      {/* Units Sections */}
+      <div className="space-y-10">
+        {categoriesConfig.map((cat) => {
+          // If activeCategory is not 'semua' and not this category, skip
+          if (activeCategory !== 'semua' && activeCategory !== cat.id) {
+            return null;
+          }
+
+          const catUnits = units.filter((u) => u.category === cat.id);
+          const CatIcon = cat.icon;
+
+          return (
+            <div key={cat.id} className="space-y-4">
+              {/* Category Section Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-2xl ${cat.iconBoxClass} flex items-center justify-center shadow-md flex-shrink-0`}>
+                    <CatIcon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2.5">
+                      <h3 className="text-lg sm:text-xl font-black text-white">
+                        {cat.label}
+                      </h3>
+                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-white/10 text-slate-300 font-bold border border-white/10">
+                        {catUnits.length} Unit
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {cat.subtitle}
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              <h3 className="font-extrabold text-base text-white group-hover:text-yellow-300 transition">
-                {unit.name}
-              </h3>
+              {/* Units Grid */}
+              {catUnits.length === 0 ? (
+                <div className="bg-slate-900/40 border border-dashed border-white/10 rounded-3xl p-8 text-center text-slate-400 text-xs">
+                  Tiada unit didaftarkan di bawah kategori ini buat masa ini.
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {catUnits.map((unit) => (
+                    <div
+                      key={unit.id}
+                      className={`bg-white/10 backdrop-blur-md rounded-3xl border border-white/10 p-6 shadow-lg hover:shadow-xl transition flex flex-col justify-between space-y-4 group ${cat.borderHover}`}
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span
+                            className={`text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-lg ${cat.badgeClass}`}
+                          >
+                            {cat.label}
+                          </span>
+                          <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+                            {renderUnitIcon(unit.iconName, unit.category)}
+                          </div>
+                        </div>
 
-              <p className="text-xs text-slate-200 leading-relaxed font-normal">
-                {unit.description}
-              </p>
+                        <h4 className="font-extrabold text-base text-white group-hover:text-yellow-300 transition">
+                          {unit.name}
+                        </h4>
+
+                        <p className="text-xs text-slate-200 leading-relaxed font-normal">
+                          {unit.description}
+                        </p>
+                      </div>
+
+                      <div className="pt-3 border-t border-white/10 space-y-2 text-xs">
+                        <div className="flex items-center gap-2 text-slate-300">
+                          <User className="w-4 h-4 text-yellow-400 flex-shrink-0" />
+                          <span>
+                            <strong>Guru Penasihat:</strong> {unit.advisorTeacher}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-slate-300">
+                          <Clock className="w-4 h-4 text-yellow-400 flex-shrink-0" />
+                          <span>
+                            <strong>Masa Perjumpaan:</strong> {unit.meetingTime}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-
-            <div className="pt-3 border-t border-white/10 space-y-2 text-xs">
-              <div className="flex items-center gap-2 text-slate-300">
-                <User className="w-4 h-4 text-yellow-400 flex-shrink-0" />
-                <span>
-                  <strong>Guru Penasihat:</strong> {unit.advisorTeacher}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-300">
-                <Clock className="w-4 h-4 text-yellow-400 flex-shrink-0" />
-                <span>
-                  <strong>Masa Perjumpaan:</strong> {unit.meetingTime}
-                </span>
-              </div>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

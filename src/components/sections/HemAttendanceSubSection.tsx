@@ -35,14 +35,25 @@ import {
   MessageCircle,
   Copy,
   ExternalLink,
-  Link
+  Link,
+  CalendarCheck2
 } from 'lucide-react';
-import { StudentRecord, StudentAbsenceRecord } from '../../types';
-import { sortYears, sortClasses, sortClassBreakdown, getYearTheme } from '../../utils/studentHelpers';
+import { StudentRecord, StudentAbsenceRecord, SchoolHoliday } from '../../types';
+import {
+  sortYears,
+  sortClasses,
+  sortClassBreakdown,
+  getYearTheme,
+  getActiveSchoolHoliday,
+  isKedahWeekend
+} from '../../utils/studentHelpers';
+import { SchoolHolidayModal } from '../attendance/SchoolHolidayModal';
 
 interface HemAttendanceSubSectionProps {
   students: StudentRecord[];
   absenceRecords: StudentAbsenceRecord[];
+  schoolHolidays?: SchoolHoliday[];
+  onSaveSchoolHolidays?: (holidays: SchoolHoliday[]) => void;
   onAddAbsenceRecord: (
     record: Omit<StudentAbsenceRecord, 'id' | 'refNo' | 'createdAt'>
   ) => StudentAbsenceRecord;
@@ -66,6 +77,8 @@ const REASON_CATEGORIES = [
 export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = ({
   students,
   absenceRecords,
+  schoolHolidays = [],
+  onSaveSchoolHolidays,
   onAddAbsenceRecord,
   onUpdateAbsenceRecord,
   onDeleteAbsenceRecord,
@@ -75,6 +88,7 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
   onOpenLogin
 }) => {
   const isAuthorized = isAdmin || isTeacher || userRole === 'admin' || userRole === 'guru';
+  const [isHolidayModalOpen, setIsHolidayModalOpen] = useState<boolean>(false);
 
   // Auto-hide info penerangan selepas 5 saat
   const [showPortalInfo, setShowPortalInfo] = useState<boolean>(true);
@@ -105,7 +119,12 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     return `${yyyy}-${mm}-${dd}`;
   });
 
-  // Calculate Kedah School Week Days (Ahad, Isnin, Selasa, Rabu, Khamis)
+  // Check if selectedDate falls within any School Holiday range (or default weekend Friday & Saturday in Kedah)
+  const activeHoliday = useMemo(() => {
+    return getActiveSchoolHoliday(selectedDate, schoolHolidays);
+  }, [schoolHolidays, selectedDate]);
+
+  // Calculate Kedah School Week Days: Ahad - Sabtu (Jumaat & Sabtu are weekend holidays)
   const schoolWeekDays = useMemo(() => {
     const now = new Date();
     const dayOfWeek = now.getDay(); // 0 is Sunday, 1 is Monday ...
@@ -113,11 +132,13 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     sunday.setDate(now.getDate() - dayOfWeek);
 
     const days = [
-      { name: 'Ahad', offset: 0 },
-      { name: 'Isnin', offset: 1 },
-      { name: 'Selasa', offset: 2 },
-      { name: 'Rabu', offset: 3 },
-      { name: 'Khamis', offset: 4 }
+      { name: 'Ahad', shortLabel: 'Ahd', offset: 0, isWeekend: false },
+      { name: 'Isnin', shortLabel: 'Isn', offset: 1, isWeekend: false },
+      { name: 'Selasa', shortLabel: 'Sel', offset: 2, isWeekend: false },
+      { name: 'Rabu', shortLabel: 'Rab', offset: 3, isWeekend: false },
+      { name: 'Khamis', shortLabel: 'Kha', offset: 4, isWeekend: false },
+      { name: 'Jumaat', shortLabel: 'Jum', offset: 5, isWeekend: true },
+      { name: 'Sabtu', shortLabel: 'Sab', offset: 6, isWeekend: true }
     ];
 
     return days.map((d) => {
@@ -128,6 +149,8 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
       const dd = String(dt.getDate()).padStart(2, '0');
       return {
         label: d.name,
+        shortLabel: d.shortLabel,
+        isWeekend: d.isWeekend,
         dateStr: `${yyyy}-${mm}-${dd}`,
         formatted: `${dd}/${mm}`
       };
@@ -392,10 +415,14 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
 
   // Total Students Enrolment
   const totalEnrolment = students.length || 375;
-  const totalAbsentCount = absentStudentIds.size;
-  // "murid yang tidak mengisi ketidakhadiran dikira sebagai hadir"
-  const totalPresentCount = Math.max(0, totalEnrolment - totalAbsentCount);
-  const overallPercentage = totalEnrolment > 0 ? ((totalPresentCount / totalEnrolment) * 100).toFixed(1) : '100.0';
+  // Jika hari cuti sekolah: Hadir 0% dan Tidak Hadir 100%
+  const totalAbsentCount = activeHoliday ? totalEnrolment : absentStudentIds.size;
+  const totalPresentCount = activeHoliday ? 0 : Math.max(0, totalEnrolment - totalAbsentCount);
+  const overallPercentage = activeHoliday
+    ? '0.0'
+    : totalEnrolment > 0
+    ? ((totalPresentCount / totalEnrolment) * 100).toFixed(1)
+    : '100.0';
 
   // Classes list and breakdown
   const allClassesBreakdown = useMemo(() => {
@@ -435,9 +462,13 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
 
     const breakdownList = Object.keys(classMap).map((key) => {
       const item = classMap[key];
-      const absent = item.absentStudents.length;
-      const present = Math.max(0, item.total - absent);
-      const pct = item.total > 0 ? ((present / item.total) * 100).toFixed(1) : '100.0';
+      const absent = activeHoliday ? item.total : item.absentStudents.length;
+      const present = activeHoliday ? 0 : Math.max(0, item.total - absent);
+      const pct = activeHoliday
+        ? '0.0'
+        : item.total > 0
+        ? ((present / item.total) * 100).toFixed(1)
+        : '100.0';
       return {
         key,
         ...item,
@@ -448,7 +479,7 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     });
 
     return sortClassBreakdown(breakdownList);
-  }, [students, absentStudentIds]);
+  }, [students, absentStudentIds, activeHoliday]);
 
   // Generate Direct Link to Form
   const getFormDirectUrl = (classKey?: string) => {
@@ -711,36 +742,79 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                 })}
               </span>
             </div>
+
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               className="bg-white/10 border border-white/20 rounded-xl px-3 py-1.5 text-xs text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400"
             />
-            {/* 5 Hari Persekolahan: Ahad, Isnin, Selasa, Rabu, Khamis */}
-            <div className="grid grid-cols-5 gap-1 text-[10px]">
+
+            {/* Active Holiday Banner under date picker */}
+            {activeHoliday && (
+              <div className="bg-amber-500/20 border border-amber-400/40 rounded-xl px-2.5 py-1.5 text-xs text-amber-200 font-bold flex items-center justify-between gap-2 shadow-sm">
+                <span className="flex items-center gap-1.5 truncate">
+                  <span>🏖️</span>
+                  <span className="truncate">{activeHoliday.title}</span>
+                </span>
+                <span className="text-[10px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.5 rounded flex-shrink-0">
+                  {isKedahWeekend(selectedDate).isWeekend ? 'CUTI HUJUNG MINGGU' : 'CUTI SEKOLAH'}
+                </span>
+              </div>
+            )}
+
+            {/* 7 Hari Mingguan: Ahad - Sabtu (Jumaat & Sabtu cuti hujung minggu) */}
+            <div className="grid grid-cols-7 gap-1 text-[10px]">
               {schoolWeekDays.map((day) => {
                 const isActive = selectedDate === day.dateStr;
+                const holidayForDay = getActiveSchoolHoliday(day.dateStr, schoolHolidays);
+                const isDayHoliday = !!holidayForDay;
                 return (
                   <button
                     key={day.label}
                     type="button"
                     onClick={() => setSelectedDate(day.dateStr)}
-                    className={`py-1.5 px-1 rounded-lg font-bold transition text-center flex flex-col items-center justify-center ${
+                    className={`py-1.5 px-0.5 sm:px-1 rounded-lg font-bold transition text-center flex flex-col items-center justify-center relative ${
                       isActive
                         ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/40 border border-emerald-300'
+                        : isDayHoliday
+                        ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-400/40'
                         : 'bg-white/10 hover:bg-white/20 text-slate-200 border border-white/5'
                     }`}
-                    title={`${day.label} (${day.formatted})`}
+                    title={`${day.label} (${day.formatted})${isDayHoliday ? ` - Cuti: ${holidayForDay.title}` : ''}`}
                   >
-                    <span className="leading-tight">{day.label}</span>
-                    <span className={`text-[8.5px] opacity-80 ${isActive ? 'text-slate-900 font-extrabold' : 'text-slate-400'}`}>
-                      {day.formatted}
+                    <span className="leading-tight text-[9px] sm:text-[10px] truncate max-w-full">
+                      <span className="hidden sm:inline">{day.label}</span>
+                      <span className="sm:hidden">{day.shortLabel}</span>
                     </span>
+                    <span className={`text-[8px] sm:text-[8.5px] opacity-90 ${isActive ? 'text-slate-900 font-extrabold' : isDayHoliday ? 'text-yellow-300 font-black' : 'text-slate-400'}`}>
+                      {isDayHoliday ? 'Cuti' : day.formatted}
+                    </span>
+                    {isDayHoliday && !isActive && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 absolute top-0.5 right-0.5" />
+                    )}
                   </button>
                 );
               })}
             </div>
+
+            {/* Admin Holiday Manager Button */}
+            {isAuthorized && (
+              <button
+                type="button"
+                onClick={() => setIsHolidayModalOpen(true)}
+                className="mt-1 w-full py-2 px-3 bg-gradient-to-r from-amber-500/20 to-yellow-500/15 hover:from-amber-500/30 hover:to-yellow-500/25 text-amber-300 border border-amber-400/40 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition shadow-sm cursor-pointer"
+                title="Buka Kalendar Pengurusan Cuti Sekolah"
+              >
+                <CalendarCheck2 className="w-3.5 h-3.5 text-yellow-400" />
+                <span>Kalendar Cuti Sekolah</span>
+                {schoolHolidays && schoolHolidays.length > 0 && (
+                  <span className="px-1.5 py-0.2 bg-yellow-400 text-slate-950 font-black rounded-full text-[10px]">
+                    {schoolHolidays.length}
+                  </span>
+                )}
+              </button>
+            )}
           </div>
         </div>
 
@@ -767,7 +841,9 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
             <div>
               <p className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider">Hadir (Auto)</p>
               <h4 className="text-2xl font-black text-emerald-400">{totalPresentCount}</h4>
-              <p className="text-[10px] text-emerald-300/80">Kira sebagai hadir</p>
+              <p className="text-[10px] text-emerald-300/80">
+                {activeHoliday ? '0.0% • Cuti Sekolah' : 'Kira sebagai hadir'}
+              </p>
             </div>
           </div>
 
@@ -780,20 +856,30 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
             <div>
               <p className="text-[11px] font-bold text-rose-300 uppercase tracking-wider">Tidak Hadir</p>
               <h4 className="text-2xl font-black text-rose-400">{totalAbsentCount}</h4>
-              <p className="text-[10px] text-rose-300/80">{dailyAbsenceRecords.length} borang diisi</p>
+              <p className="text-[10px] text-rose-300/80">
+                {activeHoliday ? `100.0% • ${activeHoliday.title}` : `${dailyAbsenceRecords.length} borang diisi`}
+              </p>
             </div>
           </div>
 
           {/* Peratusan Kehadiran */}
-          <div className="bg-gradient-to-br from-yellow-500/20 to-amber-500/10 backdrop-blur-md p-4 rounded-2xl border border-yellow-400/40 flex items-center gap-3.5 shadow-lg">
+          <div className={`backdrop-blur-md p-4 rounded-2xl border flex items-center gap-3.5 shadow-lg ${
+            activeHoliday
+              ? 'bg-gradient-to-br from-amber-500/20 to-yellow-500/10 border-amber-400/50'
+              : 'bg-gradient-to-br from-yellow-500/20 to-amber-500/10 border-yellow-400/40'
+          }`}>
             <div className="w-12 h-12 rounded-2xl bg-yellow-400 text-blue-950 flex items-center justify-center flex-shrink-0 shadow-md">
               <Percent className="w-6 h-6 font-black" />
             </div>
-            <div>
-              <p className="text-[11px] font-bold text-yellow-300 uppercase tracking-wider">Peratus Kehadiran</p>
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold text-yellow-300 uppercase tracking-wider truncate">
+                {activeHoliday ? 'Cuti Sekolah' : 'Peratus Kehadiran'}
+              </p>
               <h4 className="text-2xl font-black text-yellow-400">{overallPercentage}%</h4>
-              <p className="text-[10px] text-slate-300 font-semibold">
-                {Number(overallPercentage) >= 95
+              <p className="text-[10px] text-slate-300 font-semibold truncate max-w-[150px]">
+                {activeHoliday
+                  ? `🏖️ ${activeHoliday.title}`
+                  : Number(overallPercentage) >= 95
                   ? '🌟 Sasaran KPM Tercapai'
                   : Number(overallPercentage) >= 90
                   ? '👍 Tahap Memuaskan'
@@ -804,14 +890,25 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
         </div>
 
         {/* Notice Info Banner */}
-        <div className="mt-4 p-3 bg-emerald-950/60 rounded-xl border border-emerald-500/30 flex items-start gap-2.5 text-xs text-emerald-200">
-          <Sparkles className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
-          <p>
-            <strong>Prinsip Pengiraan e-Kehadiran:</strong> Murid yang{' '}
-            <span className="text-yellow-300 font-bold underline">tidak mengisi borang ketidakhadiran</span> dikira
-            secara automatik sebagai <strong>HADIR</strong> ke sekolah pada tarikh tersebut.
-          </p>
-        </div>
+        {activeHoliday ? (
+          <div className="mt-4 p-3.5 bg-gradient-to-r from-amber-950/80 via-slate-900 to-amber-950/80 rounded-xl border border-amber-400/40 flex items-start gap-2.5 text-xs text-amber-200 shadow-md">
+            <Sparkles className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+            <p>
+              <strong>{isKedahWeekend(selectedDate).isWeekend ? 'Cuti Hujung Minggu (Default Kedah):' : 'Cuti Persekolahan:'}</strong> Tarikh ini ditandakan sebagai cuti iaitu{' '}
+              <span className="text-yellow-300 font-extrabold underline">{activeHoliday.title}</span>.
+              Sistem e-Kehadiran memaparkan status kehadiran sebagai <strong>Hadir 0%</strong> dan <strong>Tidak Hadir 100%</strong> (Semua murid bercuti & tiada sesi persekolahan beroperasi).
+            </p>
+          </div>
+        ) : (
+          <div className="mt-4 p-3 bg-emerald-950/60 rounded-xl border border-emerald-500/30 flex items-start gap-2.5 text-xs text-emerald-200">
+            <Sparkles className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+            <p>
+              <strong>Prinsip Pengiraan e-Kehadiran:</strong> Murid yang{' '}
+              <span className="text-yellow-300 font-bold underline">tidak mengisi borang ketidakhadiran</span> dikira
+              secara automatik sebagai <strong>HADIR</strong> ke sekolah pada tarikh tersebut.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Navigation Sub-Tabs Switcher */}
@@ -2116,6 +2213,22 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
           <CheckCircle2 className="w-5 h-5 text-white flex-shrink-0" />
           <span className="text-xs sm:text-sm font-bold">{copiedToast}</span>
         </div>
+      )}
+
+      {/* School Holiday Calendar Modal for Admin/Guru */}
+      {isAuthorized && (
+        <SchoolHolidayModal
+          isOpen={isHolidayModalOpen}
+          onClose={() => setIsHolidayModalOpen(false)}
+          holidays={schoolHolidays || []}
+          onSaveHolidays={(hols) => {
+            if (onSaveSchoolHolidays) {
+              onSaveSchoolHolidays(hols);
+            }
+          }}
+          selectedDate={selectedDate}
+          onSelectDate={(dt) => setSelectedDate(dt)}
+        />
       )}
     </div>
   );

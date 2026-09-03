@@ -17,7 +17,8 @@ import {
   NavigationMenuItem,
   TeacherLinkItem,
   StudentRecord,
-  StudentAbsenceRecord
+  StudentAbsenceRecord,
+  SchoolHoliday
 } from '../types';
 import {
   initialSchoolProfile,
@@ -36,7 +37,8 @@ import {
   initialSignageConfig,
   initialHemData,
   initialNavigationMenu,
-  initialTeacherLinks
+  initialTeacherLinks,
+  initialSchoolHolidays
 } from '../data/initialData';
 import { initialStudentsData } from '../data/studentsData';
 import { initialAbsenceRecords } from '../data/initialAttendance';
@@ -62,7 +64,8 @@ const KEYS = {
   HEM: 'skmp_hem_v1',
   NAV_MENU: 'skmp_nav_menu_v1',
   STUDENTS: 'skmp_students_v1',
-  ABSENCE_RECORDS: 'skmp_absence_records_v1'
+  ABSENCE_RECORDS: 'skmp_absence_records_v1',
+  SCHOOL_HOLIDAYS: 'skmp_school_holidays_v1'
 };
 
 function getStored<T>(key: string, fallback: T): T {
@@ -542,6 +545,18 @@ export function saveAbsenceRecords(records: StudentAbsenceRecord[]): void {
   setStored(KEYS.ABSENCE_RECORDS, records);
 }
 
+export function loadSchoolHolidays(): SchoolHoliday[] {
+  const list = getStored<SchoolHoliday[]>(KEYS.SCHOOL_HOLIDAYS, initialSchoolHolidays);
+  if (!Array.isArray(list) || list.length === 0) {
+    return initialSchoolHolidays;
+  }
+  return list;
+}
+
+export function saveSchoolHolidays(holidays: SchoolHoliday[]): void {
+  setStored(KEYS.SCHOOL_HOLIDAYS, holidays);
+}
+
 export function resetAllToDefault(): void {
   localStorage.removeItem(KEYS.PROFILE);
   localStorage.removeItem(KEYS.STAFF);
@@ -562,4 +577,5 @@ export function resetAllToDefault(): void {
   localStorage.removeItem(KEYS.NAV_MENU);
   localStorage.removeItem(KEYS.STUDENTS);
   localStorage.removeItem(KEYS.ABSENCE_RECORDS);
+  localStorage.removeItem(KEYS.SCHOOL_HOLIDAYS);
 }
