@@ -31,6 +31,7 @@ import { initialHemData } from '../../data/initialData';
 import { initialStudentsList } from '../../data/studentsData';
 import { initialAbsenceRecords } from '../../data/initialAttendance';
 import { HemAttendanceSubSection } from './HemAttendanceSubSection';
+import { TeacherRmtSubSection } from './TeacherRmtSubSection';
 import { formatGoogleDriveUrl } from '../../utils/imageHelpers';
 import {
   findPkHemStaff,
@@ -78,11 +79,14 @@ export const HemSection: React.FC<HemSectionProps> = ({
   const isAuthorized = isAdmin || isTeacher || userRole === 'admin' || userRole === 'guru';
   const data = hemData || initialHemData;
   const [activeSubTab, setActiveSubTab] = useState<'semua' | 'kehadiran' | 'disiplin' | 'kebajikan' | '3k'>(initialSubTab);
+  const [isRmtModalOpen, setIsRmtModalOpen] = useState(false);
 
   const handleOpenRmt = () => {
+    if (!isAuthorized) return;
     if (onOpenRmtPortal) {
       onOpenRmtPortal();
     }
+    setIsRmtModalOpen(true);
   };
 
   // Auto-hide penerangan HEM selepas 5 saat dan gantikan dengan butang anak panah ringkas
@@ -665,13 +669,13 @@ export const HemSection: React.FC<HemSectionProps> = ({
             {/* RMT & Program Susu Sekolah */}
             <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-lg space-y-4 hover:border-yellow-400/40 transition flex flex-col justify-between">
               <div 
-                onClick={handleOpenRmt}
-                className="space-y-3 cursor-pointer"
+                onClick={isAuthorized ? handleOpenRmt : undefined}
+                className={`space-y-3 ${isAuthorized ? 'cursor-pointer' : ''}`}
               >
                 <div className="w-10 h-10 bg-amber-500/20 text-amber-300 rounded-2xl flex items-center justify-center font-bold border border-amber-400/30">
                   <Utensils className="w-5 h-5 text-amber-300" />
                 </div>
-                <h4 className="font-extrabold text-white text-base hover:text-amber-300 transition">
+                <h4 className={`font-extrabold text-white text-base ${isAuthorized ? 'hover:text-amber-300' : ''} transition`}>
                   {data.kebajikan?.rmtTitle || 'Rancangan Makanan Tambahan (RMT) & Susu'}
                 </h4>
                 <p className="text-xs text-slate-200 leading-relaxed">
@@ -698,17 +702,20 @@ export const HemSection: React.FC<HemSectionProps> = ({
               </div>
 
               <div className="space-y-2 pt-2 border-t border-white/10">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleOpenRmt();
-                  }}
-                  className="w-full py-2.5 px-3 bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-400 hover:to-emerald-500 text-slate-950 font-black text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 active:scale-95 cursor-pointer"
-                >
-                  <Utensils className="w-4 h-4 text-slate-950" />
-                  <span>Buka Portal RMT (89 Murid)</span>
-                </button>
+                {/* Butang Buka Portal RMT: Hanya muncul untuk pengguna log in Guru dan Admin sahaja */}
+                {isAuthorized && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenRmt();
+                    }}
+                    className="w-full py-2.5 px-3 bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-400 hover:to-emerald-500 text-slate-950 font-black text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 active:scale-95 cursor-pointer"
+                  >
+                    <Utensils className="w-4 h-4 text-slate-950" />
+                    <span>Buka Portal RMT (89 Murid)</span>
+                  </button>
+                )}
 
                 <button
                   onClick={() =>
@@ -1039,6 +1046,51 @@ export const HemSection: React.FC<HemSectionProps> = ({
           )}
         </div>
       </div>
+
+      {/* RMT Portal Modal (Hanya Untuk Guru & Admin) */}
+      {isRmtModalOpen && isAuthorized && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
+          <div className="bg-slate-900 border border-amber-500/30 rounded-3xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-slate-950/90">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-400 shadow-md">
+                  <Utensils className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                    Portal Rancangan Makanan Tambahan (RMT)
+                    <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 font-black">
+                      89 Murid Layak
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Pangkalan data murid, semakan kelayakan, menu & perekodan ketidakhadiran RMT
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsRmtModalOpen(false)}
+                className="p-2 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition cursor-pointer"
+                title="Tutup Modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
+              <TeacherRmtSubSection
+                coordinatorName={data.kebajikan?.rmtCoordinator || profile?.hemCoordinator || 'Puan Fazilah binti Mat'}
+                students={students}
+                absenceRecords={absenceRecords}
+                onAddAbsenceRecord={onAddAbsenceRecord}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* DETAIL MODAL POPUP */}
       {selectedDetailModal && (

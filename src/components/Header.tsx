@@ -62,19 +62,6 @@ export const Header: React.FC<HeaderProps> = ({
               Kod Sekolah: {profile.code}
             </span>
 
-            {/* Direct Quick Button: Carian Murid APDM */}
-            {onOpenStudentPortal && (
-              <button
-                type="button"
-                onClick={onOpenStudentPortal}
-                className="inline-flex items-center gap-1.5 text-xs font-black text-white hover:bg-emerald-500 bg-emerald-600 px-3 py-0.5 rounded-full border border-emerald-400 shadow-md shadow-emerald-950/30 transition active:scale-95"
-                title="Buka Portal Senarai & Carian Murid SKMP"
-              >
-                <Users className="w-3.5 h-3.5 text-emerald-200" />
-                <span>Carian Murid</span>
-              </button>
-            )}
-
             {isAdmin ? (
               <div className="flex items-center gap-2">
                 <button
