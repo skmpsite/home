@@ -184,6 +184,40 @@ export default function App() {
     return 'semua';
   });
 
+  const [kurikulumSubTab, setKurikulumSubTab] = useState<'utama' | 'ict'>(() => {
+    if (typeof window === 'undefined') return 'utama';
+    const search = (window.location.search || '').toLowerCase();
+    const hash = (window.location.hash || '').toLowerCase();
+    if (
+      search.includes('subtab=ict') ||
+      search.includes('tab=ict') ||
+      search.includes('view=ict') ||
+      search.includes('tempahan=ict') ||
+      search.includes('kewangan') ||
+      search.includes('delima') ||
+      hash === '#ict' ||
+      hash.includes('ict') ||
+      hash.includes('kewangan') ||
+      hash.includes('delima')
+    ) {
+      return 'ict';
+    }
+    return 'utama';
+  });
+
+  const [ictSubTab, setIctSubTab] = useState<'jadual' | 'delima' | 'kewangan'>(() => {
+    if (typeof window === 'undefined') return 'jadual';
+    const search = (window.location.search || '').toLowerCase();
+    const hash = (window.location.hash || '').toLowerCase();
+    if (search.includes('kewangan') || hash.includes('kewangan') || search.includes('cashflow')) {
+      return 'kewangan';
+    }
+    if (search.includes('delima') || hash.includes('delima')) {
+      return 'delima';
+    }
+    return 'jadual';
+  });
+
   // Listen to popstate and hashchange to allow seamless switching
   useEffect(() => {
     const handleUrlChange = () => {
@@ -216,6 +250,29 @@ export default function App() {
         setHemSubTab('kehadiran');
       } else if (search.includes('tab=hem') || hash === '#hem') {
         setActiveTab('hem');
+      } else if (
+        search.includes('subtab=ict') ||
+        search.includes('tab=ict') ||
+        search.includes('view=ict') ||
+        search.includes('tempahan=ict') ||
+        search.includes('kewangan') ||
+        search.includes('delima') ||
+        hash === '#ict' ||
+        hash.includes('ict') ||
+        hash.includes('kewangan') ||
+        hash.includes('delima')
+      ) {
+        setActiveTab('akademik');
+        setKurikulumSubTab('ict');
+        if (search.includes('kewangan') || hash.includes('kewangan') || search.includes('cashflow')) {
+          setIctSubTab('kewangan');
+        } else if (search.includes('delima') || hash.includes('delima')) {
+          setIctSubTab('delima');
+        } else {
+          setIctSubTab('jadual');
+        }
+      } else if (search.includes('tab=akademik') || search.includes('tab=kurikulum') || hash === '#kurikulum') {
+        setActiveTab('akademik');
       }
     };
 
@@ -890,6 +947,12 @@ export default function App() {
             events={events}
             profile={profile}
             staffList={staffList}
+            initialSubTab={kurikulumSubTab}
+            initialIctSubTab={ictSubTab}
+            isAdmin={isAdmin}
+            isTeacher={userRole === 'guru'}
+            userRole={userRole}
+            onOpenLogin={() => setLoginModalOpen(true)}
           />
         )}
 

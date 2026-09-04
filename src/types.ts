@@ -420,4 +420,48 @@ export interface SchoolHoliday {
   createdAt: string;
 }
 
+export interface IctBookingRecord {
+  id: string;
+  date: string; // YYYY-MM-DD
+  dayName: 'Ahad' | 'Isnin' | 'Selasa' | 'Rabu' | 'Khamis' | string;
+  slotIndex: number; // 0 to 10
+  startTime: string; // e.g. "07:45"
+  endTime: string;   // e.g. "08:15"
+  timeSlotLabel: string; // e.g. "07:45 AM - 08:15 AM"
+  roomName: string; // e.g. "Makmal Komputer (Bilik ICT 1)"
+  teacherName: string;
+  teacherEmail?: string;
+  className: string; // e.g. "6 Inovatif"
+  subject: string;   // e.g. "Reka Bentuk & Teknologi"
+  purpose: string;   // e.g. "Amali Pengaturcaraan Digital"
+  numberOfStudents?: number;
+  equipmentNeeded?: string[];
+  status: 'disahkan' | 'penyelenggaraan' | 'dibatalkan';
+  maintenanceReason?: string;
+  notes?: string;
+  monthKey: string; // "YYYY-MM", e.g. "2026-09"
+  createdBy: string;
+  createdAt: string;
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
+export interface IctCashFlowRecord {
+  id: string;
+  date: string; // YYYY-MM-DD
+  type: 'masuk' | 'keluar'; // Duit Masuk vs Duit Keluar
+  category: string; // e.g. "Peruntukan LPBT", "Sumbangan PIBG", "Penyelenggaraan ICT", etc.
+  description: string; // Butiran / Keterangan Transaksi
+  refNo: string; // No. Baucar / Resit / Rujukan
+  amount: number; // Nilai RM (positif)
+  payerOrPayee?: string; // Diterima daripada / Dibayar kepada
+  receiptUrl?: string; // Gambar atau dokumen resit / bukti pembelian (Base64 atau URL)
+  receiptFileName?: string; // Nama fail resit contohnya 'Resit_Toner_HP.jpg'
+  notes?: string;
+  createdAt: string;
+  createdBy: string;
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
 

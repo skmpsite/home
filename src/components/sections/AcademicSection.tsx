@@ -1,16 +1,83 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { CalendarEvent, SchoolProfile, Staff } from '../../types';
-import { GraduationCap, Calendar as CalendarIcon, BookOpen, Layers, CheckCircle, Clock, MapPin, Users, Award, FileText, UserCheck, ChevronDown, ChevronUp } from 'lucide-react';
+import {
+  GraduationCap,
+  Calendar as CalendarIcon,
+  BookOpen,
+  Layers,
+  CheckCircle,
+  Clock,
+  MapPin,
+  Users,
+  Award,
+  FileText,
+  UserCheck,
+  ChevronDown,
+  ChevronUp,
+  Laptop,
+  ExternalLink,
+  Globe,
+  Wallet
+} from 'lucide-react';
 import { formatGoogleDriveUrl } from '../../utils/imageHelpers';
 import { findPkPentadbiranStaff } from '../../utils/staffHelpers';
+import { IctBookingSubSection } from './IctBookingSubSection';
+import { IctDelimaSubSection } from './IctDelimaSubSection';
+import { IctFinanceSubSection } from './IctFinanceSubSection';
 
 interface AcademicSectionProps {
   events: CalendarEvent[];
   profile?: SchoolProfile;
   staffList?: Staff[];
+  initialSubTab?: 'utama' | 'ict';
+  initialIctSubTab?: 'jadual' | 'delima' | 'kewangan';
+  isAdmin?: boolean;
+  isTeacher?: boolean;
+  userRole?: 'admin' | 'guru' | null;
+  onOpenLogin?: () => void;
 }
 
-export const AcademicSection: React.FC<AcademicSectionProps> = ({ events, profile, staffList }) => {
+export const AcademicSection: React.FC<AcademicSectionProps> = ({
+  events,
+  profile,
+  staffList,
+  initialSubTab = 'utama',
+  initialIctSubTab = 'jadual',
+  isAdmin = false,
+  isTeacher = false,
+  userRole = null,
+  onOpenLogin
+}) => {
+  const [activeSubTab, setActiveSubTab] = useState<'utama' | 'ict'>(initialSubTab);
+  const [activeIctSubTab, setActiveIctSubTab] = useState<'jadual' | 'delima' | 'kewangan'>(initialIctSubTab);
+
+  // Akses Kewangan ICT hanya dibuka untuk log masuk Guru dan Admin sahaja
+  const canAccessFinance = isAdmin || isTeacher || userRole === 'admin' || userRole === 'guru';
+
+  // Sekiranya pengguna belum log masuk sebagai guru/admin tetapi tab kewangan terpilih, kembali ke jadual
+  useEffect(() => {
+    if (!canAccessFinance && activeIctSubTab === 'kewangan') {
+      setActiveIctSubTab('jadual');
+    }
+  }, [canAccessFinance, activeIctSubTab]);
+
+  // Sync with initialSubTab prop changes if any
+  useEffect(() => {
+    if (initialSubTab) {
+      setActiveSubTab(initialSubTab);
+    }
+  }, [initialSubTab]);
+
+  useEffect(() => {
+    if (initialIctSubTab) {
+      if (initialIctSubTab === 'kewangan' && !canAccessFinance) {
+        setActiveIctSubTab('jadual');
+      } else {
+        setActiveIctSubTab(initialIctSubTab);
+      }
+    }
+  }, [initialIctSubTab, canAccessFinance]);
+
   const [selectedCategory, setSelectedCategory] = useState<'semua' | 'peperiksaan' | 'cuti' | 'acara' | 'pibg'>('semua');
   const [selectedEventModal, setSelectedEventModal] = useState<CalendarEvent | null>(null);
   const [showDesc, setShowDesc] = useState<boolean>(true);
@@ -143,10 +210,156 @@ export const AcademicSection: React.FC<AcademicSectionProps> = ({ events, profil
             </div>
           </div>
         </div>
+
+        {/* Sub-Menu Navigation: Utama Kurikulum & ICT */}
+        <div className="mt-6 pt-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* 1. Sub Menu: Utama Kurikulum */}
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('utama')}
+              className={`px-4 py-2 rounded-2xl text-xs font-black flex items-center gap-2 transition cursor-pointer shadow-sm ${
+                activeSubTab === 'utama'
+                  ? 'bg-yellow-400 text-blue-950 shadow-md shadow-yellow-400/20 border border-yellow-300'
+                  : 'bg-white/5 hover:bg-white/15 text-slate-200 border border-white/10'
+              }`}
+            >
+              <GraduationCap className="w-4 h-4" />
+              <span>Utama Kurikulum</span>
+            </button>
+
+            {/* 2. Sub Menu: ICT */}
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('ict')}
+              className={`px-4 py-2 rounded-2xl text-xs font-black flex items-center gap-2 transition cursor-pointer shadow-sm ${
+                activeSubTab === 'ict'
+                  ? 'bg-yellow-400 text-blue-950 shadow-md shadow-yellow-400/20 border border-yellow-300'
+                  : 'bg-blue-600/30 hover:bg-blue-600/50 text-blue-200 border border-blue-400/40'
+              }`}
+            >
+              <Laptop className="w-4 h-4 text-blue-400" />
+              <span>ICT</span>
+              <span className={`text-[9.5px] px-1.5 py-0.5 rounded-full font-black ${
+                activeSubTab === 'ict'
+                  ? 'bg-blue-950 text-yellow-300'
+                  : 'bg-blue-500/30 text-blue-200'
+              }`}>
+                {canAccessFinance ? 'Jadual • DELIMa • Kewangan' : 'Jadual • DELIMa'}
+              </span>
+            </button>
+          </div>
+
+          <div className="text-[11px] text-slate-300 hidden sm:block font-medium">
+            {activeSubTab === 'ict'
+              ? activeIctSubTab === 'jadual'
+                ? 'Sistem Tempahan Makmal Komputer (Ahad–Kha | 7.45am–1.15pm)'
+                : activeIctSubTab === 'delima'
+                ? 'Gerbang Semakan ID DELIMa Google Workspace KPM'
+                : 'Sistem Aliran Tunai & Penyata Kewangan Makmal Komputer'
+              : 'Struktur Kurikulum, DLP & Takwim Akademik SK Merbau Pulas'}
+          </div>
+        </div>
       </div>
 
-      {/* Curriculum & Key Programs Grid */}
-      <div className="grid md:grid-cols-3 gap-6">
+      {/* CONDITIONAL SUB-MENU CONTENT */}
+      {activeSubTab === 'ict' ? (
+        <div className="space-y-6">
+          {/* Sub Menu Navigation under ICT: Jadual ICT | ID DELIMa | Kewangan */}
+          <div className="bg-slate-900/90 backdrop-blur-xl p-2.5 rounded-2xl border border-white/15 shadow-xl flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {/* 1. Sub Menu: Jadual ICT */}
+              <button
+                type="button"
+                onClick={() => setActiveIctSubTab('jadual')}
+                className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition cursor-pointer shadow-sm ${
+                  activeIctSubTab === 'jadual'
+                    ? 'bg-yellow-400 text-blue-950 shadow-md shadow-yellow-400/30 border border-yellow-300'
+                    : 'bg-white/5 hover:bg-white/15 text-slate-200 border border-white/10'
+                }`}
+              >
+                <CalendarIcon className="w-4 h-4" />
+                <span>Jadual ICT</span>
+              </button>
+
+              {/* 2. Sub Menu: ID DELIMa (Clicks to open https://skmpsite.github.io/DELIMa/) */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveIctSubTab('delima');
+                  window.open('https://skmpsite.github.io/DELIMa/', '_blank', 'noopener,noreferrer');
+                }}
+                className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition cursor-pointer shadow-sm ${
+                  activeIctSubTab === 'delima'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-indigo-500/30 border border-indigo-400'
+                    : 'bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-200 border border-indigo-400/30'
+                }`}
+                title="Buka pautan ID DELIMa SKMP (https://skmpsite.github.io/DELIMa/)"
+              >
+                <Globe className="w-4 h-4 text-indigo-300" />
+                <span>ID DELIMa</span>
+                <ExternalLink className="w-3.5 h-3.5 text-yellow-300 opacity-90" />
+              </button>
+
+              {/* 3. Sub Menu: Kewangan (Hanya muncul untuk log masuk Guru dan Admin sahaja) */}
+              {canAccessFinance && (
+                <button
+                  type="button"
+                  onClick={() => setActiveIctSubTab('kewangan')}
+                  className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition cursor-pointer shadow-sm ${
+                    activeIctSubTab === 'kewangan'
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 shadow-md shadow-emerald-500/30 border border-emerald-400'
+                      : 'bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-400/30'
+                  }`}
+                  title="Aliran Tunai & Penyata Kewangan ICT (Akses Khas Guru & Admin)"
+                >
+                  <Wallet className="w-4 h-4 text-emerald-400" />
+                  <span>Kewangan</span>
+                  <span className="text-[9px] px-2 py-0.5 rounded-full font-black bg-emerald-400/20 text-emerald-200 border border-emerald-300/30 uppercase">
+                    Guru & Admin
+                  </span>
+                </button>
+              )}
+            </div>
+
+            <div className="text-[11px] text-slate-300 hidden md:block font-medium pr-2">
+              {activeIctSubTab === 'jadual' && 'Tempahan Slot Makmal Komputer & Rekod Penggunaan'}
+              {activeIctSubTab === 'delima' && 'Pautan Terus: https://skmpsite.github.io/DELIMa/'}
+              {canAccessFinance && activeIctSubTab === 'kewangan' && 'Aliran Tunai Keluar Masuk & Pengiraan Baki Automatik'}
+            </div>
+          </div>
+
+          {/* Sub Menu Content */}
+          {activeIctSubTab === 'jadual' && (
+            <IctBookingSubSection
+              isAdmin={isAdmin}
+              isTeacher={isTeacher}
+              userRole={userRole}
+              profile={profile}
+              staffList={staffList}
+              onOpenLogin={onOpenLogin}
+            />
+          )}
+
+          {activeIctSubTab === 'delima' && (
+            <IctDelimaSubSection />
+          )}
+
+          {canAccessFinance && activeIctSubTab === 'kewangan' && (
+            <IctFinanceSubSection
+              isAdmin={isAdmin}
+              isTeacher={isTeacher}
+              userRole={userRole}
+              profile={profile}
+              staffList={staffList}
+              onOpenLogin={onOpenLogin}
+            />
+          )}
+        </div>
+      ) : (
+        <>
+          {/* Curriculum & Key Programs Grid */}
+          <div className="grid md:grid-cols-3 gap-6">
         <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-lg space-y-3">
           <div className="w-10 h-10 bg-blue-500/20 text-blue-300 rounded-2xl flex items-center justify-center font-bold border border-blue-400/30">
             <BookOpen className="w-5 h-5 text-blue-300" />
@@ -324,6 +537,8 @@ export const AcademicSection: React.FC<AcademicSectionProps> = ({ events, profil
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );
