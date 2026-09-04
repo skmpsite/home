@@ -103,11 +103,12 @@ export const Header: React.FC<HeaderProps> = ({
             ) : (
               <button
                 onClick={onOpenLogin}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-yellow-400 hover:text-yellow-300 transition px-2.5 py-1 rounded-lg hover:bg-white/10 border border-yellow-400/30"
+                className="p-1.5 sm:px-2.5 sm:py-1 rounded-lg text-yellow-400 hover:text-yellow-300 hover:bg-white/10 border border-yellow-400/30 transition inline-flex items-center justify-center gap-1.5 shadow-sm cursor-pointer text-xs font-bold"
                 title="Log Masuk Guru & Pentadbir"
+                aria-label="Log Masuk"
               >
                 <Lock className="w-3.5 h-3.5 text-yellow-400" />
-                <span>Log Masuk</span>
+                <span className="hidden sm:inline">Log Masuk</span>
               </button>
             )}
 

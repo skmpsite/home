@@ -1,132 +1,179 @@
-import React from 'react';
-import { ExternalLink, Globe, Sparkles, BookOpen, UserCheck, ShieldCheck, Laptop, HelpCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  Globe,
+  Maximize2,
+  Minimize2,
+  RotateCw,
+  ExternalLink,
+  Search,
+  Sparkles,
+  ShieldCheck,
+  X,
+  Info
+} from 'lucide-react';
 
 const DELIMA_URL = 'https://skmpsite.github.io/DELIMa/';
 
 export const IctDelimaSubSection: React.FC = () => {
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [iframeKey, setIframeKey] = useState<number>(0);
+
+  const handleRefresh = () => {
+    setIsLoading(true);
+    setIframeKey((prev) => prev + 1);
+  };
+
   const handleOpenExternal = () => {
     window.open(DELIMA_URL, '_blank', 'noopener,noreferrer');
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn">
-      {/* Hero Banner */}
-      <div className="bg-gradient-to-br from-slate-900 via-indigo-950/80 to-slate-900 rounded-3xl p-6 sm:p-8 border border-white/15 shadow-2xl relative overflow-hidden text-white">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold text-xs border border-indigo-400/30">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Portal Rasmi Pembelajaran Digital KPM</span>
+    <div className="space-y-4 animate-fadeIn">
+      {/* Top Controls & Info Bar */}
+      <div className="bg-gradient-to-r from-blue-950/90 via-slate-900 to-indigo-950/90 p-4 sm:p-5 rounded-3xl border border-indigo-500/30 shadow-xl relative overflow-hidden text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30 shrink-0 border border-indigo-400/40">
+            <Globe className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-base sm:text-lg font-black text-white tracking-tight">
+                Portal Semakan ID DELIMa SK Merbau Pulas
+              </h3>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
+                Google Workspace KPM
+              </span>
             </div>
-            <h3 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              Portal Semakan ID DELIMa SK Merbau Pulas
-            </h3>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-              Pautan terus ke gerbang semakan ID DELIMa (Digital Educational Learning Initiative Malaysia) untuk murid dan guru SK Merbau Pulas bagi mengakses akaun Google Workspace KPM (moe-dl.edu.my).
+            <p className="text-xs text-slate-300 mt-0.5">
+              Carian akaun emel moe-dl bagi murid dan guru SK Merbau Pulas terus di laman ini.
             </p>
           </div>
+        </div>
 
+        {/* Action Buttons: Fit Skrin Penuh, Muat Semula, Buka Luar */}
+        <div className="flex items-center gap-2 flex-wrap self-end md:self-auto">
+          {/* Fit Skrin Penuh Toggle */}
+          <button
+            type="button"
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs flex items-center gap-1.5 transition shadow-md shadow-indigo-600/30 cursor-pointer active:scale-95 border border-indigo-400/40"
+            title={isFullscreen ? 'Keluar Mod Fit Skrin Penuh' : 'Buka Fit Skrin Penuh untuk carian lebih selesa'}
+          >
+            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5 text-yellow-300" />}
+            <span>{isFullscreen ? 'Kecilkan' : 'Fit Skrin Penuh'}</span>
+          </button>
+
+          {/* Refresh Button */}
+          <button
+            type="button"
+            onClick={handleRefresh}
+            className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white font-bold text-xs flex items-center gap-1.5 transition border border-white/10 cursor-pointer active:scale-95"
+            title="Muat semula paparan DELIMa"
+          >
+            <RotateCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-yellow-300' : ''}`} />
+            <span className="hidden sm:inline">Muat Semula</span>
+          </button>
+
+          {/* External Tab Fallback Button */}
           <button
             type="button"
             onClick={handleOpenExternal}
-            className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-sm flex items-center gap-2.5 shadow-xl shadow-indigo-500/30 transition cursor-pointer hover:scale-[1.03] active:scale-[0.98] border border-indigo-400/40 shrink-0"
+            className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition border border-white/10 cursor-pointer active:scale-95"
+            title="Buka di tab baharu sekiranya perlu"
           >
-            <ExternalLink className="w-4 h-4 text-yellow-300" />
-            <span>Buka Laman ID DELIMa</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Tab Baru</span>
           </button>
-        </div>
-
-        {/* Feature quick links / cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-white/10">
-          <div className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
-            <div className="flex items-center gap-2 text-yellow-300 font-bold text-xs">
-              <UserCheck className="w-4 h-4 text-yellow-400" />
-              <span>Semakan ID Murid</span>
-            </div>
-            <p className="text-[11px] text-slate-300 mt-1">
-              Carian akaun emel moe-dl bagi setiap murid mengikut nama dan kelas.
-            </p>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
-            <div className="flex items-center gap-2 text-emerald-300 font-bold text-xs">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>Katalaluan Asas</span>
-            </div>
-            <p className="text-[11px] text-slate-300 mt-1">
-              Panduan penetapan semula (reset password) bersama Guru Penyelaras ICT.
-            </p>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
-            <div className="flex items-center gap-2 text-blue-300 font-bold text-xs">
-              <Laptop className="w-4 h-4 text-blue-400" />
-              <span>Google Classroom & Buku Teks</span>
-            </div>
-            <p className="text-[11px] text-slate-300 mt-1">
-              Akses aplikasi pembelajaran interaktif, Canva for Education & KPM Textbooks.
-            </p>
-          </div>
         </div>
       </div>
 
-      {/* Embedded Portal / Interactive Card */}
-      <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-white/10 shadow-2xl text-white space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-400/30">
-              <Globe className="w-6 h-6" />
+      {/* Main Fit-Screen Portal View */}
+      <div
+        className={`w-full rounded-3xl overflow-hidden border border-indigo-500/30 bg-slate-950 shadow-2xl transition-all duration-300 flex flex-col ${
+          isFullscreen
+            ? 'fixed inset-0 z-50 rounded-none border-0 p-2 sm:p-4 bg-slate-950/95 backdrop-blur-md'
+            : 'h-[78vh] sm:h-[84vh] min-h-[580px]'
+        }`}
+      >
+        {/* Browser Header Bar */}
+        <div className="bg-slate-900/95 px-4 py-2.5 border-b border-white/10 flex items-center justify-between gap-3 text-xs text-slate-300 shrink-0">
+          <div className="flex items-center gap-2.5 overflow-hidden">
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="w-3 h-3 rounded-full bg-rose-500/80 shadow-sm inline-block" />
+              <span className="w-3 h-3 rounded-full bg-yellow-500/80 shadow-sm inline-block" />
+              <span className="w-3 h-3 rounded-full bg-emerald-500/80 shadow-sm inline-block" />
             </div>
-            <div>
-              <h4 className="text-lg font-black text-white">Laman Sesawang Semakan Rasmi</h4>
-              <p className="text-xs text-indigo-300 font-mono select-all">
-                {DELIMA_URL}
-              </p>
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-950/80 rounded-xl border border-white/10 font-mono text-[11px] text-slate-200 truncate max-w-xs sm:max-w-md">
+              <Search className="w-3 h-3 text-indigo-400 shrink-0" />
+              <span className="truncate">https://skmpsite.github.io/DELIMa/</span>
             </div>
           </div>
 
-          <a
-            href={DELIMA_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-blue-950 font-black text-xs transition shadow-md shadow-yellow-400/20"
-          >
-            <span>Layari https://skmpsite.github.io/DELIMa/</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </a>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-400/30">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Laman Aktif
+            </span>
+
+            {/* In fullscreen, prominent exit button */}
+            {isFullscreen && (
+              <button
+                type="button"
+                onClick={() => setIsFullscreen(false)}
+                className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs flex items-center gap-1.5 transition shadow-md active:scale-95 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+                <span>Tutup Skrin Penuh</span>
+              </button>
+            )}
+
+            {!isFullscreen && (
+              <button
+                type="button"
+                onClick={() => setIsFullscreen(true)}
+                className="text-yellow-300 hover:text-yellow-200 font-bold flex items-center gap-1 text-[11px] p-1 rounded-lg hover:bg-white/5 transition"
+                title="Besarkan paparan ke skrin penuh"
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Fit Skrin Penuh</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Embedded Iframe Preview with Fallback */}
-        <div className="w-full rounded-2xl overflow-hidden border border-white/15 bg-slate-950 shadow-inner relative min-h-[500px] flex flex-col">
-          <div className="bg-slate-900 px-4 py-2 border-b border-white/10 flex items-center justify-between text-xs text-slate-400">
-            <div className="flex items-center gap-2">
-              <div className="flex gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-500/80" />
-                <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
-              </div>
-              <span className="font-mono text-[11px] text-slate-300 ml-2">skmpsite.github.io/DELIMa/</span>
+        {/* Loading Spinner Overlay */}
+        <div className="relative flex-1 w-full h-full bg-white overflow-hidden">
+          {isLoading && (
+            <div className="absolute inset-0 z-10 bg-slate-900/90 flex flex-col items-center justify-center gap-3 text-white">
+              <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs font-bold text-slate-300">Memuatkan Portal DELIMa SK Merbau Pulas...</p>
             </div>
-            <a
-              href={DELIMA_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-yellow-300 hover:underline flex items-center gap-1 text-[11px]"
-            >
-              <span>Buka Skrin Penuh</span>
-              <ExternalLink className="w-3 h-3" />
-            </a>
-          </div>
+          )}
 
+          {/* The Embed Iframe */}
           <iframe
+            key={iframeKey}
             src={DELIMA_URL}
-            title="ID DELIMa SK Merbau Pulas"
-            className="w-full flex-1 min-h-[480px] border-0 bg-white"
-            sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+            title="Portal Semakan ID DELIMa SK Merbau Pulas"
+            onLoad={() => setIsLoading(false)}
+            className="w-full h-full border-0 bg-white"
+            sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-downloads"
+            allow="clipboard-write; fullscreen"
           />
+        </div>
+
+        {/* Quick Helper Tip Footer */}
+        <div className="bg-slate-900/90 px-4 py-2 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400 shrink-0">
+          <div className="flex items-center gap-1.5 truncate">
+            <Info className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
+            <span className="truncate">
+              Gunakan kotak carian atau pilihan kelas di dalam laman untuk mencari ID DELIMa dengan pantas.
+            </span>
+          </div>
+          <span className="text-[10px] text-slate-300 hidden md:inline shrink-0 pl-2">
+            SK Merbau Pulas Digital Hub
+          </span>
         </div>
       </div>
     </div>

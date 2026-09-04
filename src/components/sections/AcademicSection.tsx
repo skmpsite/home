@@ -282,23 +282,19 @@ export const AcademicSection: React.FC<AcademicSectionProps> = ({
                 <span>Jadual ICT</span>
               </button>
 
-              {/* 2. Sub Menu: ID DELIMa (Clicks to open https://skmpsite.github.io/DELIMa/) */}
+              {/* 2. Sub Menu: ID DELIMa (Dibuka terus di page yang sama tanpa buka tab baru) */}
               <button
                 type="button"
-                onClick={() => {
-                  setActiveIctSubTab('delima');
-                  window.open('https://skmpsite.github.io/DELIMa/', '_blank', 'noopener,noreferrer');
-                }}
+                onClick={() => setActiveIctSubTab('delima')}
                 className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition cursor-pointer shadow-sm ${
                   activeIctSubTab === 'delima'
                     ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-indigo-500/30 border border-indigo-400'
                     : 'bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-200 border border-indigo-400/30'
                 }`}
-                title="Buka pautan ID DELIMa SKMP (https://skmpsite.github.io/DELIMa/)"
+                title="Semakan ID DELIMa SK Merbau Pulas"
               >
                 <Globe className="w-4 h-4 text-indigo-300" />
                 <span>ID DELIMa</span>
-                <ExternalLink className="w-3.5 h-3.5 text-yellow-300 opacity-90" />
               </button>
 
               {/* 3. Sub Menu: Kewangan (Hanya muncul untuk log masuk Guru dan Admin sahaja) */}
@@ -324,7 +320,7 @@ export const AcademicSection: React.FC<AcademicSectionProps> = ({
 
             <div className="text-[11px] text-slate-300 hidden md:block font-medium pr-2">
               {activeIctSubTab === 'jadual' && 'Tempahan Slot Makmal Komputer & Rekod Penggunaan'}
-              {activeIctSubTab === 'delima' && 'Pautan Terus: https://skmpsite.github.io/DELIMa/'}
+              {activeIctSubTab === 'delima' && 'Portal Semakan ID DELIMa Rasmi SK Merbau Pulas'}
               {canAccessFinance && activeIctSubTab === 'kewangan' && 'Aliran Tunai Keluar Masuk & Pengiraan Baki Automatik'}
             </div>
           </div>

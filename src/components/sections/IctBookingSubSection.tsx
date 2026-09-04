@@ -540,10 +540,12 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
                   <button
                     type="button"
                     onClick={onOpenLogin}
-                    className="ml-1 px-2.5 py-1 bg-yellow-400 hover:bg-yellow-300 text-blue-950 font-black text-xs rounded-xl transition shadow-md flex items-center gap-1 cursor-pointer"
+                    className="ml-1 p-1.5 sm:px-2.5 sm:py-1 bg-yellow-400 hover:bg-yellow-300 text-blue-950 font-black text-xs rounded-xl transition shadow-md flex items-center justify-center gap-1 cursor-pointer"
+                    title="Log Masuk Guru & Admin"
+                    aria-label="Log Masuk"
                   >
                     <LogIn className="w-3.5 h-3.5" />
-                    Log Masuk
+                    <span className="hidden sm:inline">Log Masuk</span>
                   </button>
                 )}
               </div>
