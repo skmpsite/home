@@ -167,7 +167,10 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
   const bookingGridMap = useMemo(() => {
     const map = new Map<string, IctBookingRecord>();
     bookings.forEach((b) => {
-      if (b.roomName === selectedRoom && b.status !== 'dibatalkan') {
+      if (
+        (b.roomName === selectedRoom || !b.roomName || b.roomName.includes('ICT') || b.roomName.includes('Makmal')) &&
+        b.status !== 'dibatalkan'
+      ) {
         const key = `${b.date}_${b.slotIndex}`;
         map.set(key, b);
       }
@@ -224,11 +227,12 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
 
   // FORM STATE FOR NEW BOOKING
   const [formDate, setFormDate] = useState<string>(() => weekDays[0]?.dateStr || formatDateYMD(new Date()));
-  const [formSlotIndex, setFormSlotIndex] = useState<number>(0);
-  const [formDurationSlots, setFormDurationSlots] = useState<number>(1); // 1 slot (30 min) or 2 slots (1 hour)
+  const [formSlotStart, setFormSlotStart] = useState<number>(0);
+  const [formSlotEnd, setFormSlotEnd] = useState<number>(0);
   const [formTeacherName, setFormTeacherName] = useState<string>('');
-  const [formClass, setFormClass] = useState<string>(ICT_CLASSES[8]); // 5 Kreatif default
+  const [formClass, setFormClass] = useState<string>(ICT_CLASSES[0]); // 6 Ibnu Sina default
   const [formSubject, setFormSubject] = useState<string>(ICT_SUBJECTS[0]);
+  const [formCustomSubject, setFormCustomSubject] = useState<string>('');
   const [formPurpose, setFormPurpose] = useState<string>('');
   const [formStudentsCount, setFormStudentsCount] = useState<number>(30);
   const [formEquipment, setFormEquipment] = useState<string[]>(['30 PC Murid', 'Smart TV 65"']);
@@ -256,8 +260,9 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
     }
 
     setFormDate(dateStr);
-    setFormSlotIndex(slotIdx);
-    setFormDurationSlots(1);
+    setFormSlotStart(slotIdx);
+    setFormSlotEnd(slotIdx);
+    setFormCustomSubject('');
     setFormPurpose('');
     setIsBookingModalOpen(true);
   };
@@ -269,6 +274,17 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
       alert('Sila masukkan nama guru penempah.');
       return;
     }
+
+    const effectiveSubject =
+      formSubject === 'Lain-lain'
+        ? formCustomSubject.trim() || 'Lain-lain'
+        : formSubject;
+
+    if (formSubject === 'Lain-lain' && !formCustomSubject.trim()) {
+      alert('Sila nyatakan mata pelajaran atau aktiviti PdP.');
+      return;
+    }
+
     if (!formPurpose.trim()) {
       alert('Sila nyatakan tujuan PdP atau aktiviti tempahan.');
       return;
@@ -279,10 +295,15 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
     const dayNames = ['Ahad', 'Isnin', 'Selasa', 'Rabu', 'Khamis', 'Jumaat', 'Sabtu'];
     const dayName = dayNames[d.getDay()] || 'Hari Persekolahan';
 
+    // Calculate slots range
+    const startIdx = Math.min(formSlotStart, formSlotEnd);
+    const endIdx = Math.max(formSlotStart, formSlotEnd);
+    const totalSlots = endIdx - startIdx + 1;
+
     // Check if slot or subsequent slots are already booked
     const newRecordsToAdd: IctBookingRecord[] = [];
-    for (let i = 0; i < formDurationSlots; i++) {
-      const currentIdx = formSlotIndex + i;
+    for (let i = 0; i < totalSlots; i++) {
+      const currentIdx = startIdx + i;
       if (currentIdx >= ICT_TIME_SLOTS.length) break;
 
       const slotDef = ICT_TIME_SLOTS[currentIdx];
@@ -303,10 +324,10 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
         startTime: slotDef.startTime,
         endTime: slotDef.endTime,
         timeSlotLabel: slotDef.label,
-        roomName: selectedRoom,
+        roomName: 'Makmal ICT',
         teacherName: formTeacherName.trim(),
         className: formClass,
-        subject: formSubject,
+        subject: effectiveSubject,
         purpose: formPurpose.trim(),
         numberOfStudents: formStudentsCount,
         equipmentNeeded: formEquipment,
@@ -320,7 +341,7 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
     const updated = [...bookings, ...newRecordsToAdd];
     handleUpdateBookings(updated);
     setIsBookingModalOpen(false);
-    setToastMessage(`Berjaya menempah ${newRecordsToAdd.length} slot Bilik ICT untuk kelas ${formClass}!`);
+    setToastMessage(`Berjaya menempah ${newRecordsToAdd.length} slot Makmal ICT untuk kelas ${formClass}!`);
   };
 
   // FORM STATE FOR MAINTENANCE (Admin Only)
@@ -474,7 +495,7 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
             <div className="flex flex-wrap items-center gap-2">
               <span className="px-3 py-1 bg-yellow-400/20 text-yellow-300 font-black text-[11px] rounded-full border border-yellow-400/40 flex items-center gap-1.5">
                 <Laptop className="w-3.5 h-3.5 text-yellow-400" />
-                Sistem Tempahan Bilik ICT / Makmal Komputer
+                Sistem Tempahan Makmal ICT
               </span>
               <span className="px-2.5 py-0.5 bg-blue-500/20 text-blue-300 font-bold text-[10px] rounded-md border border-blue-400/30">
                 Ahad – Khamis (07:45 AM – 01:15 PM)
@@ -482,7 +503,7 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
             </div>
 
             <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
-              <span>Makmal Komputer Seri Merbau (Bilik ICT 1)</span>
+              <span>Makmal ICT SK Merbau Pulas</span>
             </h3>
 
             <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
@@ -577,18 +598,11 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
 
         {/* Action Buttons: Tempah Slot & Sekat Penyelenggaraan */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Room Selector Dropdown */}
-          <select
-            value={selectedRoom}
-            onChange={(e) => setSelectedRoom(e.target.value)}
-            className="px-3 py-2 bg-slate-900 border border-white/20 rounded-xl text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
-          >
-            {ICT_ROOMS.map((r) => (
-              <option key={r.id} value={r.name} className="bg-slate-900 text-white">
-                {r.name}
-              </option>
-            ))}
-          </select>
+          {/* Static Lab Badge (Makmal ICT) */}
+          <div className="px-3.5 py-2 bg-slate-900/90 border border-white/20 rounded-xl text-xs font-black text-white flex items-center gap-1.5 shadow-sm">
+            <Laptop className="w-3.5 h-3.5 text-yellow-400" />
+            <span>Makmal ICT</span>
+          </div>
 
           {/* New Booking Button */}
           <button
@@ -600,8 +614,9 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
                 return;
               }
               setFormDate(selectedDate || weekDays[0]?.dateStr || formatDateYMD(new Date()));
-              setFormSlotIndex(0);
-              setFormDurationSlots(1);
+              setFormSlotStart(0);
+              setFormSlotEnd(0);
+              setFormCustomSubject('');
               setIsBookingModalOpen(true);
             }}
             className="px-3.5 py-2 bg-yellow-400 hover:bg-yellow-300 text-blue-950 rounded-xl text-xs font-black shadow-md shadow-yellow-400/20 flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
@@ -1417,8 +1432,8 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
                   <Laptop className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-black text-base text-white">Borang Tempahan Bilik ICT</h3>
-                  <p className="text-[11px] text-slate-400">Pengesahan slot PdP Makmal Komputer SK Merbau Pulas</p>
+                  <h3 className="font-black text-base text-white">Borang Tempahan Makmal ICT</h3>
+                  <p className="text-[11px] text-slate-400">Pengesahan slot PdP Makmal ICT SK Merbau Pulas</p>
                 </div>
               </div>
               <button
@@ -1435,17 +1450,10 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
               <div className="grid sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-slate-300 mb-1">Bilik / Makmal:</label>
-                  <select
-                    value={selectedRoom}
-                    onChange={(e) => setSelectedRoom(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-950 border border-white/20 rounded-xl text-white font-bold"
-                  >
-                    {ICT_ROOMS.map((r) => (
-                      <option key={r.id} value={r.name}>
-                        {r.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="w-full px-3 py-2 bg-slate-950/90 border border-white/20 rounded-xl text-white font-bold flex items-center gap-2 shadow-inner">
+                    <Laptop className="w-4 h-4 text-yellow-400" />
+                    <span>Makmal ICT</span>
+                  </div>
                 </div>
 
                 <div>
@@ -1460,13 +1468,19 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
                 </div>
               </div>
 
-              {/* Slot Mula & Tempoh Slot (30 Minit atau 1 Jam) */}
+              {/* Slot Mula & Slot Tamat */}
               <div className="grid sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-300 mb-1">Slot Mula (Setengah Jam):</label>
+                  <label className="block font-bold text-slate-300 mb-1">Slot Mula:</label>
                   <select
-                    value={formSlotIndex}
-                    onChange={(e) => setFormSlotIndex(Number(e.target.value))}
+                    value={formSlotStart}
+                    onChange={(e) => {
+                      const newStart = Number(e.target.value);
+                      setFormSlotStart(newStart);
+                      if (formSlotEnd < newStart) {
+                        setFormSlotEnd(newStart);
+                      }
+                    }}
                     className="w-full px-3 py-2 bg-slate-950 border border-white/20 rounded-xl text-white font-bold"
                   >
                     {ICT_TIME_SLOTS.map((s) => (
@@ -1478,15 +1492,17 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-300 mb-1">Tempoh Penggunaan:</label>
+                  <label className="block font-bold text-slate-300 mb-1">Slot Tamat:</label>
                   <select
-                    value={formDurationSlots}
-                    onChange={(e) => setFormDurationSlots(Number(e.target.value))}
+                    value={formSlotEnd}
+                    onChange={(e) => setFormSlotEnd(Number(e.target.value))}
                     className="w-full px-3 py-2 bg-slate-950 border border-white/20 rounded-xl text-white font-bold"
                   >
-                    <option value={1}>1 Slot (30 Minit)</option>
-                    <option value={2}>2 Slot (1 Jam PdP)</option>
-                    <option value={3}>3 Slot (1 Jam 30 Minit)</option>
+                    {ICT_TIME_SLOTS.filter((s) => s.index >= formSlotStart).map((s) => (
+                      <option key={s.index} value={s.index}>
+                        {s.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -1525,7 +1541,12 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
                   <label className="block font-bold text-slate-300 mb-1">Mata Pelajaran:</label>
                   <select
                     value={formSubject}
-                    onChange={(e) => setFormSubject(e.target.value)}
+                    onChange={(e) => {
+                      setFormSubject(e.target.value);
+                      if (e.target.value !== 'Lain-lain') {
+                        setFormCustomSubject('');
+                      }
+                    }}
                     className="w-full px-3 py-2 bg-slate-950 border border-white/20 rounded-xl text-white font-bold"
                   >
                     {ICT_SUBJECTS.map((sub) => (
@@ -1537,6 +1558,23 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
                 </div>
               </div>
 
+              {/* Pilihan Lain-lain: Kotak teks untuk mengisi mata pelajaran / aktiviti */}
+              {formSubject === 'Lain-lain' && (
+                <div className="p-3 bg-yellow-400/10 border border-yellow-400/30 rounded-2xl animate-fadeIn space-y-1">
+                  <label className="block font-bold text-yellow-300 text-xs">
+                    Nyatakan Mata Pelajaran / Aktiviti:
+                  </label>
+                  <input
+                    type="text"
+                    value={formCustomSubject}
+                    onChange={(e) => setFormCustomSubject(e.target.value)}
+                    placeholder="Sila masukkan mata pelajaran atau aktiviti PdP..."
+                    className="w-full px-3 py-2 bg-slate-950 border border-yellow-400/50 rounded-xl text-white font-bold placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                    required
+                  />
+                </div>
+              )}
+
               {/* Tajuk / Tujuan PdP */}
               <div>
                 <label className="block font-bold text-slate-300 mb-1">Tajuk / Aktiviti Pembelajaran PdP:</label>
@@ -1544,41 +1582,10 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
                   rows={2}
                   value={formPurpose}
                   onChange={(e) => setFormPurpose(e.target.value)}
-                  placeholder="Contoh: Amali Pengekodan Scratch, Simulasi DLP Sains, Kemahiran Canva Digital..."
+                  placeholder="Contoh: Amali Pengekodan Scratch, Simulasi Sains, Kemahiran Canva Digital..."
                   className="w-full px-3 py-2 bg-slate-950 border border-white/20 rounded-xl text-white"
                   required
                 />
-              </div>
-
-              {/* Keperluan Alatan */}
-              <div>
-                <label className="block font-bold text-slate-300 mb-1.5">Keperluan Peralatan Makmal:</label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {['30 PC Murid', 'Smart TV 65"', 'Projektor LCD', 'Audio PA System'].map((eq) => {
-                    const isChecked = formEquipment.includes(eq);
-                    return (
-                      <button
-                        key={eq}
-                        type="button"
-                        onClick={() => {
-                          if (isChecked) {
-                            setFormEquipment(formEquipment.filter((x) => x !== eq));
-                          } else {
-                            setFormEquipment([...formEquipment, eq]);
-                          }
-                        }}
-                        className={`p-2 rounded-xl text-[11px] font-bold border text-left transition flex items-center gap-1.5 cursor-pointer ${
-                          isChecked
-                            ? 'bg-yellow-400 text-blue-950 border-yellow-300 font-black'
-                            : 'bg-white/5 text-slate-300 border-white/10'
-                        }`}
-                      >
-                        <Check className={`w-3.5 h-3.5 ${isChecked ? 'opacity-100' : 'opacity-20'}`} />
-                        <span className="truncate">{eq}</span>
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
 
               {/* Submit Buttons */}

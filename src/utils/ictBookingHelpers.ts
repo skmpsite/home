@@ -32,40 +32,32 @@ export const ICT_DAYS = [
 
 export const ICT_ROOMS = [
   {
-    id: 'makmal-ict-1',
-    name: 'Makmal Komputer (Bilik ICT 1)',
+    id: 'makmal-ict',
+    name: 'Makmal ICT',
     capacity: '36 Murid + Guru',
     equipment: '30 PC Murid, 1 PC Guru, Smart TV 65", Rangkaian LAN Berkelajuan Tinggi, Berhawa Dingin'
-  },
-  {
-    id: 'bilik-media',
-    name: 'Bilik Akses Media & Digital',
-    capacity: '15 Murid',
-    equipment: '15 PC Rujukan, Projektor Digital, Meja Kolaborasi'
   }
 ];
 
 export const ICT_CLASSES = [
-  'Prasekolah Gemilang',
-  '1 Kreatif',
-  '1 Inovatif',
-  '2 Kreatif',
-  '2 Inovatif',
-  '3 Kreatif',
-  '3 Inovatif',
-  '4 Kreatif',
-  '4 Inovatif',
-  '5 Kreatif',
-  '5 Inovatif',
-  '6 Kreatif',
-  '6 Inovatif',
-  'PPKI Al-Biruni'
+  '6 Ibnu Sina',
+  '6 Ibnu Khaldun',
+  '5 Ibnu Sina',
+  '5 Ibnu Khaldun',
+  '4 Ibnu Sina',
+  '4 Ibnu Khaldun',
+  '3 Ibnu Sina',
+  '3 Ibnu Khaldun',
+  '2 Ibnu Sina',
+  '2 Ibnu Khaldun',
+  '1 Ibnu Sina',
+  '1 Ibnu Khaldun'
 ];
 
 export const ICT_SUBJECTS = [
   'Reka Bentuk & Teknologi (RBT)',
-  'Sains (DLP)',
-  'Matematik (DLP)',
+  'Sains',
+  'Matematik',
   'Bahasa Melayu',
   'Bahasa Inggeris',
   'Pendidikan Islam',
@@ -73,10 +65,11 @@ export const ICT_SUBJECTS = [
   'Sejarah',
   'Pendidikan Seni Visual (PSV)',
   'Aktiviti Kelab Robotik / ICT',
-  'Mesyuarat / Bengkel Guru'
+  'Mesyuarat / Bengkel Guru',
+  'Lain-lain'
 ];
 
-export const STORAGE_KEY_ICT_BOOKINGS = 'skmp_ict_room_bookings_v2';
+export const STORAGE_KEY_ICT_BOOKINGS = 'skmp_ict_room_bookings_v3';
 
 // Letters for the recess slot (09:45 - 10:15) across the school week:
 // Ahad -> 'R'
@@ -173,10 +166,10 @@ export function getInitialIctBookings(): IctBookingRecord[] {
       startTime: '08:15',
       endTime: '08:45',
       timeSlotLabel: '08:15 - 08:45',
-      roomName: 'Makmal Komputer (Bilik ICT 1)',
+      roomName: 'Makmal ICT',
       teacherName: 'Cikgu Ahmad Zaki',
       teacherEmail: 'guru.zaki@moe-dl.edu.my',
-      className: '6 Inovatif',
+      className: '6 Ibnu Sina',
       subject: 'Reka Bentuk & Teknologi (RBT)',
       purpose: 'Amali Pengekodan Blok Scratch & Algoritma Robotik',
       numberOfStudents: 32,
@@ -194,11 +187,11 @@ export function getInitialIctBookings(): IctBookingRecord[] {
       startTime: '08:45',
       endTime: '09:15',
       timeSlotLabel: '08:45 - 09:15',
-      roomName: 'Makmal Komputer (Bilik ICT 1)',
+      roomName: 'Makmal ICT',
       teacherName: 'Cikgu Siti Hajar binti Salleh',
       teacherEmail: 'guru.hajar@moe-dl.edu.my',
-      className: '5 Kreatif',
-      subject: 'Sains (DLP)',
+      className: '5 Ibnu Sina',
+      subject: 'Sains',
       purpose: 'Simulasi Digital Sistem Peredaran Darah Manusia',
       numberOfStudents: 28,
       equipmentNeeded: ['30 PC Murid', 'Projektor LCD'],
@@ -215,11 +208,11 @@ export function getInitialIctBookings(): IctBookingRecord[] {
       startTime: '10:45',
       endTime: '11:15',
       timeSlotLabel: '10:45 - 11:15',
-      roomName: 'Makmal Komputer (Bilik ICT 1)',
+      roomName: 'Makmal ICT',
       teacherName: 'Puan Noraini binti Yusof (PKP)',
       teacherEmail: 'pkp@moe-dl.edu.my',
-      className: '6 Kreatif',
-      subject: 'Matematik (DLP)',
+      className: '6 Ibnu Khaldun',
+      subject: 'Matematik',
       purpose: 'Aplikasi Pembelajaran Interaktif Geometri & Ruang',
       numberOfStudents: 30,
       equipmentNeeded: ['30 PC Murid', 'Smart TV 65"'],
@@ -236,7 +229,7 @@ export function getInitialIctBookings(): IctBookingRecord[] {
       startTime: '12:15',
       endTime: '12:45',
       timeSlotLabel: '12:15 - 12:45',
-      roomName: 'Makmal Komputer (Bilik ICT 1)',
+      roomName: 'Makmal ICT',
       teacherName: 'Penyelaras ICT Sekolah',
       teacherEmail: 'ict.skmp@moe-dl.edu.my',
       className: 'Guru & Staf',

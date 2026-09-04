@@ -37,7 +37,7 @@ const STORAGE_KEY = 'skmp_ict_room_bookings';
 const FACILITIES = [
   {
     id: 'makmal-ict',
-    name: 'Makmal Komputer (Bilik ICT 1)',
+    name: 'Makmal ICT',
     capacity: '30 Murid + Guru',
     equipment: '30 PC Murid, 1 PC Guru, Smart TV 65", Berhawa Dingin',
     tag: 'Popular'
@@ -93,7 +93,7 @@ export const IctBookingModal: React.FC<IctBookingModalProps> = ({
           {
             id: 'ict-1',
             teacherName: 'Cikgu Ahmad Zaki (Guru Sains)',
-            facility: 'Makmal Komputer (Bilik ICT 1)',
+            facility: 'Makmal ICT',
             date: new Date().toISOString().split('T')[0],
             timeSlot: 'Waktu PdP 3 - 4 (08:45 - 09:45)',
             purpose: 'PdP Sains Tahun 5 - Simulasi Ekosistem Digital',
