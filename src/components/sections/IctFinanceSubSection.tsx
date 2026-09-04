@@ -27,7 +27,9 @@ import {
   ZoomIn,
   ZoomOut,
   Receipt,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Smartphone,
+  ChevronRight
 } from 'lucide-react';
 import { IctCashFlowRecord, SchoolProfile, Staff } from '../../types';
 import {
@@ -68,6 +70,7 @@ export const IctFinanceSubSection: React.FC<IctFinanceSubSectionProps> = ({
   const [filterMonth, setFilterMonth] = useState<string>('semua'); // "YYYY-MM" or "semua"
   const [filterCategory, setFilterCategory] = useState<string>('semua');
   const [filterReceipt, setFilterReceipt] = useState<'semua' | 'dengan_resit' | 'tanpa_resit'>('semua');
+  const [mobileDisplayMode, setMobileDisplayMode] = useState<'kompak' | 'jadual'>('kompak');
 
   // Modal states
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -442,8 +445,8 @@ export const IctFinanceSubSection: React.FC<IctFinanceSubSectionProps> = ({
           </div>
         </div>
 
-        {/* 3 Large Stat Cards: Duit Masuk, Duit Keluar, Baki Semasa (Auto-Calculated) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-white/10">
+        {/* 3 Stat Cards: Desktop and Tablet View */}
+        <div className="hidden sm:grid sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-white/10">
           {/* 1. Duit Masuk */}
           <div className="p-4 sm:p-5 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 backdrop-blur-md shadow-lg relative overflow-hidden group hover:border-emerald-400/50 transition">
             <div className="flex items-center justify-between">
@@ -510,6 +513,70 @@ export const IctFinanceSubSection: React.FC<IctFinanceSubSectionProps> = ({
             </div>
             <div className="text-[11px] text-slate-300 font-medium mt-1 flex items-center gap-1">
               <span>Auto Kira: Masuk ({formatCurrencyRM(overallTotals.totalIn)}) - Keluar ({formatCurrencyRM(overallTotals.totalOut)})</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Compact Smartphone Summary Card (Ringkas & Jimat Ruang) */}
+        <div className="block sm:hidden mt-4 pt-3.5 border-t border-white/10">
+          <div
+            className={`p-3.5 rounded-2xl backdrop-blur-md shadow-lg border relative overflow-hidden ${
+              overallTotals.balance >= 0
+                ? 'bg-gradient-to-br from-blue-950/80 via-slate-900 to-blue-950/70 border-yellow-400/40'
+                : 'bg-gradient-to-br from-red-950/80 via-slate-900 to-red-950/70 border-red-500/50'
+            }`}
+          >
+            {/* Main Balance Row */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-black text-yellow-300 uppercase tracking-wider">
+                <Wallet className="w-3.5 h-3.5 text-yellow-400" />
+                <span>Baki Semasa Tunai ICT</span>
+              </div>
+              <span
+                className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border ${
+                  overallTotals.balance >= 0
+                    ? 'bg-yellow-400 text-blue-950 border-yellow-300'
+                    : 'bg-red-500 text-white border-red-400'
+                }`}
+              >
+                {overallTotals.balance >= 0 ? 'Surplus' : 'Defisit'}
+              </span>
+            </div>
+
+            <div className="mt-1 text-2xl font-black text-white tracking-tight flex items-baseline justify-between">
+              <span>{formatCurrencyRM(overallTotals.balance)}</span>
+              <span className="text-[10px] text-slate-300 font-semibold font-mono">
+                {records.length} rekod
+              </span>
+            </div>
+
+            {/* 2-Column Mini Breakdown Grid */}
+            <div className="grid grid-cols-2 gap-2 mt-2.5 pt-2.5 border-t border-white/10 text-xs">
+              {/* Masuk */}
+              <div className="p-2 rounded-xl bg-emerald-950/50 border border-emerald-500/25 flex flex-col justify-between">
+                <div className="flex items-center justify-between text-[10px] text-emerald-300 font-bold uppercase">
+                  <span className="flex items-center gap-1">
+                    <TrendingUp className="w-3 h-3 text-emerald-400" /> Masuk
+                  </span>
+                  <span className="text-[9px] text-emerald-400/80 font-mono">({overallTotals.countIn})</span>
+                </div>
+                <div className="mt-1 text-sm font-black text-emerald-300 truncate">
+                  +{formatCurrencyRM(overallTotals.totalIn)}
+                </div>
+              </div>
+
+              {/* Keluar */}
+              <div className="p-2 rounded-xl bg-rose-950/50 border border-rose-500/25 flex flex-col justify-between">
+                <div className="flex items-center justify-between text-[10px] text-rose-300 font-bold uppercase">
+                  <span className="flex items-center gap-1">
+                    <TrendingDown className="w-3 h-3 text-rose-400" /> Keluar
+                  </span>
+                  <span className="text-[9px] text-rose-400/80 font-mono">({overallTotals.countOut})</span>
+                </div>
+                <div className="mt-1 text-sm font-black text-rose-300 truncate">
+                  -{formatCurrencyRM(overallTotals.totalOut)}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -698,21 +765,208 @@ export const IctFinanceSubSection: React.FC<IctFinanceSubSectionProps> = ({
         </div>
 
         {/* Filtered Summary stats */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/5 text-[11px] text-slate-300">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-white/5 text-[11px] text-slate-300">
           <div>
             Menunjukkan <strong className="text-white">{filteredRecords.length}</strong> daripada {records.length} rekod transaksi.
           </div>
-          <div className="flex items-center gap-3">
-            <span>Masuk: <strong className="text-emerald-400">{formatCurrencyRM(filteredTotals.totalIn)}</strong></span>
-            <span>Keluar: <strong className="text-rose-400">{formatCurrencyRM(filteredTotals.totalOut)}</strong></span>
-            <span>Baki Paparan: <strong className="text-yellow-300">{formatCurrencyRM(filteredTotals.balance)}</strong></span>
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 text-[10px] sm:text-[11px]">
+            <span className="bg-slate-950/60 px-2 py-0.5 rounded-md border border-white/5">Masuk: <strong className="text-emerald-400">{formatCurrencyRM(filteredTotals.totalIn)}</strong></span>
+            <span className="bg-slate-950/60 px-2 py-0.5 rounded-md border border-white/5">Keluar: <strong className="text-rose-400">{formatCurrencyRM(filteredTotals.totalOut)}</strong></span>
+            <span className="bg-slate-950/60 px-2 py-0.5 rounded-md border border-white/5">Baki: <strong className="text-yellow-300">{formatCurrencyRM(filteredTotals.balance)}</strong></span>
           </div>
         </div>
       </div>
 
-      {/* Cash Flow Table (Fit-to-screen, responsive, running balance) */}
-      <div className="w-full rounded-2xl border border-white/10 shadow-2xl bg-slate-900/80 backdrop-blur-xl overflow-hidden">
-        <table className="w-full text-left border-collapse table-fixed select-none">
+      {/* Smartphone Display Mode Toggle (Kad Ringkas vs Jadual Penuh) */}
+      <div className="flex sm:hidden items-center justify-between gap-2 p-2.5 rounded-2xl bg-slate-900/90 border border-white/10 shadow-md">
+        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-200">
+          <Smartphone className="w-3.5 h-3.5 text-yellow-400" />
+          <span>Paparan Telefon:</span>
+        </div>
+        <div className="flex rounded-xl bg-slate-950/80 p-1 border border-white/10 text-[11px] font-black">
+          <button
+            type="button"
+            onClick={() => setMobileDisplayMode('kompak')}
+            className={`px-3 py-1 rounded-lg transition ${
+              mobileDisplayMode === 'kompak'
+                ? 'bg-yellow-400 text-blue-950 shadow-sm'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            Kad Ringkas
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileDisplayMode('jadual')}
+            className={`px-3 py-1 rounded-lg transition ${
+              mobileDisplayMode === 'jadual'
+                ? 'bg-yellow-400 text-blue-950 shadow-sm'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            Jadual Penuh
+          </button>
+        </div>
+      </div>
+
+      {/* MOBILE COMPACT CARDS FEED (Ringkas, padat & mesra smartphone) */}
+      <div className={`sm:hidden ${mobileDisplayMode === 'kompak' ? 'block' : 'hidden'} space-y-3`}>
+        {filteredRecords.length === 0 ? (
+          <div className="p-8 text-center bg-slate-900/80 rounded-2xl border border-white/10 text-slate-400">
+            <FileText className="w-8 h-8 text-slate-500 mx-auto mb-2" />
+            <p className="font-bold text-sm text-slate-300">Tiada rekod transaksi dijumpai.</p>
+            <p className="text-xs text-slate-400 mt-1">Sila ubah kata kunci atau tetapan penapis.</p>
+          </div>
+        ) : (
+          filteredRecords.map((r, idx) => {
+            const isMasuk = r.type === 'masuk';
+            return (
+              <div
+                key={r.id}
+                className={`p-3.5 rounded-2xl bg-slate-900/90 border shadow-md space-y-2.5 transition relative overflow-hidden ${
+                  isMasuk
+                    ? 'border-emerald-500/30 border-l-4 border-l-emerald-400'
+                    : 'border-rose-500/30 border-l-4 border-l-rose-500'
+                }`}
+              >
+                {/* Header: Date, Ref No, Status Pill */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-300">
+                    <Calendar className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
+                    <span>{r.date}</span>
+                    <span className="text-slate-500">•</span>
+                    <span className="font-mono text-[10px] text-slate-400 truncate max-w-[120px]" title={r.refNo}>
+                      {r.refNo}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span
+                      className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${
+                        isMasuk
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40'
+                          : 'bg-rose-500/20 text-rose-300 border-rose-400/40'
+                      }`}
+                    >
+                      {isMasuk ? '+ Masuk' : '- Keluar'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Description & Category */}
+                <div>
+                  <div className="text-xs font-black text-white leading-snug">
+                    {r.description}
+                  </div>
+                  <div className="flex items-center gap-2 mt-1.5 flex-wrap text-[10px]">
+                    <span className="px-2 py-0.5 rounded-md bg-white/5 text-slate-200 border border-white/10 font-semibold">
+                      {r.category}
+                    </span>
+                    {r.payerOrPayee && (
+                      <span className="text-slate-400 truncate">
+                        Pihak: <strong className="text-slate-300">{r.payerOrPayee}</strong>
+                      </span>
+                    )}
+                  </div>
+                  {r.notes && (
+                    <div className="text-[10px] text-slate-300 italic mt-1.5 bg-white/[0.03] p-1.5 rounded-lg border border-white/5">
+                      Nota: {r.notes}
+                    </div>
+                  )}
+                </div>
+
+                {/* Financial Row: Amount & Running Balance */}
+                <div className="p-2.5 rounded-xl bg-slate-950/70 border border-white/10 flex items-center justify-between gap-2">
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block">
+                      Amaun {isMasuk ? 'Masuk' : 'Keluar'}
+                    </span>
+                    <span
+                      className={`text-sm font-black tracking-tight ${
+                        isMasuk ? 'text-emerald-300' : 'text-rose-300'
+                      }`}
+                    >
+                      {isMasuk ? '+' : '-'}{formatCurrencyRM(r.amount)}
+                    </span>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block">
+                      Baki Semasa
+                    </span>
+                    <span
+                      className={`text-xs font-black px-2 py-0.5 rounded-md inline-block ${
+                        r.runningBalance >= 0
+                          ? 'bg-yellow-400/20 text-yellow-300 border border-yellow-400/30'
+                          : 'bg-red-500/20 text-red-300 border border-red-500/30'
+                      }`}
+                    >
+                      {formatCurrencyRM(r.runningBalance)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Bottom Action Strip: Receipt & Admin Tools */}
+                <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-2">
+                  <div>
+                    {r.receiptUrl ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setViewingReceiptRecord(r);
+                          setReceiptZoomLevel(1);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 hover:text-white border border-emerald-400/40 text-[10px] font-black transition cursor-pointer active:scale-95"
+                      >
+                        <Paperclip className="w-3 h-3 text-emerald-400" />
+                        <span>Lihat Resit / Bukti</span>
+                      </button>
+                    ) : isAdmin ? (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEdit(r)}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-yellow-300 text-[10px] font-medium border border-white/10"
+                      >
+                        <Upload className="w-2.5 h-2.5" />
+                        <span>+ Resit</span>
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-slate-400 italic">
+                        Tiada resit dilampirkan
+                      </span>
+                    )}
+                  </div>
+
+                  {isAdmin && (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEdit(r)}
+                        className="px-2.5 py-1 rounded-lg bg-yellow-400 hover:bg-yellow-300 text-blue-950 font-black text-[10px] transition flex items-center gap-1 shadow cursor-pointer active:scale-95"
+                      >
+                        <Edit3 className="w-2.5 h-2.5" />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirmRecord(r)}
+                        className="px-2.5 py-1 rounded-lg bg-rose-600/30 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 font-black text-[10px] transition flex items-center gap-1 cursor-pointer active:scale-95"
+                      >
+                        <Trash2 className="w-2.5 h-2.5" />
+                        <span>Padam</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Cash Flow Table (Fit-to-screen on desktop, scrollable or hidden on smartphone when in compact mode) */}
+      <div className={`w-full rounded-2xl border border-white/10 shadow-2xl bg-slate-900/80 backdrop-blur-xl ${mobileDisplayMode === 'kompak' ? 'hidden sm:block overflow-hidden' : 'block overflow-x-auto'}`}>
+        <table className="w-full text-left border-collapse table-fixed select-none min-w-[760px] sm:min-w-0">
           <colgroup>
             <col className="w-[11%] sm:w-[9%]" />
             <col className="w-[13%] sm:w-[11%]" />

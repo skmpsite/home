@@ -25,7 +25,8 @@ import {
   Sparkles,
   Tv,
   Check,
-  X
+  X,
+  Eye
 } from 'lucide-react';
 import { IctBookingRecord, SchoolProfile, Staff } from '../../types';
 import {
@@ -118,6 +119,7 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
   const [isMaintenanceModalOpen, setIsMaintenanceModalOpen] = useState(false);
   const [editingBooking, setEditingBooking] = useState<IctBookingRecord | null>(null);
   const [deleteConfirmBooking, setDeleteConfirmBooking] = useState<IctBookingRecord | null>(null);
+  const [selectedSlotDetail, setSelectedSlotDetail] = useState<IctBookingRecord | null>(null);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -769,9 +771,11 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
                                 }`}
                               >
                                 <div
-                                  className={`w-full h-full min-h-[58px] sm:min-h-[66px] p-1 sm:p-1.5 rounded-lg sm:rounded-xl border border-orange-500/60 bg-gradient-to-br from-amber-600/25 via-orange-600/30 to-amber-700/25 flex flex-col justify-between shadow-sm relative overflow-hidden ${
+                                  onClick={() => setSelectedSlotDetail(booking)}
+                                  className={`w-full h-full min-h-[58px] sm:min-h-[66px] p-1 sm:p-1.5 rounded-lg sm:rounded-xl border border-orange-500/60 bg-gradient-to-br from-amber-600/25 via-orange-600/30 to-amber-700/25 hover:border-yellow-300 flex flex-col justify-between shadow-sm relative overflow-hidden cursor-pointer active:scale-95 transition ${
                                     isCurrent ? 'ring-2 ring-emerald-400 border-emerald-400 animate-pulse' : ''
                                   }`}
+                                  title="Klik untuk lihat maklumat penuh tempahan"
                                 >
                                   {isCurrent && (
                                     <div className="absolute top-1 right-1 z-20 flex items-center pointer-events-none">
@@ -786,11 +790,14 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
                                       <span className="text-[8px] sm:text-[9px] font-black uppercase px-1 py-0.2 rounded bg-orange-500/40 text-orange-200 border border-orange-400/50 truncate">
                                         {recessLetter} • {booking.className}
                                       </span>
-                                      {isAdmin && (
+                                      {isAdmin ? (
                                         <div className="flex items-center gap-0.5 opacity-80 group-hover:opacity-100 transition">
                                           <button
                                             type="button"
-                                            onClick={() => setEditingBooking(booking)}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setEditingBooking(booking);
+                                            }}
                                             className="p-0.5 hover:bg-yellow-400 hover:text-blue-950 rounded transition text-slate-300"
                                             title="Edit Tempahan"
                                           >
@@ -798,13 +805,20 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
                                           </button>
                                           <button
                                             type="button"
-                                            onClick={() => setDeleteConfirmBooking(booking)}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setDeleteConfirmBooking(booking);
+                                            }}
                                             className="p-0.5 hover:bg-rose-600 hover:text-white rounded transition text-rose-300"
                                             title="Padam Tempahan"
                                           >
                                             <Trash2 className="w-2.5 h-2.5" />
                                           </button>
                                         </div>
+                                      ) : (
+                                        <span className="text-[8px] text-orange-200/70 group-hover:text-orange-100 flex items-center gap-0.5">
+                                          <Eye className="w-2.5 h-2.5" />
+                                        </span>
                                       )}
                                     </div>
                                     <div className="mt-0.5 font-bold text-white text-[10px] sm:text-[11px] truncate">
@@ -868,9 +882,11 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
                               }`}
                             >
                               <div
-                                className={`p-1 sm:p-1.5 rounded-lg sm:rounded-xl border border-white/10 flex flex-col justify-between h-full min-h-[58px] sm:min-h-[66px] shadow-sm relative overflow-hidden ${
+                                onClick={() => setSelectedSlotDetail(booking)}
+                                className={`p-1 sm:p-1.5 rounded-lg sm:rounded-xl border border-white/10 hover:border-yellow-300/80 flex flex-col justify-between h-full min-h-[58px] sm:min-h-[66px] shadow-sm relative overflow-hidden cursor-pointer active:scale-95 transition ${
                                   isCurrent ? 'ring-2 ring-emerald-400 border-emerald-400 animate-pulse' : ''
                                 }`}
+                                title="Klik untuk lihat paparan penuh tempahan"
                               >
                                 {isCurrent && (
                                   <div className="absolute top-1 right-1 z-20 flex items-center pointer-events-none">
@@ -892,12 +908,15 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
                                       {isMaint ? 'Penyelenggaraan' : booking.className}
                                     </span>
 
-                                    {/* Action Buttons for Admin Only */}
-                                    {isAdmin && (
+                                    {/* Action Buttons for Admin or Info indicator */}
+                                    {isAdmin ? (
                                       <div className="flex items-center gap-0.5 opacity-80 group-hover:opacity-100 transition">
                                         <button
                                           type="button"
-                                          onClick={() => setEditingBooking(booking)}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEditingBooking(booking);
+                                          }}
                                           className="p-0.5 hover:bg-yellow-400 hover:text-blue-950 rounded transition text-slate-300"
                                           title="Edit Tempahan (Admin)"
                                         >
@@ -905,13 +924,20 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
                                         </button>
                                         <button
                                           type="button"
-                                          onClick={() => setDeleteConfirmBooking(booking)}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setDeleteConfirmBooking(booking);
+                                          }}
                                           className="p-0.5 hover:bg-rose-600 hover:text-white rounded transition text-rose-300"
                                           title="Padam Tempahan (Admin)"
                                         >
                                           <Trash2 className="w-2.5 h-2.5" />
                                         </button>
                                       </div>
+                                    ) : (
+                                      <span className="text-[8px] text-blue-300/80 group-hover:text-yellow-300 flex items-center gap-0.5">
+                                        <Eye className="w-2.5 h-2.5" />
+                                      </span>
                                     )}
                                   </div>
 
@@ -926,8 +952,11 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
                                   )}
                                 </div>
 
-                                <div className="text-[8px] sm:text-[9px] text-slate-400 truncate mt-0.5">
-                                  {booking.purpose}
+                                <div className="text-[8px] sm:text-[9px] text-slate-400 truncate mt-0.5 flex items-center justify-between">
+                                  <span className="truncate">{booking.purpose}</span>
+                                  <span className="text-[7.5px] text-yellow-300/90 font-bold ml-1 shrink-0 opacity-70 group-hover:opacity-100">
+                                    Lihat &raquo;
+                                  </span>
                                 </div>
                               </div>
                             </td>
@@ -1131,25 +1160,38 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
                     )}
                   </div>
 
-                  {/* Admin Controls */}
-                  {booking && isAdmin && (
-                    <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-end gap-2">
+                  {/* Booking Actions for Guru & Admin */}
+                  {booking && (
+                    <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between gap-2">
                       <button
                         type="button"
-                        onClick={() => setEditingBooking(booking)}
-                        className="px-2.5 py-1 bg-white/5 hover:bg-yellow-400 hover:text-blue-950 rounded-lg text-xs font-bold text-slate-300 transition flex items-center gap-1"
+                        onClick={() => setSelectedSlotDetail(booking)}
+                        className="px-2.5 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-200 hover:text-white rounded-lg text-xs font-bold transition flex items-center gap-1 border border-blue-400/30 cursor-pointer active:scale-95"
                       >
-                        <Edit3 className="w-3 h-3" />
-                        <span>Edit</span>
+                        <Eye className="w-3 h-3" />
+                        <span>Maklumat Penuh</span>
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleteConfirmBooking(booking)}
-                        className="px-2.5 py-1 bg-rose-600/30 hover:bg-rose-600 text-rose-300 hover:text-white rounded-lg text-xs font-bold transition flex items-center gap-1"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                        <span>Padam</span>
-                      </button>
+
+                      {isAdmin && (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setEditingBooking(booking)}
+                            className="px-2.5 py-1 bg-white/5 hover:bg-yellow-400 hover:text-blue-950 rounded-lg text-xs font-bold text-slate-300 transition flex items-center gap-1 cursor-pointer"
+                          >
+                            <Edit3 className="w-3 h-3" />
+                            <span>Edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteConfirmBooking(booking)}
+                            className="px-2.5 py-1 bg-rose-600/30 hover:bg-rose-600 text-rose-300 hover:text-white rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>Padam</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1826,6 +1868,196 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: MAKLUMAT PENUH TEMPAHAN BILIK ICT (POPUP SMARTPHONE & DESKTOP)     */}
+      {/* ========================================================================= */}
+      {selectedSlotDetail && (
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 z-50 animate-fadeIn">
+          <div className="bg-slate-900 border border-blue-400/40 rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-blue-600/30 border border-blue-400/50 flex items-center justify-center text-blue-400 shadow-md">
+                  <Laptop className="w-5 h-5 text-yellow-400" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base sm:text-lg text-white leading-tight">
+                    Maklumat Penuh Tempahan
+                  </h3>
+                  <p className="text-[11px] text-slate-300">
+                    {selectedSlotDetail.roomName || selectedRoom}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedSlotDetail(null)}
+                className="p-1.5 rounded-xl hover:bg-white/10 text-slate-400 hover:text-white transition cursor-pointer"
+                title="Tutup Modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Status & Timing Banner */}
+            <div
+              className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 ${
+                selectedSlotDetail.status === 'penyelenggaraan'
+                  ? 'bg-rose-950/40 border-rose-500/40 text-rose-200'
+                  : 'bg-gradient-to-r from-blue-950/60 to-indigo-950/60 border-blue-400/30 text-blue-200'
+              }`}
+            >
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-1.5 text-xs font-black text-white">
+                  <Calendar className="w-3.5 h-3.5 text-yellow-400" />
+                  <span>{selectedSlotDetail.dayName}, {selectedSlotDetail.date}</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-yellow-300 font-bold">
+                  <Clock className="w-3.5 h-3.5 text-yellow-400" />
+                  <span>{selectedSlotDetail.timeSlotLabel} (Slot {selectedSlotDetail.slotIndex + 1})</span>
+                </div>
+              </div>
+
+              <span
+                className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-sm ${
+                  selectedSlotDetail.status === 'penyelenggaraan'
+                    ? 'bg-rose-500/30 text-rose-300 border-rose-400/50'
+                    : 'bg-emerald-500/30 text-emerald-300 border-emerald-400/50'
+                }`}
+              >
+                {selectedSlotDetail.status === 'penyelenggaraan' ? 'Penyelenggaraan' : 'Disahkan Aktif'}
+              </span>
+            </div>
+
+            {/* Booking Details Grid */}
+            <div className="space-y-3 text-xs">
+              {/* Teacher Info */}
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-white/10 space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Guru Penempah
+                </span>
+                <div className="text-sm font-black text-white flex items-center gap-2">
+                  <User className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>{selectedSlotDetail.teacherName}</span>
+                </div>
+              </div>
+
+              {/* Class & Subject */}
+              {selectedSlotDetail.status !== 'penyelenggaraan' && (
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="p-3 rounded-xl bg-slate-950/60 border border-white/10 space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Kelas
+                    </span>
+                    <div className="text-xs font-black text-white flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
+                      <span>{selectedSlotDetail.className}</span>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-slate-950/60 border border-white/10 space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Mata Pelajaran
+                    </span>
+                    <div className="text-xs font-black text-white flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                      <span className="truncate">{selectedSlotDetail.subject}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Purpose & Activities */}
+              <div className="p-3.5 rounded-xl bg-slate-950/60 border border-white/10 space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Tujuan / Aktiviti Pembelajaran PdP
+                </span>
+                <p className="text-xs text-slate-200 leading-relaxed font-medium whitespace-pre-wrap">
+                  {selectedSlotDetail.purpose ||
+                    (selectedSlotDetail.status === 'penyelenggaraan'
+                      ? selectedSlotDetail.maintenanceReason
+                      : 'Tiada catatan khusus.')}
+                </p>
+              </div>
+
+              {/* Equipment Needed if any */}
+              {selectedSlotDetail.equipmentNeeded && selectedSlotDetail.equipmentNeeded.length > 0 && (
+                <div className="p-3 rounded-xl bg-slate-950/60 border border-white/10 space-y-1.5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Peralatan Diperlukan
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedSlotDetail.equipmentNeeded.map((eq, i) => (
+                      <span
+                        key={i}
+                        className="px-2 py-0.5 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-400/30 text-[10px] font-bold"
+                      >
+                        {eq}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Facilities / Equipment info */}
+              <div className="p-3 rounded-xl bg-blue-950/30 border border-blue-400/20 space-y-1.5">
+                <span className="text-[10px] font-bold text-blue-300 uppercase tracking-wider block flex items-center gap-1">
+                  <Info className="w-3 h-3" /> Kemudahan Makmal & Kelengkapan
+                </span>
+                <div className="flex flex-wrap gap-1.5 text-[10px] text-slate-300">
+                  <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10">36 Kapasiti Murid</span>
+                  <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10">30 Unit PC</span>
+                  <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10">Smart TV 65"</span>
+                  <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10">Talian Digital KPM</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions / Footer */}
+            <div className="pt-3 border-t border-white/10 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                {isAdmin && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const b = selectedSlotDetail;
+                        setSelectedSlotDetail(null);
+                        setEditingBooking(b);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-blue-950 font-black text-xs transition shadow flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Edit (Admin)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const b = selectedSlotDetail;
+                        setSelectedSlotDetail(null);
+                        setDeleteConfirmBooking(b);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-rose-600/30 hover:bg-rose-600 text-rose-200 hover:text-white border border-rose-500/40 font-bold text-xs transition flex items-center gap-1 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Padam</span>
+                    </button>
+                  </>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedSlotDetail(null)}
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -1137,7 +1137,7 @@ export default function App() {
             setActiveTab('admin_cms');
           } else {
             setIsAdmin(false);
-            setActiveTab('guru');
+            // Kekalkan guru di halaman yang sedang dia buka, cuma paparkan menu Guru di navbar
           }
         }}
       />
