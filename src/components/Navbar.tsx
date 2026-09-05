@@ -68,16 +68,40 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   // Gunakan data menu tersuai admin atau lalai sistem
-  const menuList: NavigationMenuItem[] =
+  let menuList: NavigationMenuItem[] =
     navigationMenu && navigationMenu.length > 0
       ? [...navigationMenu].sort((a, b) => (a.order || 0) - (b.order || 0))
       : [...initialNavigationMenu];
 
+  // Pastikan item 'guru' sentiasa ada dalam senarai menu
+  const hasGuruItem = menuList.some((item) => item.targetTab === 'guru' || item.id === 'guru');
+  if (!hasGuruItem) {
+    const guruItem: NavigationMenuItem = {
+      id: 'guru',
+      targetTab: 'guru',
+      label: 'Guru',
+      iconName: 'UserCheck',
+      badge: 'Guru',
+      isVisible: true,
+      order: 2,
+      requiresAdmin: false
+    };
+    const utamaIdx = menuList.findIndex((item) => item.targetTab === 'utama' || item.id === 'utama');
+    if (utamaIdx !== -1) {
+      menuList.splice(utamaIdx + 1, 0, guruItem);
+    } else {
+      menuList.unshift(guruItem);
+    }
+  }
+
   // Tapis hanya item yang kelihatan dan padan dengan kebenaran admin/guru
   const visibleNavItems = menuList.filter((item) => {
     if (!item.isVisible) return false;
+    // Tab Guru muncul sekiranya pengguna log masuk sebagai Guru atau Pentadbir
+    if (item.targetTab === 'guru' || item.id === 'guru') {
+      return Boolean(canAccessGuru);
+    }
     if (item.requiresAdmin && !isAdmin) return false;
-    if ((item.targetTab === 'guru' || item.id === 'guru') && !canAccessGuru) return false;
     return true;
   });
 

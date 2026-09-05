@@ -283,8 +283,24 @@ export default function App() {
       window.removeEventListener('hashchange', handleUrlChange);
     };
   }, []);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [userRole, setUserRole] = useState<'admin' | 'guru' | null>(null);
+  const [isAdmin, setIsAdmin] = useState(() => {
+    try {
+      return localStorage.getItem('skmp_attendance_auth_user') === 'admin';
+    } catch {
+      return false;
+    }
+  });
+  const [userRole, setUserRole] = useState<'admin' | 'guru' | 'user' | null>(() => {
+    try {
+      const saved = localStorage.getItem('skmp_attendance_auth_user');
+      if (saved === 'admin') return 'admin';
+      if (saved === 'guru') return 'guru';
+      if (saved === 'skmp') return 'user';
+    } catch {
+      // ignore
+    }
+    return null;
+  });
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedNewsReader, setSelectedNewsReader] = useState<NewsItem | null>(null);
@@ -869,6 +885,11 @@ export default function App() {
           onLogout={() => {
             setIsAdmin(false);
             setUserRole(null);
+            try {
+              localStorage.removeItem('skmp_attendance_auth_user');
+            } catch (e) {
+              console.error(e);
+            }
             if (activeTab === 'admin_cms' || activeTab === 'guru') {
               setActiveTab('utama');
             }
@@ -1135,9 +1156,11 @@ export default function App() {
           if (role === 'admin') {
             setIsAdmin(true);
             setActiveTab('admin_cms');
+          } else if (role === 'guru') {
+            setIsAdmin(false);
+            setActiveTab('guru');
           } else {
             setIsAdmin(false);
-            // Kekalkan guru di halaman yang sedang dia buka, cuma paparkan menu Guru di navbar
           }
         }}
       />

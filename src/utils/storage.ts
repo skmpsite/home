@@ -507,10 +507,10 @@ export function loadNavigationMenu(): NavigationMenuItem[] {
       targetTab: 'guru',
       label: 'Guru',
       iconName: 'UserCheck',
-      badge: 'Admin',
+      badge: 'Guru',
       isVisible: true,
       order: 2,
-      requiresAdmin: true
+      requiresAdmin: false
     };
     // Sisipkan selepas tab 'utama'
     const utamaIdx = cleaned.findIndex(i => i.targetTab === 'utama' || i.id === 'utama');
@@ -521,6 +521,17 @@ export function loadNavigationMenu(): NavigationMenuItem[] {
     }
     cleaned = cleaned.map((item, idx) => ({ ...item, order: idx + 1 }));
     setStored(KEYS.NAV_MENU, cleaned);
+  } else {
+    // Pastikan item guru yang sedia ada mempunyai requiresAdmin: false
+    const guruIdx = cleaned.findIndex(i => i.targetTab === 'guru' || i.id === 'guru');
+    if (guruIdx !== -1 && (cleaned[guruIdx].requiresAdmin || cleaned[guruIdx].badge === 'Admin')) {
+      cleaned[guruIdx] = {
+        ...cleaned[guruIdx],
+        requiresAdmin: false,
+        badge: 'Guru'
+      };
+      setStored(KEYS.NAV_MENU, cleaned);
+    }
   }
 
   return cleaned.sort((a, b) => (a.order || 0) - (b.order || 0));

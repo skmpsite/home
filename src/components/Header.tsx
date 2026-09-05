@@ -5,7 +5,7 @@ import { Search, Lock, UserCheck, MapPin, Phone, Mail, LogOut, ChevronRight, X, 
 interface HeaderProps {
   profile: SchoolProfile;
   isAdmin: boolean;
-  userRole?: 'admin' | 'guru' | null;
+  userRole?: 'admin' | 'guru' | 'user' | null;
   onOpenLogin: () => void;
   onLogout: () => void;
   searchResults: SearchResultItem[];
@@ -94,6 +94,24 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   onClick={onLogout}
                   className="text-xs text-rose-300 hover:text-rose-100 flex items-center gap-1 ml-1 font-semibold"
+                  title="Log Keluar"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Keluar</span>
+                </button>
+              </div>
+            ) : userRole === 'user' ? (
+              <div className="flex items-center gap-2">
+                <div
+                  className="inline-flex items-center gap-1 text-xs font-bold text-white bg-emerald-600 px-3 py-0.5 rounded-full border border-emerald-400 shadow-md"
+                  title="Log Masuk Pengguna SKMP"
+                >
+                  <UserCheck className="w-3.5 h-3.5" />
+                  <span>Pengguna Active</span>
+                </div>
+                <button
+                  onClick={onLogout}
+                  className="text-xs text-rose-300 hover:text-rose-100 flex items-center gap-1 ml-1 font-semibold cursor-pointer"
                   title="Log Keluar"
                 >
                   <LogOut className="w-3.5 h-3.5" />

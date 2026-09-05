@@ -1257,10 +1257,10 @@ export const initialNavigationMenu: NavigationMenuItem[] = [
     targetTab: 'guru',
     label: 'Guru',
     iconName: 'UserCheck',
-    badge: 'Admin',
+    badge: 'Guru',
     isVisible: true,
     order: 2,
-    requiresAdmin: true
+    requiresAdmin: false
   },
   {
     id: 'profil',

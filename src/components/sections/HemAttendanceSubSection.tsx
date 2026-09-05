@@ -17,6 +17,11 @@ import {
   Search,
   Filter,
   Eye,
+  EyeOff,
+  Lock,
+  Key,
+  LogIn,
+  LogOut,
   Trash2,
   Check,
   Clock,
@@ -226,6 +231,120 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
   const [formSubmitting, setFormSubmitting] = useState<boolean>(false);
   const [formError, setFormError] = useState<string>('');
 
+  // ----------------------------------------------------
+  // PENGESAHAN & LOG MASUK E-KEHADIRAN
+  // Pengguna perlu log in nama pengguna/ID : skmp dan Kata Laluan : 123456
+  // atau log in guru dan admin
+  // ----------------------------------------------------
+  const [attendanceAuthUser, setAttendanceAuthUser] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        return localStorage.getItem('skmp_attendance_auth_user') || null;
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  const isAttendanceAuthorized = Boolean(
+    isAdmin ||
+    isTeacher ||
+    userRole === 'admin' ||
+    userRole === 'guru' ||
+    attendanceAuthUser
+  );
+
+  const [loginInputId, setLoginInputId] = useState<string>('');
+  const [loginInputPassword, setLoginInputPassword] = useState<string>('');
+  const [showLoginPassword, setShowLoginPassword] = useState<boolean>(false);
+  const [loginError, setLoginError] = useState<string>('');
+  const [loginSuccessMsg, setLoginSuccessMsg] = useState<string>('');
+  const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
+
+  const handleAttendanceLogin = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setLoginError('');
+    setLoginSuccessMsg('');
+
+    const cleanId = loginInputId.trim().toLowerCase();
+    const cleanPass = loginInputPassword.trim();
+
+    // 1. Akaun Pengguna / Waris SKMP: ID skmp & Kata Laluan 123456
+    if (cleanId === 'skmp' && cleanPass === '123456') {
+      setIsLoggingIn(true);
+      setLoginSuccessMsg('Log masuk Pengguna SKMP berjaya! Membuka Borang e-Kehadiran...');
+      setTimeout(() => {
+        try {
+          localStorage.setItem('skmp_attendance_auth_user', 'skmp');
+        } catch (err) {
+          console.error(err);
+        }
+        setAttendanceAuthUser('skmp');
+        setIsLoggingIn(false);
+        setLoginSuccessMsg('');
+      }, 500);
+      return;
+    }
+
+    // 2. Akaun Guru: ID guru & Kata Laluan guru5012
+    if ((cleanId === 'guru' && cleanPass === 'guru5012') || cleanPass === 'guru5012') {
+      setIsLoggingIn(true);
+      setLoginSuccessMsg('Log masuk Guru berjaya! Membuka Borang e-Kehadiran...');
+      setTimeout(() => {
+        try {
+          localStorage.setItem('skmp_attendance_auth_user', 'guru');
+        } catch (err) {
+          console.error(err);
+        }
+        setAttendanceAuthUser('guru');
+        setIsLoggingIn(false);
+        setLoginSuccessMsg('');
+      }, 500);
+      return;
+    }
+
+    // 3. Akaun Pentadbir: ID adminskmp / admin & Kata Laluan 123456
+    if ((cleanId === 'adminskmp' || cleanId === 'admin') && cleanPass === '123456') {
+      setIsLoggingIn(true);
+      setLoginSuccessMsg('Log masuk Pentadbir berjaya! Membuka Borang e-Kehadiran...');
+      setTimeout(() => {
+        try {
+          localStorage.setItem('skmp_attendance_auth_user', 'admin');
+        } catch (err) {
+          console.error(err);
+        }
+        setAttendanceAuthUser('admin');
+        setIsLoggingIn(false);
+        setLoginSuccessMsg('');
+      }, 500);
+      return;
+    }
+
+    setLoginError('Nama Pengguna / ID atau Kata Laluan tidak tepat. Sila masukkan maklumat log masuk yang sah.');
+  };
+
+  const handleAttendanceLogout = () => {
+    try {
+      localStorage.removeItem('skmp_attendance_auth_user');
+    } catch (err) {
+      console.error(err);
+    }
+    setAttendanceAuthUser(null);
+    setLoginInputPassword('');
+    setLoginError('');
+    setLoginSuccessMsg('');
+  };
+
+  const currentLoggedInLabel = useMemo(() => {
+    if (isAdmin) return 'Pentadbir Sekolah (Admin)';
+    if (isTeacher || userRole === 'guru' || attendanceAuthUser === 'guru') return 'Guru SKMP';
+    if (userRole === 'admin' || attendanceAuthUser === 'admin') return 'Pentadbir SKMP';
+    if (attendanceAuthUser === 'skmp') return 'Pengguna / Waris SKMP (ID: skmp)';
+    if (attendanceAuthUser) return attendanceAuthUser;
+    return 'Pengguna Berdaftar SKMP';
+  }, [isAdmin, isTeacher, userRole, attendanceAuthUser]);
+
   // Extract unique years according to strict hierarchy: Tahun 6, 5, 4, 3, 2, 1, Pra Sekolah
   const availableYears = useMemo(() => {
     const set = new Set<string>();
@@ -312,6 +431,11 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     e.preventDefault();
     setFormError('');
 
+    if (!isAttendanceAuthorized) {
+      setFormError('Sila log masuk dengan ID: skmp & Kata Laluan: 123456 atau akaun Guru/Admin untuk menghantar borang.');
+      return;
+    }
+
     const isManualStudent = formStudentId === 'TIADA_NAMA';
 
     if (!formYear || !formClass) {
@@ -395,7 +519,16 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
         attachmentUrl: formAttachmentUrl || undefined,
         attachmentName: formAttachmentName || undefined,
         status: 'disahkan',
-        verifiedBy: 'Sistem e-Kehadiran Waris',
+        verifiedBy:
+          attendanceAuthUser === 'skmp'
+            ? 'Pengguna / Waris SKMP (ID: skmp)'
+            : isAdmin
+            ? 'Pentadbir Sekolah (Admin)'
+            : isTeacher || userRole === 'guru' || attendanceAuthUser === 'guru'
+            ? 'Guru SKMP'
+            : attendanceAuthUser === 'admin'
+            ? 'Pentadbir SKMP'
+            : 'Sistem e-Kehadiran Waris',
         verifiedAt: new Date().toISOString()
       });
 
@@ -546,6 +679,10 @@ Sekiranya anak jagaan tuan/puan *TIDAK DAPAT HADIR* ke sekolah hari ini, mohon k
 
 🔗 *Pautan Borang e-Kehadiran:*
 ${targetUrl}
+
+🔑 *Log Masuk Borang e-Kehadiran:*
+• ID / Nama Pengguna: *skmp*
+• Kata Laluan: *123456*
 
 📌 *Peringatan Mesra:*
 • Sila lampirkan slip cuti sakit (MC) atau surat rasmi sebagai dokumen sokongan.
@@ -981,11 +1118,21 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
           )}
         </div>
 
-        {/* Akses Status Badge (Untuk Guru & Pentadbir yang Log Masuk) */}
-        {isAuthorized && (
+        {/* Akses Status Badge */}
+        {isAuthorized ? (
           <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-[11px] font-bold text-emerald-300">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
             <span>Akses Guru & Pentadbir</span>
+          </div>
+        ) : isAttendanceAuthorized ? (
+          <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-[11px] font-bold text-emerald-300">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>{currentLoggedInLabel}</span>
+          </div>
+        ) : (
+          <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-[11px] font-bold text-yellow-300">
+            <Lock className="w-3.5 h-3.5 text-yellow-400" />
+            <span>Log Masuk Diperlukan</span>
           </div>
         )}
       </div>
@@ -1040,14 +1187,132 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
               </div>
             </div>
 
-            {formError && (
-              <div className="p-4 bg-rose-500/20 border border-rose-500/40 rounded-2xl flex items-center gap-3 text-rose-300 text-xs sm:text-sm font-semibold">
-                <AlertCircle className="w-5 h-5 flex-shrink-0 text-rose-400" />
-                <span>{formError}</span>
-              </div>
-            )}
+            {!isAttendanceAuthorized ? (
+              /* KAD LOG MASUK E-KEHADIRAN SKMP */
+              <div className="bg-gradient-to-b from-slate-800/90 to-slate-950/95 border border-emerald-500/30 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 animate-fadeIn">
+                <div className="text-center max-w-md mx-auto space-y-3">
+                  <div className="w-16 h-16 mx-auto bg-gradient-to-br from-emerald-500 to-teal-700 rounded-3xl flex items-center justify-center text-white shadow-xl shadow-emerald-950/50 border border-emerald-400/40">
+                    <Lock className="w-8 h-8 text-yellow-300" />
+                  </div>
+                  <div>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-yellow-400/20 text-yellow-300 text-xs font-black rounded-full border border-yellow-400/30 mb-2">
+                      <ShieldCheck className="w-3.5 h-3.5" /> Pengesahan Pengguna Diperlukan
+                    </span>
+                    <h4 className="text-xl sm:text-2xl font-black text-white">Log Masuk Borang e-Kehadiran</h4>
+                    <p className="text-xs sm:text-sm text-slate-300 mt-1">
+                      Untuk mengisi dan menghantar makluman ketidakhadiran murid, sila log masuk menggunakan ID Pengguna SKMP atau akaun Guru & Pentadbir sekolah.
+                    </p>
+                  </div>
+                </div>
 
-            <form onSubmit={handleSubmitAbsenceForm} className="space-y-6">
+                {loginError && (
+                  <div className="p-3.5 bg-rose-500/20 border border-rose-500/40 text-rose-200 text-xs rounded-2xl flex items-start gap-2.5 animate-fadeIn max-w-md mx-auto">
+                    <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+                    <span>{loginError}</span>
+                  </div>
+                )}
+
+                {loginSuccessMsg && (
+                  <div className="p-3.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-xs rounded-2xl flex items-center gap-2.5 animate-fadeIn max-w-md mx-auto">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                    <span className="font-bold">{loginSuccessMsg}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleAttendanceLogin} className="max-w-md mx-auto space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-200 mb-1.5 flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Nama Pengguna / ID</span>
+                      <span className="text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={loginInputId}
+                      onChange={(e) => setLoginInputId(e.target.value)}
+                      placeholder="Masukkan ID / Nama Pengguna"
+                      className="w-full text-xs sm:text-sm px-4 py-3 bg-slate-950 border border-white/20 rounded-2xl text-white focus:outline-none focus:border-emerald-400 font-mono transition shadow-inner"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-200 mb-1.5 flex items-center gap-1.5">
+                      <Key className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Kata Laluan</span>
+                      <span className="text-rose-400">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showLoginPassword ? 'text' : 'password'}
+                        required
+                        value={loginInputPassword}
+                        onChange={(e) => setLoginInputPassword(e.target.value)}
+                        placeholder="Masukkan Kata Laluan"
+                        className="w-full text-xs sm:text-sm px-4 py-3 bg-slate-950 border border-white/20 rounded-2xl text-white focus:outline-none focus:border-emerald-400 font-mono transition shadow-inner pr-11"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowLoginPassword(!showLoginPassword)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition cursor-pointer"
+                        title={showLoginPassword ? 'Sembunyikan kata laluan' : 'Papar kata laluan'}
+                      >
+                        {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Submit Button */}
+                  <div className="pt-2 space-y-2">
+                    <button
+                      type="submit"
+                      disabled={isLoggingIn}
+                      className="w-full py-3.5 px-5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs sm:text-sm font-black rounded-2xl shadow-xl shadow-emerald-950/50 border border-emerald-400/50 transition active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <LogIn className="w-4 h-4 text-yellow-300" />
+                      <span>{isLoggingIn ? 'Mengesahkan Log Masuk...' : 'Log Masuk'}</span>
+                    </button>
+                    <p className="text-center text-[11px] text-slate-400">
+                      Sistem menerima log masuk Pengguna Biasa / Waris, Guru dan Pentadbir.
+                    </p>
+                  </div>
+                </form>
+              </div>
+            ) : (
+              <>
+                {/* Active Session Banner */}
+                <div className="p-3.5 sm:p-4 bg-emerald-950/60 border border-emerald-500/40 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs animate-fadeIn">
+                  <div className="flex items-center gap-2.5 text-emerald-300 font-bold">
+                    <div className="w-7 h-7 bg-emerald-500/20 border border-emerald-400/40 rounded-xl flex items-center justify-center text-emerald-300">
+                      <ShieldCheck className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Sesi e-Kehadiran Aktif</span>
+                      <span className="text-white text-xs sm:text-sm font-black">
+                        Disahkan: {currentLoggedInLabel}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleAttendanceLogout}
+                    className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                    title="Log Keluar daripada Sesi e-Kehadiran"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Log Keluar</span>
+                  </button>
+                </div>
+
+                {formError && (
+                  <div className="p-4 bg-rose-500/20 border border-rose-500/40 rounded-2xl flex items-center gap-3 text-rose-300 text-xs sm:text-sm font-semibold">
+                    <AlertCircle className="w-5 h-5 flex-shrink-0 text-rose-400" />
+                    <span>{formError}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleSubmitAbsenceForm} className="space-y-6">
               {/* Bahagian 1: Pilih Tahun & Kelas */}
               <div className="bg-white/5 p-4 sm:p-5 rounded-2xl border border-white/10 space-y-4">
                 <h5 className="text-xs font-black uppercase tracking-wider text-emerald-400 flex items-center gap-2">
@@ -1396,6 +1661,8 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                 </button>
               </div>
             </form>
+            </>
+          )}
           </div>
         </div>
       )}
