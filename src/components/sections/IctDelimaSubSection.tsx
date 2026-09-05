@@ -6,18 +6,22 @@ import {
   RotateCw,
   ExternalLink,
   Search,
-  Sparkles,
-  ShieldCheck,
+  ChevronsDown,
   X,
-  Info
+  Info,
+  CheckCircle2
 } from 'lucide-react';
 
 const DELIMA_URL = 'https://skmpsite.github.io/DELIMa/';
+
+type HeightMode = 'full' | 'extra' | 'compact';
 
 export const IctDelimaSubSection: React.FC = () => {
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [iframeKey, setIframeKey] = useState<number>(0);
+  // Default to 'full' (Lebar & Tinggi ke Bawah 1350px supaya keseluruhan maklumat carian nampak jelas)
+  const [heightMode, setHeightMode] = useState<HeightMode>('full');
 
   const handleRefresh = () => {
     setIsLoading(true);
@@ -26,6 +30,23 @@ export const IctDelimaSubSection: React.FC = () => {
 
   const handleOpenExternal = () => {
     window.open(DELIMA_URL, '_blank', 'noopener,noreferrer');
+  };
+
+  // Ketinggian bekas iframe mengikut mod
+  const getHeightClass = () => {
+    if (isFullscreen) {
+      return 'fixed inset-0 z-50 rounded-none border-0 p-2 sm:p-4 bg-slate-950/95 backdrop-blur-md';
+    }
+    switch (heightMode) {
+      case 'extra':
+        return 'h-[1400px] sm:h-[1550px] lg:h-[1700px] min-h-[1200px]';
+      case 'compact':
+        return 'h-[850px] sm:h-[950px] min-h-[750px]';
+      case 'full':
+      default:
+        // Paling optimum untuk paparan penuh tanpa terpotong
+        return 'h-[1150px] sm:h-[1280px] lg:h-[1380px] min-h-[1000px]';
+    }
   };
 
   return (
@@ -46,22 +67,65 @@ export const IctDelimaSubSection: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-slate-300 mt-0.5">
-              Carian akaun emel moe-dl bagi murid dan guru SK Merbau Pulas terus di laman ini.
+              Paparan carian dilebarkan ke bawah secara penuh bagi memudahkan murid & guru melihat maklumat tanpa halangan.
             </p>
           </div>
         </div>
 
-        {/* Action Buttons: Fit Skrin Penuh, Muat Semula, Buka Luar */}
+        {/* Action Controls: Pilihan Lebar ke Bawah, Fit Skrin Penuh, Muat Semula */}
         <div className="flex items-center gap-2 flex-wrap self-end md:self-auto">
+          {/* Kawalan Lebar / Ketinggian ke Bawah */}
+          <div className="flex items-center bg-slate-950/80 p-1 rounded-2xl border border-white/10 shadow-inner">
+            <button
+              type="button"
+              onClick={() => setHeightMode('full')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition cursor-pointer ${
+                heightMode === 'full'
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-indigo-500/30 border border-indigo-400/40'
+                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+              }`}
+              title="Paparan Lebar ke Bawah (Penuh)"
+            >
+              <ChevronsDown className="w-3.5 h-3.5 text-yellow-300" />
+              <span>Lebar Penuh</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setHeightMode('extra')}
+              className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                heightMode === 'extra'
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-indigo-500/30 border border-indigo-400/40'
+                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+              }`}
+              title="Paparan Ekstra Panjang ke Bawah untuk senarai carian panjang"
+            >
+              <span>Ekstra +</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setHeightMode('compact')}
+              className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                heightMode === 'compact'
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-indigo-500/30 border border-indigo-400/40'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+              title="Paparan Kompak Ringkas"
+            >
+              <span>Kompak</span>
+            </button>
+          </div>
+
           {/* Fit Skrin Penuh Toggle */}
           <button
             type="button"
             onClick={() => setIsFullscreen(!isFullscreen)}
             className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs flex items-center gap-1.5 transition shadow-md shadow-indigo-600/30 cursor-pointer active:scale-95 border border-indigo-400/40"
-            title={isFullscreen ? 'Keluar Mod Fit Skrin Penuh' : 'Buka Fit Skrin Penuh untuk carian lebih selesa'}
+            title={isFullscreen ? 'Keluar Mod Fit Skrin Penuh' : 'Buka Fit Skrin Penuh'}
           >
             {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5 text-yellow-300" />}
-            <span>{isFullscreen ? 'Kecilkan' : 'Fit Skrin Penuh'}</span>
+            <span className="hidden sm:inline">{isFullscreen ? 'Kecilkan' : 'Skrin Penuh'}</span>
           </button>
 
           {/* Refresh Button */}
@@ -88,13 +152,9 @@ export const IctDelimaSubSection: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Fit-Screen Portal View */}
+      {/* Main Fit-Screen Portal View (Dilebarkan ke bawah secara penuh) */}
       <div
-        className={`w-full rounded-3xl overflow-hidden border border-indigo-500/30 bg-slate-950 shadow-2xl transition-all duration-300 flex flex-col ${
-          isFullscreen
-            ? 'fixed inset-0 z-50 rounded-none border-0 p-2 sm:p-4 bg-slate-950/95 backdrop-blur-md'
-            : 'h-[78vh] sm:h-[84vh] min-h-[580px]'
-        }`}
+        className={`w-full rounded-3xl overflow-hidden border border-indigo-500/30 bg-slate-950 shadow-2xl transition-all duration-300 flex flex-col ${getHeightClass()}`}
       >
         {/* Browser Header Bar */}
         <div className="bg-slate-900/95 px-4 py-2.5 border-b border-white/10 flex items-center justify-between gap-3 text-xs text-slate-300 shrink-0">
@@ -111,6 +171,12 @@ export const IctDelimaSubSection: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            {/* Status Penunjuk Lebar ke Bawah */}
+            <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-200 text-[10px] font-bold border border-indigo-400/30">
+              <CheckCircle2 className="w-3 h-3 text-indigo-400" />
+              {heightMode === 'extra' ? 'Paparan Ekstra Panjang' : heightMode === 'compact' ? 'Paparan Kompak' : 'Paparan Lebar Penuh'}
+            </span>
+
             <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-400/30">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               Laman Aktif
@@ -132,7 +198,7 @@ export const IctDelimaSubSection: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsFullscreen(true)}
-                className="text-yellow-300 hover:text-yellow-200 font-bold flex items-center gap-1 text-[11px] p-1 rounded-lg hover:bg-white/5 transition"
+                className="text-yellow-300 hover:text-yellow-200 font-bold flex items-center gap-1 text-[11px] p-1 rounded-lg hover:bg-white/5 transition cursor-pointer"
                 title="Besarkan paparan ke skrin penuh"
               >
                 <Maximize2 className="w-3.5 h-3.5" />
@@ -151,7 +217,7 @@ export const IctDelimaSubSection: React.FC = () => {
             </div>
           )}
 
-          {/* The Embed Iframe */}
+          {/* The Embed Iframe with full visible height */}
           <iframe
             key={iframeKey}
             src={DELIMA_URL}
@@ -164,11 +230,11 @@ export const IctDelimaSubSection: React.FC = () => {
         </div>
 
         {/* Quick Helper Tip Footer */}
-        <div className="bg-slate-900/90 px-4 py-2 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400 shrink-0">
+        <div className="bg-slate-900/90 px-4 py-2.5 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400 shrink-0">
           <div className="flex items-center gap-1.5 truncate">
             <Info className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
             <span className="truncate">
-              Gunakan kotak carian atau pilihan kelas di dalam laman untuk mencari ID DELIMa dengan pantas.
+              Gunakan kotak carian di atas atau skrol ke bawah untuk melihat hasil carian serta maklumat penuh ID DELIMa.
             </span>
           </div>
           <span className="text-[10px] text-slate-300 hidden md:inline shrink-0 pl-2">

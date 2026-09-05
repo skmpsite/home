@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   Calendar,
+  User,
   UserCheck,
   UserX,
   Users,
@@ -197,6 +198,7 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
   const [formClass, setFormClass] = useState<string>('');
   const [formStudentId, setFormStudentId] = useState<string>('');
   const [formStudentSearch, setFormStudentSearch] = useState<string>('');
+  const [formCustomStudentName, setFormCustomStudentName] = useState<string>('');
   const [formDateFrom, setFormDateFrom] = useState<string>(() => {
     const today = new Date();
     const yyyy = today.getFullYear();
@@ -310,11 +312,21 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     e.preventDefault();
     setFormError('');
 
+    const isManualStudent = formStudentId === 'TIADA_NAMA';
+
     if (!formYear || !formClass) {
       setFormError('Sila pilih Tahun dan Kelas murid.');
       return;
     }
-    if (!formStudentId || !selectedStudent) {
+    if (!formStudentId) {
+      setFormError('Sila pilih nama murid yang terlibat.');
+      return;
+    }
+    if (isManualStudent && !formCustomStudentName.trim()) {
+      setFormError('Sila isikan nama murid dalam kotak yang disediakan.');
+      return;
+    }
+    if (!isManualStudent && !selectedStudent) {
       setFormError('Sila pilih nama murid yang terlibat.');
       return;
     }
@@ -342,7 +354,12 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     // Semak jika borang makluman murid ini telah dihantar sebelum ini bagi tarikh yang sama/bertindih
     const existingDuplicate = absenceRecords.find((rec) => {
       if (rec.status === 'ditolak') return false;
-      if (rec.studentId !== selectedStudent.id) return false;
+      if (isManualStudent) {
+        if (rec.studentName.trim().toLowerCase() !== formCustomStudentName.trim().toLowerCase()) return false;
+        if (rec.className !== formClass || rec.year !== formYear) return false;
+      } else {
+        if (rec.studentId !== selectedStudent.id) return false;
+      }
       // Semak pertindihan tarikh: [formDateFrom, formDateTo] dan [rec.dateFrom, rec.dateTo]
       return !(formDateTo < rec.dateFrom || formDateFrom > rec.dateTo);
     });
@@ -355,12 +372,18 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     setFormSubmitting(true);
 
     try {
+      const studentName = isManualStudent ? formCustomStudentName.trim().toUpperCase() : selectedStudent.name;
+      const studentId = isManualStudent ? `manual-${Date.now()}` : selectedStudent.id;
+      const studentIc = isManualStudent ? '-' : selectedStudent.ic;
+      const studentYear = isManualStudent ? formYear : selectedStudent.year;
+      const studentClass = isManualStudent ? formClass : selectedStudent.className;
+
       const newRecord = onAddAbsenceRecord({
-        studentId: selectedStudent.id,
-        studentName: selectedStudent.name,
-        studentIc: selectedStudent.ic,
-        year: selectedStudent.year,
-        className: selectedStudent.className,
+        studentId,
+        studentName,
+        studentIc,
+        year: studentYear,
+        className: studentClass,
         dateFrom: formDateFrom,
         dateTo: formDateTo,
         daysCount: calculatedDaysCount,
@@ -381,6 +404,7 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
       // Reset form
       setFormStudentId('');
       setFormStudentSearch('');
+      setFormCustomStudentName('');
       setFormReasonDetails('');
       setFormAttachmentUrl('');
       setFormAttachmentName('');
@@ -1067,6 +1091,7 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                         setFormClass(e.target.value);
                         setFormStudentId('');
                         setFormStudentSearch('');
+                        setFormCustomStudentName('');
                       }}
                       className="w-full bg-slate-800 border border-white/20 rounded-xl px-3.5 py-2.5 text-xs text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:opacity-50"
                       required
@@ -1088,47 +1113,71 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                       Pilih Nama Murid (Senarai Lengkap SKMP) <span className="text-rose-400">*</span>
                     </label>
 
-                    {filteredStudentsForForm.length > 0 ? (
-                      <div className="space-y-2">
-                        <select
-                          value={formStudentId}
-                          onChange={(e) => {
-                            const found = students.find((s) => s.id === e.target.value);
+                    <div className="space-y-2">
+                      <select
+                        value={formStudentId}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setFormStudentId(val);
+                          if (val === 'TIADA_NAMA') {
+                            setFormStudentSearch('Tiada nama');
+                          } else {
+                            const found = students.find((s) => s.id === val);
                             if (found) handleSelectStudent(found);
-                          }}
-                          className="w-full bg-slate-800 border border-emerald-500/40 rounded-xl px-3.5 py-2.5 text-xs text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                          required
-                        >
-                          <option value="">-- Pilih Murid ({filteredStudentsForForm.length} orang) --</option>
-                          {filteredStudentsForForm.map((st) => (
-                            <option key={st.id} value={st.id}>
-                              {st.name}
-                            </option>
-                          ))}
-                        </select>
+                          }
+                        }}
+                        className="w-full bg-slate-800 border border-emerald-500/40 rounded-xl px-3.5 py-2.5 text-xs text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                        required
+                      >
+                        <option value="">-- Sila Pilih Nama Murid --</option>
+                        {filteredStudentsForForm.map((st) => (
+                          <option key={st.id} value={st.id}>
+                            {st.name}
+                          </option>
+                        ))}
+                        <option value="TIADA_NAMA" className="text-amber-300 font-bold">
+                          Tiada nama
+                        </option>
+                      </select>
 
-                        {selectedStudent && (
-                          <div className="p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-xl text-xs space-y-1">
-                            <div className="flex items-center justify-between text-emerald-300 font-bold">
-                              <span>{selectedStudent.name}</span>
-                              <span className="text-[10px] bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-400/30">
-                                {selectedStudent.year} - {selectedStudent.className}
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-slate-300">
-                              Guru Kelas:{' '}
-                              <strong className="text-white">
-                                {selectedStudent.classTeacher || 'Guru Kelas SKMP'}
-                              </strong>
-                            </p>
+                      {/* Kotak nama untuk diisi sekiranya pengguna memilih "Tiada nama" */}
+                      {formStudentId === 'TIADA_NAMA' && (
+                        <div className="p-3.5 bg-amber-950/40 border border-amber-500/40 rounded-xl space-y-2 animate-fadeIn">
+                          <label className="block text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                            <User className="w-3.5 h-3.5" />
+                            <span>Nama Murid <span className="text-rose-400">*</span></span>
+                          </label>
+                          <input
+                            type="text"
+                            value={formCustomStudentName}
+                            onChange={(e) => setFormCustomStudentName(e.target.value)}
+                            placeholder="Sila taip nama penuh murid di sini..."
+                            className="w-full bg-slate-900 border border-amber-400/50 rounded-xl px-3.5 py-2.5 text-xs text-white font-bold placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400 uppercase"
+                            required
+                          />
+                          <p className="text-[11px] text-amber-200/80">
+                            Nama murid ini akan didaftarkan ke dalam rekod makluman ketidakhadiran kelas {formYear} {formClass}.
+                          </p>
+                        </div>
+                      )}
+
+                      {selectedStudent && formStudentId !== 'TIADA_NAMA' && (
+                        <div className="p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-xl text-xs space-y-1">
+                          <div className="flex items-center justify-between text-emerald-300 font-bold">
+                            <span>{selectedStudent.name}</span>
+                            <span className="text-[10px] bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-400/30">
+                              {selectedStudent.year} - {selectedStudent.className}
+                            </span>
                           </div>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-amber-300 italic">
-                        Tiada data murid dijumpai bagi kelas ini dalam pangkalan data.
-                      </p>
-                    )}
+                          <p className="text-[11px] text-slate-300">
+                            Guru Kelas:{' '}
+                            <strong className="text-white">
+                              {selectedStudent.classTeacher || 'Guru Kelas SKMP'}
+                            </strong>
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
