@@ -544,7 +544,7 @@ Assalamualaikum & Salam Sejahtera Tuan/Puan Waris Penjaga,
 
 Sekiranya anak jagaan tuan/puan *TIDAK DAPAT HADIR* ke sekolah hari ini, mohon kerjasama untuk mengisi borang makluman rasmi melalui pautan di bawah:
 
-🔗 *Pautan Borang e-Kehadiran Waris:*
+🔗 *Pautan Borang e-Kehadiran:*
 ${targetUrl}
 
 📌 *Peringatan Mesra:*
@@ -947,7 +947,7 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
             }`}
           >
             <FileText className="w-4 h-4" />
-            <span>Borang e-Kehadiran Waris</span>
+            <span>Borang e-Kehadiran</span>
             <span className="text-[10px] bg-yellow-400 text-slate-950 px-1.5 py-0.5 rounded font-black">Isi Sini</span>
           </button>
 

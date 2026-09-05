@@ -35,6 +35,9 @@ export interface SchoolProfile {
   songTitle: string;
   songLyrics: string[];
   songComposer: string;
+  songLyricist?: string;
+  songArranger?: string;
+  songCreatedDate?: string;
   songAudioUrl: string;
   locationCoords: {
     lat: number;

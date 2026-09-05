@@ -106,6 +106,26 @@ export function loadProfile(): SchoolProfile {
   if (!profile.principalName || profile.principalName === 'Puan Norhafiza binti Mohamad') {
     profile.principalName = initialSchoolProfile.principalName;
   }
+  // Segerakkan maklumat Lagu Rasmi Sekolah terkini ("SKMP MAJU")
+  if (
+    !profile.songTitle ||
+    profile.songTitle === 'Gagah SK Merbau Pulas' ||
+    !profile.songAudioUrl ||
+    profile.songAudioUrl.includes('pixabay.com') ||
+    profile.songTitle !== initialSchoolProfile.songTitle ||
+    !profile.songComposer ||
+    profile.songComposer.includes('Syaiful') ||
+    profile.songComposer.includes('Rosli') ||
+    !profile.songArranger
+  ) {
+    profile.songTitle = initialSchoolProfile.songTitle;
+    profile.songLyrics = initialSchoolProfile.songLyrics;
+    profile.songComposer = initialSchoolProfile.songComposer;
+    profile.songLyricist = initialSchoolProfile.songLyricist;
+    profile.songArranger = initialSchoolProfile.songArranger;
+    profile.songCreatedDate = initialSchoolProfile.songCreatedDate;
+    profile.songAudioUrl = initialSchoolProfile.songAudioUrl;
+  }
   return profile;
 }
 

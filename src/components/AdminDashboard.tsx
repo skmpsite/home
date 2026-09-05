@@ -54,7 +54,8 @@ import {
   Quote,
   Film,
   ExternalLink,
-  Sliders
+  Sliders,
+  Music
 } from 'lucide-react';
 import { initialSchoolProfile, initialHemData, initialNavigationMenu } from '../data/initialData';
 import { GasScriptSection } from './sections/GasScriptSection';
@@ -3142,6 +3143,108 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   value={editProfileData.history}
                   onChange={(e) => setEditProfileData({ ...editProfileData, history: e.target.value })}
                   className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
+                />
+              </div>
+            </div>
+
+            {/* SEKSYEN 5: LAGU RASMI SEKOLAH */}
+            <div className="bg-white/10 backdrop-blur-md rounded-3xl border border-white/10 p-6 sm:p-8 shadow-lg space-y-4">
+              <div className="flex items-center gap-2.5 border-b border-white/10 pb-3">
+                <div className="w-9 h-9 rounded-xl bg-yellow-400/20 border border-yellow-400/30 flex items-center justify-center text-yellow-300">
+                  <Music className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-base font-extrabold text-white">5. Lagu Rasmi Sekolah</h4>
+                  <p className="text-[11px] text-slate-300">Maklumat rasmi lagu, pencipta lirik & lagu, gubahan muzik, tarikh ciptaan, dan video YouTube.</p>
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">Tajuk Lagu Rasmi</label>
+                  <input
+                    type="text"
+                    required
+                    value={editProfileData.songTitle || 'SKMP MAJU'}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, songTitle: e.target.value })}
+                    placeholder="Contoh: SKMP MAJU"
+                    className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">Tarikh Ciptaan Lagu</label>
+                  <input
+                    type="text"
+                    value={editProfileData.songCreatedDate || '18 Mei 2024 (12.30 Malam)'}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, songCreatedDate: e.target.value })}
+                    placeholder="Contoh: 18 Mei 2024 (12.30 Malam)"
+                    className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">Pencipta Lirik</label>
+                  <input
+                    type="text"
+                    required
+                    value={editProfileData.songLyricist || 'Tn Hj Shukeri bin Hj Ibrahim'}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, songLyricist: e.target.value })}
+                    placeholder="Contoh: Tn Hj Shukeri bin Hj Ibrahim"
+                    className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">Pencipta Lagu</label>
+                  <input
+                    type="text"
+                    required
+                    value={editProfileData.songComposer || 'Tn Hj Shukeri bin Hj Ibrahim'}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, songComposer: e.target.value })}
+                    placeholder="Contoh: Tn Hj Shukeri bin Hj Ibrahim"
+                    className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-200 mb-1">Gubahan Muzik</label>
+                  <input
+                    type="text"
+                    required
+                    value={editProfileData.songArranger || 'En Anuar bin Mohd Nor'}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, songArranger: e.target.value })}
+                    placeholder="Contoh: En Anuar bin Mohd Nor"
+                    className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-200 mb-1">Pautan Video YouTube Lagu Rasmi</label>
+                <input
+                  type="text"
+                  required
+                  value={editProfileData.songAudioUrl || 'https://www.youtube.com/watch?v=dNCLSPCYAtc'}
+                  onChange={(e) => setEditProfileData({ ...editProfileData, songAudioUrl: e.target.value })}
+                  placeholder="Contoh: https://www.youtube.com/watch?v=dNCLSPCYAtc"
+                  className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl font-mono text-xs"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Pautan video YouTube rasmi (contoh: https://www.youtube.com/watch?v=dNCLSPCYAtc). Video ini akan dipaparkan dan dimainkan di laman Profil Sekolah.
+                </p>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-200 mb-1">Seni Kata / Lirik Lagu (Satu baris setiap baris)</label>
+                <textarea
+                  rows={8}
+                  value={Array.isArray(editProfileData.songLyrics) ? editProfileData.songLyrics.join('\n') : ''}
+                  onChange={(e) => setEditProfileData({ ...editProfileData, songLyrics: e.target.value.split('\n') })}
+                  placeholder="Masukkan lirik lagu baris demi baris..."
+                  className="w-full p-2.5 bg-white/5 border border-white/20 text-white rounded-xl font-sans text-xs leading-relaxed"
                 />
               </div>
             </div>

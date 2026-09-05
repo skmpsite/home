@@ -3,6 +3,7 @@ import { SchoolProfile, Staff } from '../../types';
 import { initialStaffList } from '../../data/initialData';
 import { formatGoogleDriveUrl } from '../../utils/imageHelpers';
 import { sortStaffBySeniority, isAdministrator } from '../../utils/staffHelpers';
+import { getYouTubeEmbedUrl } from '../../utils/videoHelpers';
 import {
   School,
   Music,
@@ -22,7 +23,12 @@ import {
   ShieldCheck,
   X,
   Search,
-  UserCheck
+  UserCheck,
+  Youtube,
+  ExternalLink,
+  Copy,
+  Check,
+  Sparkles
 } from 'lucide-react';
 
 interface ProfileSectionProps {
@@ -34,6 +40,8 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ profile, staffLi
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedLyrics, setCopiedLyrics] = useState(false);
 
   // States for Carta Organisasi
   const [selectedCategory, setSelectedCategory] = useState<'semua' | 'pentadbir' | 'guru' | 'staf'>('semua');
@@ -411,71 +419,183 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ profile, staffLi
         </div>
       </div>
 
-      {/* School Anthem Section (Lagu Sekolah) with Audio Synthesizer Player */}
-      <div className="bg-white/10 backdrop-blur-xl text-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-white/20 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-yellow-400 rounded-2xl flex items-center justify-center text-blue-950 font-bold shadow-md">
-              <Music className="w-6 h-6 text-blue-950" />
+      {/* School Anthem Section (Lagu Sekolah) with YouTube Video Player & Official Lyrics */}
+      {(() => {
+        const isYouTubeSong = profile.songAudioUrl?.includes('youtube.com') || profile.songAudioUrl?.includes('youtu.be');
+        const youtubeSongEmbed = getYouTubeEmbedUrl(profile.songAudioUrl || 'https://www.youtube.com/watch?v=dNCLSPCYAtc');
+        const youtubeWatchUrl = profile.songAudioUrl?.startsWith('http') ? profile.songAudioUrl : 'https://www.youtube.com/watch?v=dNCLSPCYAtc';
+
+        const handleCopyLink = () => {
+          navigator.clipboard.writeText(youtubeWatchUrl);
+          setCopiedLink(true);
+          setTimeout(() => setCopiedLink(false), 2500);
+        };
+
+        const handleCopyLyrics = () => {
+          const text = `${profile.songTitle}\n\nPencipta Lirik: ${profile.songLyricist || 'Tn Hj Shukeri bin Hj Ibrahim'}\nPencipta Lagu: ${profile.songComposer || 'Tn Hj Shukeri bin Hj Ibrahim'}\nGubahan Muzik: ${profile.songArranger || 'En Anuar bin Mohd Nor'}\nTarikh Ciptaan Lagu: ${profile.songCreatedDate || '18 Mei 2024 (12.30 Malam)'}\n\n${profile.songLyrics.join('\n')}`;
+          navigator.clipboard.writeText(text);
+          setCopiedLyrics(true);
+          setTimeout(() => setCopiedLyrics(false), 2500);
+        };
+
+        return (
+          <div className="bg-white/10 backdrop-blur-xl text-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-white/20 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-yellow-400 rounded-2xl flex items-center justify-center text-blue-950 font-bold shadow-md flex-shrink-0">
+                  <Music className="w-6 h-6 text-blue-950" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-bold uppercase text-yellow-400 tracking-wider">Lagu Rasmi Sekolah</span>
+                    <span className="text-[10px] bg-red-600/90 text-white font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+                      <Youtube className="w-3 h-3" /> YouTube Rasmi
+                    </span>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-black text-white mt-0.5">"{profile.songTitle}"</h3>
+                  <p className="text-xs text-slate-300 mt-0.5">
+                    Pencipta: <strong className="text-white">{profile.songComposer || 'Tn Hj Shukeri bin Hj Ibrahim'}</strong>
+                    {profile.songArranger && (
+                      <span className="text-slate-400 ml-1.5">• Gubahan Muzik: <strong className="text-slate-200">{profile.songArranger}</strong></span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <a
+                  href={youtubeWatchUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3.5 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition shadow-md shadow-red-600/30"
+                  title="Tonton di YouTube"
+                >
+                  <Youtube className="w-4 h-4" />
+                  <span>Tonton di YouTube</span>
+                  <ExternalLink className="w-3 h-3 ml-0.5 opacity-80" />
+                </a>
+
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  className="px-3 py-2 bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white font-semibold rounded-xl text-xs flex items-center gap-1.5 transition border border-white/15"
+                  title="Salin pautan video lagu"
+                >
+                  {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedLink ? 'Pautan Disalin!' : 'Salin Pautan'}</span>
+                </button>
+              </div>
             </div>
-            <div>
-              <span className="text-[10px] font-bold uppercase text-yellow-400 tracking-wider">Lagu Rasmi Sekolah</span>
-              <h3 className="text-xl font-black text-white">"{profile.songTitle}"</h3>
-              <p className="text-xs text-slate-300 mt-0.5">{profile.songComposer}</p>
+
+            {/* Dual Column: Video Player on Left, Official Lyrics on Right */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* Left Column: Official YouTube Video Player & Penghargaan Credits */}
+              <div className="lg:col-span-7 space-y-4">
+                <div className="relative rounded-2xl overflow-hidden border border-white/20 shadow-2xl aspect-video bg-slate-950">
+                  {isYouTubeSong ? (
+                    <iframe
+                      src={youtubeSongEmbed}
+                      title={`Lagu Rasmi Sekolah - ${profile.songTitle}`}
+                      className="w-full h-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center space-y-3 bg-gradient-to-br from-blue-950 to-slate-950">
+                      <Music className="w-12 h-12 text-yellow-400 animate-pulse" />
+                      <p className="text-sm font-bold text-white">{profile.songTitle}</p>
+                      <div className="flex items-center gap-3 bg-white/10 p-2.5 rounded-2xl border border-white/20">
+                        <audio ref={audioRef} src={profile.songAudioUrl} onEnded={() => setIsPlaying(false)} />
+                        <button onClick={togglePlay} className="w-10 h-10 bg-yellow-400 text-blue-950 rounded-xl flex items-center justify-center font-bold shadow">
+                          {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+                        </button>
+                        <button onClick={restartAudio} className="p-2 text-slate-300 hover:text-white"><RotateCcw className="w-4 h-4" /></button>
+                        <button onClick={toggleMute} className="p-2 text-slate-300 hover:text-white">
+                          {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Penghargaan Box matching Official Credits Screen */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-slate-300 space-y-3">
+                  <div className="flex items-center justify-between text-yellow-300 font-bold border-b border-white/10 pb-2.5">
+                    <span className="flex items-center gap-1.5">
+                      <Award className="w-4 h-4 text-yellow-400" /> Penghargaan & Maklumat Lagu
+                    </span>
+                    <span className="text-[10px] bg-yellow-400/20 text-yellow-300 px-2.5 py-0.5 rounded-full font-mono font-bold">
+                      {profile.songCreatedDate || '18 Mei 2024 (12.30 Malam)'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div className="bg-black/30 p-2.5 rounded-xl border border-white/5">
+                      <span className="text-[10px] text-yellow-400/90 block uppercase tracking-wider font-bold">Pencipta Lirik</span>
+                      <p className="font-bold text-white text-xs sm:text-sm mt-0.5">{profile.songLyricist || 'Tn Hj Shukeri bin Hj Ibrahim'}</p>
+                    </div>
+
+                    <div className="bg-black/30 p-2.5 rounded-xl border border-white/5">
+                      <span className="text-[10px] text-yellow-400/90 block uppercase tracking-wider font-bold">Pencipta Lagu</span>
+                      <p className="font-bold text-white text-xs sm:text-sm mt-0.5">{profile.songComposer || 'Tn Hj Shukeri bin Hj Ibrahim'}</p>
+                    </div>
+
+                    <div className="bg-black/30 p-2.5 rounded-xl border border-white/5">
+                      <span className="text-[10px] text-yellow-400/90 block uppercase tracking-wider font-bold">Gubahan Muzik</span>
+                      <p className="font-bold text-white text-xs sm:text-sm mt-0.5">{profile.songArranger || 'En Anuar bin Mohd Nor'}</p>
+                    </div>
+
+                    <div className="bg-black/30 p-2.5 rounded-xl border border-white/5">
+                      <span className="text-[10px] text-yellow-400/90 block uppercase tracking-wider font-bold">Tarikh Ciptaan Lagu</span>
+                      <p className="font-bold text-white text-xs sm:text-sm mt-0.5">{profile.songCreatedDate || '18 Mei 2024 (12.30 Malam)'}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Lyrics Display */}
+              <div className="lg:col-span-5 bg-slate-900/70 backdrop-blur-md rounded-2xl p-5 sm:p-6 border border-white/15 space-y-4">
+                <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-yellow-400 tracking-wider">Seni Kata & Lirik</span>
+                    <h4 className="text-base font-bold text-white">"{profile.songTitle}"</h4>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCopyLyrics}
+                    className="px-2.5 py-1.5 bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white rounded-lg text-[11px] flex items-center gap-1 border border-white/10 transition"
+                    title="Salin teks lirik"
+                  >
+                    {copiedLyrics ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                    <span>{copiedLyrics ? 'Disalin!' : 'Salin Lirik'}</span>
+                  </button>
+                </div>
+
+                <div className="space-y-2.5 text-center font-serif py-1 max-h-[380px] overflow-y-auto pr-1">
+                  {profile.songLyrics.map((line, idx) => (
+                    <p
+                      key={idx}
+                      className={`text-xs sm:text-sm tracking-wide ${
+                        line.startsWith('Chorus')
+                          ? 'font-sans font-black uppercase text-yellow-400 pt-2 text-xs tracking-widest'
+                          : line === ''
+                          ? 'py-1'
+                          : 'text-slate-100 font-medium'
+                      }`}
+                    >
+                      {line}
+                    </p>
+                  ))}
+                </div>
+
+                <div className="pt-3 border-t border-white/10 text-center text-[10px] text-slate-400">
+                  Sekolah Kebangsaan Merbau Pulas • Berilmu, Beramal, Berbakti
+                </div>
+              </div>
             </div>
           </div>
-
-          {/* Audio Synthesizer Controls */}
-          <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md p-2.5 rounded-2xl border border-white/20 shadow-inner">
-            <audio
-              ref={audioRef}
-              src={profile.songAudioUrl}
-              onEnded={() => setIsPlaying(false)}
-            />
-            <button
-              onClick={togglePlay}
-              className="w-10 h-10 bg-yellow-400 hover:bg-yellow-300 text-blue-950 rounded-xl flex items-center justify-center font-bold shadow transition"
-              title={isPlaying ? 'Jeda Lagu' : 'Mainkan Lagu'}
-            >
-              {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
-            </button>
-
-            <button
-              onClick={restartAudio}
-              className="p-2 text-slate-300 hover:text-white transition"
-              title="Mula Semula"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={toggleMute}
-              className="p-2 text-slate-300 hover:text-white transition"
-              title={isMuted ? 'Buka Suara' : 'Senyap'}
-            >
-              {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4" />}
-            </button>
-          </div>
-        </div>
-
-        {/* Lyrics Display */}
-        <div className="bg-slate-900/60 backdrop-blur-md rounded-2xl p-6 border border-white/10 text-center max-w-xl mx-auto space-y-3 font-serif">
-          {profile.songLyrics.map((line, idx) => (
-            <p
-              key={idx}
-              className={`text-xs sm:text-sm tracking-wide ${
-                line === 'Chorus:'
-                  ? 'font-bold uppercase text-yellow-400 pt-2 font-sans text-xs'
-                  : line === ''
-                  ? 'py-1'
-                  : 'text-slate-200'
-              }`}
-            >
-              {line}
-            </p>
-          ))}
-        </div>
-      </div>
+        );
+      })()}
 
       {/* Staff Detail Modal */}
       {selectedStaffModal && (

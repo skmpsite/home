@@ -562,9 +562,12 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
           'Warna Kuning Keemasan: Melambangkan kecemerlangan pendidikan.',
           'Bintang & Bulan Sabit: Melambangkan nilai murni dan pegangan agama Islam.'
         ],
-        songTitle: profile?.songTitle || 'Gagah SK Merbau Pulas',
+        songTitle: profile?.songTitle || 'SKMP MAJU',
         songLyrics: profile?.songLyrics || [],
-        songComposer: profile?.songComposer || 'Cikgu Rosli bin Hassan (Lirik & Lagu)',
+        songComposer: profile?.songComposer || 'Tn Hj Shukeri bin Hj Ibrahim',
+        songLyricist: profile?.songLyricist || 'Tn Hj Shukeri bin Hj Ibrahim',
+        songArranger: profile?.songArranger || 'En Anuar bin Mohd Nor',
+        songCreatedDate: profile?.songCreatedDate || '18 Mei 2024 (12.30 Malam)',
         principalName: gbName,
         principalTitle: gbTitle,
         principalSpeech: profile?.principalSpeech || '',
@@ -746,9 +749,9 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
       } else if (lower.includes('logo') || lower.includes('lencana')) {
         const logoDesc = profile?.logoDescription?.join('\n• ') || 'Buku Terbuka (Ilmu), Obor Menyala (Semangat), Warna Biru Diraja (Perpaduan), Warna Kuning (Kecemerlangan), Bulan & Bintang (Nilai Islam).';
         fallbackText = `🛡️ **Maksud Logo & Lencana ${currentSchoolName}:**\n\n• ${logoDesc}`;
-      } else if (lower.includes('lagu') || lower.includes('lirik')) {
-        const lyrics = profile?.songLyrics?.join('\n') || 'Gagah berdiri SK Merbau Pulas...';
-        fallbackText = `🎵 **Lagu Rasmi Sekolah: "${profile?.songTitle || 'Gagah SK Merbau Pulas'}"**\n*(${profile?.songComposer || 'Cikgu Rosli bin Hassan'})*\n\n${lyrics}`;
+      } else if (lower.includes('lagu') || lower.includes('lirik') || lower.includes('cipta') || lower.includes('komposer')) {
+        const lyrics = profile?.songLyrics?.join('\n') || 'SK Merbau Pulas medan berilmu,\nWarganya berpadu sehati sejiwa...';
+        fallbackText = `🎵 **Lagu Rasmi Sekolah: "${profile?.songTitle || 'SKMP MAJU'}"**\n\n**Penghargaan & Maklumat Lagu:**\n• **Pencipta Lirik**: ${profile?.songLyricist || 'Tn Hj Shukeri bin Hj Ibrahim'}\n• **Pencipta Lagu**: ${profile?.songComposer || 'Tn Hj Shukeri bin Hj Ibrahim'}\n• **Gubahan Muzik**: ${profile?.songArranger || 'En Anuar bin Mohd Nor'}\n• **Tarikh Ciptaan**: ${profile?.songCreatedDate || '18 Mei 2024 (12.30 Malam)'}\n• **Pautan Video YouTube**: ${profile?.songAudioUrl || 'https://www.youtube.com/watch?v=dNCLSPCYAtc'}\n\n**Seni Kata / Lirik:**\n${lyrics}`;
       } else if (lower.includes('ydp') || lower.includes('yang dipertua')) {
         const ydp = pibgCommittee.find((p) => p.position.toLowerCase().includes('ydp') || p.position.toLowerCase().includes('yang dipertua'));
         fallbackText = `Yang Dipertua (YDP) PIBG ${currentSchoolName} ialah **${ydp ? ydp.name : 'Tuan Haji Azmi bin Ahmad'}** 🤝✨.`;
