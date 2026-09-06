@@ -28,7 +28,7 @@ import {
   X,
   Eye
 } from 'lucide-react';
-import { IctBookingRecord, SchoolProfile, Staff } from '../../types';
+import { IctBookingRecord, SchoolProfile, Staff, UserRole, isTeacherRole } from '../../types';
 import {
   ICT_TIME_SLOTS,
   ICT_DAYS,
@@ -47,7 +47,7 @@ import {
 interface IctBookingSubSectionProps {
   isAdmin?: boolean;
   isTeacher?: boolean;
-  userRole?: 'admin' | 'guru' | null;
+  userRole?: UserRole | null;
   profile?: SchoolProfile;
   staffList?: Staff[];
   onOpenLogin?: () => void;
@@ -61,7 +61,7 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
   staffList,
   onOpenLogin
 }) => {
-  const isAuthorized = isAdmin || isTeacher || userRole === 'admin' || userRole === 'guru';
+  const isAuthorized = isAdmin || isTeacher || isTeacherRole(userRole);
 
   // Bookings list state
   const [bookings, setBookings] = useState<IctBookingRecord[]>(() => loadIctBookings());

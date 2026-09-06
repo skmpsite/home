@@ -18,7 +18,9 @@ import {
   TeacherLinkItem,
   StudentRecord,
   StudentAbsenceRecord,
-  SchoolHoliday
+  SchoolHoliday,
+  AcademicSubject,
+  AcademicProgram
 } from '../types';
 import {
   initialSchoolProfile,
@@ -38,7 +40,9 @@ import {
   initialHemData,
   initialNavigationMenu,
   initialTeacherLinks,
-  initialSchoolHolidays
+  initialSchoolHolidays,
+  initialAcademicSubjects,
+  initialAcademicPrograms
 } from '../data/initialData';
 import { initialStudentsData } from '../data/studentsData';
 import { initialAbsenceRecords } from '../data/initialAttendance';
@@ -65,7 +69,9 @@ const KEYS = {
   NAV_MENU: 'skmp_nav_menu_v1',
   STUDENTS: 'skmp_students_v1',
   ABSENCE_RECORDS: 'skmp_absence_records_v1',
-  SCHOOL_HOLIDAYS: 'skmp_school_holidays_v1'
+  SCHOOL_HOLIDAYS: 'skmp_school_holidays_v1',
+  ACADEMIC_SUBJECTS: 'skmp_academic_subjects_v1',
+  ACADEMIC_PROGRAMS: 'skmp_academic_programs_v1'
 };
 
 function getStored<T>(key: string, fallback: T): T {
@@ -588,6 +594,30 @@ export function saveSchoolHolidays(holidays: SchoolHoliday[]): void {
   setStored(KEYS.SCHOOL_HOLIDAYS, holidays);
 }
 
+export function loadAcademicSubjects(): AcademicSubject[] {
+  const list = getStored<AcademicSubject[]>(KEYS.ACADEMIC_SUBJECTS, initialAcademicSubjects);
+  if (!Array.isArray(list) || list.length === 0) {
+    return initialAcademicSubjects;
+  }
+  return list;
+}
+
+export function saveAcademicSubjects(subjects: AcademicSubject[]): void {
+  setStored(KEYS.ACADEMIC_SUBJECTS, subjects);
+}
+
+export function loadAcademicPrograms(): AcademicProgram[] {
+  const list = getStored<AcademicProgram[]>(KEYS.ACADEMIC_PROGRAMS, initialAcademicPrograms);
+  if (!Array.isArray(list) || list.length === 0) {
+    return initialAcademicPrograms;
+  }
+  return list;
+}
+
+export function saveAcademicPrograms(programs: AcademicProgram[]): void {
+  setStored(KEYS.ACADEMIC_PROGRAMS, programs);
+}
+
 export function resetAllToDefault(): void {
   localStorage.removeItem(KEYS.PROFILE);
   localStorage.removeItem(KEYS.STAFF);
@@ -609,4 +639,6 @@ export function resetAllToDefault(): void {
   localStorage.removeItem(KEYS.STUDENTS);
   localStorage.removeItem(KEYS.ABSENCE_RECORDS);
   localStorage.removeItem(KEYS.SCHOOL_HOLIDAYS);
+  localStorage.removeItem(KEYS.ACADEMIC_SUBJECTS);
+  localStorage.removeItem(KEYS.ACADEMIC_PROGRAMS);
 }

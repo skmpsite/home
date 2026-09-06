@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Key, User, X, CheckCircle2, AlertCircle, ShieldCheck, Eye, EyeOff, LogIn } from 'lucide-react';
+import { UserRole } from '../types';
 
-export type UserRole = 'admin' | 'guru' | 'user';
+export type { UserRole };
 
 interface AdminLoginModalProps {
   isOpen: boolean;
@@ -31,8 +32,149 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
 
     const cleanUser = username.trim().toLowerCase();
     const cleanPass = password.trim();
+    const cleanPassLower = cleanPass.toLowerCase();
 
-    // 1. Semak akaun PENGGUNA / WARIS SKMP (skmp / 123456)
+    // 1. Semak PK Pentadbiran / Kurikulum (ID: PK1, Katalaluan: PK15012)
+    if (
+      (cleanUser === 'pk1' && (cleanPass === 'PK15012' || cleanPassLower === 'pk15012')) ||
+      (cleanPass === 'PK15012' || (cleanUser === '' && cleanPassLower === 'pk15012'))
+    ) {
+      setIsSubmitting(true);
+      try {
+        localStorage.setItem('skmp_attendance_auth_user', 'pk_kurikulum');
+      } catch (e) {
+        console.error(e);
+      }
+      setSuccessMsg('Log masuk PK Pentadbiran/Kurikulum Berjaya! Membuka akses Kurikulum & Portal Guru...');
+      setTimeout(() => {
+        setIsSubmitting(false);
+        onLoginSuccess('pk_kurikulum');
+        onClose();
+        setSuccessMsg('');
+      }, 500);
+      return;
+    }
+
+    // 2. Semak SU Kurikulum (ID: SUPK1, Katalaluan: SUPK15012)
+    if (
+      (cleanUser === 'supk1' && (cleanPass === 'SUPK15012' || cleanPassLower === 'supk15012')) ||
+      (cleanPass === 'SUPK15012' || (cleanUser === '' && cleanPassLower === 'supk15012'))
+    ) {
+      setIsSubmitting(true);
+      try {
+        localStorage.setItem('skmp_attendance_auth_user', 'su_kurikulum');
+      } catch (e) {
+        console.error(e);
+      }
+      setSuccessMsg('Log masuk Setiausaha Kurikulum Berjaya! Membuka akses Kurikulum & Portal Guru...');
+      setTimeout(() => {
+        setIsSubmitting(false);
+        onLoginSuccess('su_kurikulum');
+        onClose();
+        setSuccessMsg('');
+      }, 500);
+      return;
+    }
+
+    // 3. Semak PK Hal Ehwal Murid (ID: PKHEM, Katalaluan: PKHEM5012)
+    if (
+      (cleanUser === 'pkhem' && (cleanPass === 'PKHEM5012' || cleanPassLower === 'pkhem5012')) ||
+      (cleanPass === 'PKHEM5012' || (cleanUser === '' && cleanPassLower === 'pkhem5012'))
+    ) {
+      setIsSubmitting(true);
+      try {
+        localStorage.setItem('skmp_attendance_auth_user', 'pk_hem');
+      } catch (e) {
+        console.error(e);
+      }
+      setSuccessMsg('Log masuk PK Hal Ehwal Murid Berjaya! Membuka akses HEM & Portal Guru...');
+      setTimeout(() => {
+        setIsSubmitting(false);
+        onLoginSuccess('pk_hem');
+        onClose();
+        setSuccessMsg('');
+      }, 500);
+      return;
+    }
+
+    // 4. Semak SU Hal Ehwal Murid (ID: SUPKHEM, Katalaluan: SUPKHEM5012)
+    if (
+      (cleanUser === 'supkhem' && (cleanPass === 'SUPKHEM5012' || cleanPassLower === 'supkhem5012')) ||
+      (cleanPass === 'SUPKHEM5012' || (cleanUser === '' && cleanPassLower === 'supkhem5012'))
+    ) {
+      setIsSubmitting(true);
+      try {
+        localStorage.setItem('skmp_attendance_auth_user', 'su_hem');
+      } catch (e) {
+        console.error(e);
+      }
+      setSuccessMsg('Log masuk Setiausaha HEM Berjaya! Membuka akses HEM & Portal Guru...');
+      setTimeout(() => {
+        setIsSubmitting(false);
+        onLoginSuccess('su_hem');
+        onClose();
+        setSuccessMsg('');
+      }, 500);
+      return;
+    }
+
+    // 5. Semak PK Kokurikulum (ID: PKKo, Katalaluan: PKKo15012 / PKKo5012)
+    if (
+      (cleanUser === 'pkko' &&
+        (cleanPass === 'PKKo15012' ||
+          cleanPassLower === 'pkko15012' ||
+          cleanPass === 'PKKo5012' ||
+          cleanPassLower === 'pkko5012')) ||
+      cleanPass === 'PKKo15012' ||
+      cleanPassLower === 'pkko15012' ||
+      cleanPass === 'PKKo5012' ||
+      cleanPassLower === 'pkko5012'
+    ) {
+      setIsSubmitting(true);
+      try {
+        localStorage.setItem('skmp_attendance_auth_user', 'pk_kokurikulum');
+      } catch (e) {
+        console.error(e);
+      }
+      setSuccessMsg('Log masuk PK Kokurikulum Berjaya! Membuka akses Kokurikulum & Portal Guru...');
+      setTimeout(() => {
+        setIsSubmitting(false);
+        onLoginSuccess('pk_kokurikulum');
+        onClose();
+        setSuccessMsg('');
+      }, 500);
+      return;
+    }
+
+    // 6. Semak SU Kokurikulum (ID: SUPKKo, Katalaluan: SUPKKo5012)
+    if (
+      (cleanUser === 'supkko' &&
+        (cleanPass === 'SUPKKo5012' ||
+          cleanPassLower === 'supkko5012' ||
+          cleanPass === 'SUPKKo15012' ||
+          cleanPassLower === 'supkko15012')) ||
+      cleanPass === 'SUPKKo5012' ||
+      cleanPassLower === 'supkko5012' ||
+      cleanPass === 'SUPKKo15012' ||
+      cleanPassLower === 'supkko15012'
+    ) {
+      setIsSubmitting(true);
+      try {
+        localStorage.setItem('skmp_attendance_auth_user', 'su_kokurikulum');
+      } catch (e) {
+        console.error(e);
+      }
+      setSuccessMsg('Log masuk Setiausaha Kokurikulum Berjaya! Membuka akses Kokurikulum & Portal Guru...');
+      setTimeout(() => {
+        setIsSubmitting(false);
+        onLoginSuccess('su_kokurikulum');
+        onClose();
+        setSuccessMsg('');
+      }, 500);
+      return;
+    }
+
+    // 7. Semak akaun PENGGUNA / WARIS SKMP (skmp / 123456)
     if (cleanUser === 'skmp' && cleanPass === '123456') {
       setIsSubmitting(true);
       try {
@@ -50,7 +192,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
       return;
     }
 
-    // 2. Semak akaun GURU (guru / guru5012 atau kata laluan guru5012)
+    // 8. Semak akaun GURU (guru / guru5012 atau kata laluan guru5012)
     if (cleanPass === 'guru5012' || (cleanUser === 'guru' && cleanPass === 'guru5012')) {
       setIsSubmitting(true);
       try {
@@ -68,7 +210,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
       return;
     }
 
-    // 3. Semak akaun PENTADBIR (adminskmp / admin dan kata laluan 123456)
+    // 9. Semak akaun PENTADBIR UTAMA (adminskmp / admin dan kata laluan 123456)
     if ((cleanUser === 'adminskmp' || cleanUser === 'admin') && cleanPass === '123456') {
       setIsSubmitting(true);
       try {
@@ -184,7 +326,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                 <span>{isSubmitting ? 'Mengesahkan Log Masuk...' : 'Log Masuk'}</span>
               </button>
               <p className="text-center text-[11px] text-slate-400">
-                Sistem menerima log masuk Pengguna Biasa, Guru dan Pentadbir.
+                Sistem menyokong log masuk Pentadbir, Guru, PK & SU (Kurikulum, HEM, Kokurikulum) serta Pengguna SKMP.
               </p>
             </div>
           </form>

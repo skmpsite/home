@@ -44,7 +44,7 @@ import {
   Link,
   CalendarCheck2
 } from 'lucide-react';
-import { StudentRecord, StudentAbsenceRecord, SchoolHoliday } from '../../types';
+import { StudentRecord, StudentAbsenceRecord, SchoolHoliday, UserRole, isTeacherRole } from '../../types';
 import {
   sortYears,
   sortClasses,
@@ -67,7 +67,7 @@ interface HemAttendanceSubSectionProps {
   onDeleteAbsenceRecord?: (id: string) => void;
   isAdmin?: boolean;
   isTeacher?: boolean;
-  userRole?: 'admin' | 'guru' | null;
+  userRole?: UserRole | null;
   onOpenLogin?: () => void;
 }
 
@@ -93,7 +93,7 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
   userRole,
   onOpenLogin
 }) => {
-  const isAuthorized = isAdmin || isTeacher || userRole === 'admin' || userRole === 'guru';
+  const isAuthorized = isAdmin || isTeacher || isTeacherRole(userRole);
   const [isHolidayModalOpen, setIsHolidayModalOpen] = useState<boolean>(false);
 
   // Auto-hide info penerangan selepas 5 saat

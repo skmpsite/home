@@ -31,7 +31,7 @@ import {
   Smartphone,
   ChevronRight
 } from 'lucide-react';
-import { IctCashFlowRecord, SchoolProfile, Staff } from '../../types';
+import { IctCashFlowRecord, SchoolProfile, Staff, UserRole } from '../../types';
 import {
   loadIctCashFlow,
   saveIctCashFlow,
@@ -50,7 +50,7 @@ import { findPkPentadbiranStaff } from '../../utils/staffHelpers';
 interface IctFinanceSubSectionProps {
   isAdmin?: boolean;
   isTeacher?: boolean;
-  userRole?: 'admin' | 'guru' | null;
+  userRole?: UserRole | null;
   profile?: SchoolProfile;
   staffList?: Staff[];
   onOpenLogin?: () => void;

@@ -37,7 +37,7 @@ import {
 } from 'lucide-react';
 import { getNavIcon } from '../../utils/iconMap';
 import { initialTeacherLinks } from '../../data/initialData';
-import { StudentRecord, StudentAbsenceRecord } from '../../types';
+import { StudentRecord, StudentAbsenceRecord, UserRole, isTeacherRole } from '../../types';
 import { StudentSearchPortalModal } from './StudentSearchPortalModal';
 import { TeacherRmtSubSection } from './TeacherRmtSubSection';
 
@@ -48,7 +48,7 @@ interface TeacherSectionProps {
   onSaveTeacherLinks?: (links: TeacherLinkItem[]) => void;
   isAdmin: boolean;
   isTeacher?: boolean;
-  userRole?: 'admin' | 'guru' | null;
+  userRole?: UserRole | null;
   onOpenLogin?: () => void;
   onNavigate?: (tab: any) => void;
   onOpenRmtPortal?: () => void;
@@ -146,7 +146,32 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
   const [draggedLinkId, setDraggedLinkId] = useState<string | null>(null);
   const [dragOverLinkId, setDragOverLinkId] = useState<string | null>(null);
 
-  const canAccess = isAdmin || isTeacher || userRole === 'admin' || userRole === 'guru';
+  const canAccess = isAdmin || isTeacher || isTeacherRole(userRole);
+
+  const canEditCategory = (catKey: string) => {
+    if (isAdmin || userRole === 'admin') return true;
+    if ((userRole === 'pk_kurikulum' || userRole === 'su_kurikulum') && catKey === 'kurikulum') return true;
+    if ((userRole === 'pk_hem' || userRole === 'su_hem') && catKey === 'hem') return true;
+    if ((userRole === 'pk_kokurikulum' || userRole === 'su_kokurikulum') && catKey === 'kokurikulum') return true;
+    return false;
+  };
+
+  const hasAnyEditPermission =
+    isAdmin ||
+    userRole === 'admin' ||
+    userRole === 'pk_kurikulum' ||
+    userRole === 'su_kurikulum' ||
+    userRole === 'pk_hem' ||
+    userRole === 'su_hem' ||
+    userRole === 'pk_kokurikulum' ||
+    userRole === 'su_kokurikulum';
+
+  const getDefaultCategoryForUser = (): 'kurikulum' | 'hem' | 'kokurikulum' | 'umum' => {
+    if (userRole === 'pk_kurikulum' || userRole === 'su_kurikulum') return 'kurikulum';
+    if (userRole === 'pk_hem' || userRole === 'su_hem') return 'hem';
+    if (userRole === 'pk_kokurikulum' || userRole === 'su_kokurikulum') return 'kokurikulum';
+    return activeCategory !== 'semua' ? activeCategory : 'kurikulum';
+  };
 
   const handleOpenRmt = () => {
     if (onOpenRmtPortal) {
@@ -272,7 +297,7 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
     setEditingLink(null);
     setFormData({
       title: '',
-      category: defaultCat || (activeCategory !== 'semua' ? activeCategory : 'kurikulum'),
+      category: defaultCat || getDefaultCategoryForUser(),
       url: 'https://',
       description: '',
       badge: '',
@@ -627,7 +652,7 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
 
           {/* Action Buttons */}
           <div className="flex flex-wrap items-center gap-2.5 flex-shrink-0">
-            {isAdmin && (
+            {hasAnyEditPermission && (
               <>
                 <button
                   onClick={() => setIsReorderMode(!isReorderMode)}
@@ -646,32 +671,58 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                   className="px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-2xl text-xs sm:text-sm transition shadow-lg shadow-red-950/50 border border-red-400 flex items-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Tambah Pautan</span>
+                  <span>
+                    {userRole === 'pk_kurikulum' || userRole === 'su_kurikulum'
+                      ? 'Tambah Pautan Kurikulum'
+                      : userRole === 'pk_hem' || userRole === 'su_hem'
+                      ? 'Tambah Pautan HEM'
+                      : userRole === 'pk_kokurikulum' || userRole === 'su_kokurikulum'
+                      ? 'Tambah Pautan Kokurikulum'
+                      : 'Tambah Pautan'}
+                  </span>
                 </button>
-                <button
-                  onClick={handleResetToDefault}
-                  title="Tetapkan semula pautan asal"
-                  className="p-2.5 bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white rounded-2xl text-xs transition border border-white/20 flex items-center gap-1.5"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  <span className="hidden sm:inline">Set Semula</span>
-                </button>
+                {isAdmin && (
+                  <button
+                    onClick={handleResetToDefault}
+                    title="Tetapkan semula pautan asal"
+                    className="p-2.5 bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white rounded-2xl text-xs transition border border-white/20 flex items-center gap-1.5"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span className="hidden sm:inline">Set Semula</span>
+                  </button>
+                )}
               </>
             )}
           </div>
         </div>
 
-        {/* Drag & Drop Guidance for Admin */}
-        {isAdmin && (
+        {/* Drag & Drop Guidance for Admin and Section Admins */}
+        {hasAnyEditPermission && (
           <div className="mt-4 pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs text-amber-200 bg-black/20 px-4 py-2.5 rounded-2xl">
             <div className="flex items-center gap-2">
               <Move className="w-4 h-4 text-amber-400 flex-shrink-0" />
               <span>
-                <strong>Panduan Susun Pautan:</strong> Pegang & heret (<strong>Drag & Drop</strong>) kad pautan untuk ubah posisi, atau klik butang <span className="bg-white/20 px-1.5 py-0.5 rounded text-white font-bold">Ke Awal</span> / <span className="bg-white/20 px-1.5 py-0.5 rounded text-white font-bold">Ke Akhir</span>.
+                {isAdmin ? (
+                  <>
+                    <strong>Panduan Pentadbir Utama:</strong> Anda mempunyai akses penuh menyunting, menambah & menyusun (<strong>Drag & Drop</strong>) semua kategori pautan.
+                  </>
+                ) : userRole === 'pk_kurikulum' || userRole === 'su_kurikulum' ? (
+                  <>
+                    <strong>Mod Pentadbir Kurikulum:</strong> Anda diberi akses rasmi untuk menambah, menyunting, memadam & menyusun pautan dalam bahagian <strong>Kurikulum</strong>.
+                  </>
+                ) : userRole === 'pk_hem' || userRole === 'su_hem' ? (
+                  <>
+                    <strong>Mod Pentadbir Hal Ehwal Murid:</strong> Anda diberi akses rasmi untuk menambah, menyunting, memadam & menyusun pautan dalam bahagian <strong>Hal Ehwal Murid</strong>.
+                  </>
+                ) : userRole === 'pk_kokurikulum' || userRole === 'su_kokurikulum' ? (
+                  <>
+                    <strong>Mod Pentadbir Kokurikulum:</strong> Anda diberi akses rasmi untuk menambah, menyunting, memadam & menyusun pautan dalam bahagian <strong>Kokurikulum</strong>.
+                  </>
+                ) : null}
               </span>
             </div>
             <span className="text-[11px] text-slate-300 font-mono">
-              Auto-Simpan Aktif
+              Simpan Auto Aktif
             </span>
           </div>
         )}
@@ -804,7 +855,7 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                 </div>
               </div>
 
-              {isAdmin && (
+              {canEditCategory(catKey) && (
                 <button
                   onClick={() => handleOpenAdd(catKey)}
                   className="self-start sm:self-auto text-xs px-3 py-1.5 bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white rounded-xl border border-white/10 flex items-center gap-1.5 transition"
@@ -818,7 +869,7 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
             {sectionLinks.length === 0 ? (
               <div className="bg-slate-900/40 border border-dashed border-white/10 rounded-3xl p-8 text-center text-slate-400">
                 <p className="text-sm">Tiada pautan ditemui dalam bahagian ini.</p>
-                {isAdmin && (
+                {canEditCategory(catKey) && (
                   <button
                     onClick={() => handleOpenAdd(catKey)}
                     className="mt-2 text-xs text-red-400 hover:text-red-300 underline font-bold"
@@ -855,7 +906,7 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                   return (
                     <div
                       key={link.id}
-                      draggable={isAdmin}
+                      draggable={canEditCategory(link.category)}
                       onDragStart={(e) => handleDragStart(e, link.id, link.category)}
                       onDragOver={(e) => handleDragOver(e, link.id)}
                       onDragLeave={handleDragLeave}
@@ -900,8 +951,8 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                           : 'border-white/15 hover:border-white/40'
                       }`}
                     >
-                      {/* Drag handle & Order Controls for Admin */}
-                      {isAdmin && (
+                      {/* Drag handle & Order Controls for Section Editors / Admin */}
+                      {canEditCategory(link.category) && (
                         <div
                           onClick={(e) => e.stopPropagation()}
                           className="flex items-center justify-between pb-2 mb-1 border-b border-white/10 text-xs text-slate-400"
@@ -1129,18 +1180,36 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                   </label>
                   <select
                     value={formData.category}
+                    disabled={
+                      !isAdmin &&
+                      userRole !== 'admin' &&
+                      (userRole === 'pk_kurikulum' ||
+                        userRole === 'su_kurikulum' ||
+                        userRole === 'pk_hem' ||
+                        userRole === 'su_hem' ||
+                        userRole === 'pk_kokurikulum' ||
+                        userRole === 'su_kokurikulum')
+                    }
                     onChange={(e) =>
                       setFormData({
                         ...formData,
                         category: e.target.value as 'kurikulum' | 'hem' | 'kokurikulum' | 'umum'
                       })
                     }
-                    className="w-full px-3 py-2 bg-slate-950 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:border-red-400"
+                    className="w-full px-3 py-2 bg-slate-950 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:border-red-400 disabled:opacity-80 disabled:cursor-not-allowed"
                   >
-                    <option value="kurikulum">1. Kurikulum</option>
-                    <option value="hem">2. Hal Ehwal Murid</option>
-                    <option value="kokurikulum">3. Kokurikulum</option>
-                    <option value="umum">4. Umum</option>
+                    {(isAdmin || userRole === 'admin' || userRole === 'pk_kurikulum' || userRole === 'su_kurikulum') && (
+                      <option value="kurikulum">1. Kurikulum</option>
+                    )}
+                    {(isAdmin || userRole === 'admin' || userRole === 'pk_hem' || userRole === 'su_hem') && (
+                      <option value="hem">2. Hal Ehwal Murid</option>
+                    )}
+                    {(isAdmin || userRole === 'admin' || userRole === 'pk_kokurikulum' || userRole === 'su_kokurikulum') && (
+                      <option value="kokurikulum">3. Kokurikulum</option>
+                    )}
+                    {(isAdmin || userRole === 'admin') && (
+                      <option value="umum">4. Umum</option>
+                    )}
                   </select>
                 </div>
               </div>

@@ -21,7 +21,12 @@ import {
   TeacherLinkItem,
   StudentRecord,
   StudentAbsenceRecord,
-  SchoolHoliday
+  SchoolHoliday,
+  UserRole,
+  isTeacherRole,
+  canEditKurikulum,
+  canEditHem,
+  canEditKokurikulum
 } from './types';
 import {
   loadProfile,
@@ -944,7 +949,7 @@ export default function App() {
             teacherLinks={teacherLinks}
             onSaveTeacherLinks={handleUpdateTeacherLinks}
             isAdmin={isAdmin}
-            isTeacher={userRole === 'guru'}
+            isTeacher={userRole === 'guru' || isTeacherRole(userRole)}
             userRole={userRole}
             onOpenLogin={() => setLoginModalOpen(true)}
             onNavigate={setActiveTab}
@@ -966,12 +971,13 @@ export default function App() {
         {activeTab === 'akademik' && (
           <AcademicSection
             events={events}
+            onSaveEvents={handleUpdateEvents}
             profile={profile}
             staffList={staffList}
             initialSubTab={kurikulumSubTab}
             initialIctSubTab={ictSubTab}
             isAdmin={isAdmin}
-            isTeacher={userRole === 'guru'}
+            isTeacher={userRole === 'guru' || isTeacherRole(userRole)}
             userRole={userRole}
             onOpenLogin={() => setLoginModalOpen(true)}
           />
@@ -980,6 +986,7 @@ export default function App() {
         {activeTab === 'hem' && (
           <HemSection
             hemData={hemData}
+            onSaveHemData={handleUpdateHemData}
             profile={profile}
             staffList={staffList}
             students={studentsList}
@@ -989,7 +996,7 @@ export default function App() {
             onDeleteAbsenceRecord={handleDeleteAbsenceRecord}
             initialSubTab={hemSubTab}
             isAdmin={isAdmin}
-            isTeacher={userRole === 'guru'}
+            isTeacher={userRole === 'guru' || isTeacherRole(userRole)}
             userRole={userRole}
             onOpenStudentPortal={() => setIsGlobalStudentPortalOpen(true)}
             onOpenLogin={() => setLoginModalOpen(true)}
@@ -1001,8 +1008,13 @@ export default function App() {
         {activeTab === 'kokurikulum' && (
           <CokurriculumSection
             units={coCurriculumUnits}
+            onSaveCoCurriculum={handleUpdateCoCurriculum}
             profile={profile}
             staffList={staffList}
+            isAdmin={isAdmin}
+            isTeacher={userRole === 'guru' || isTeacherRole(userRole)}
+            userRole={userRole}
+            onOpenLogin={() => setLoginModalOpen(true)}
           />
         )}
 

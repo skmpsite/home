@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { LayoutDashboard, X, ExternalLink } from 'lucide-react';
-import { NavigationMenuItem } from '../types';
+import { NavigationMenuItem, UserRole, isTeacherRole } from '../types';
 import { initialNavigationMenu } from '../data/initialData';
 import { getNavIcon } from '../utils/iconMap';
 
@@ -26,7 +26,7 @@ interface NavbarProps {
   onTabChange: (tab: TabType) => void;
   isAdmin: boolean;
   isTeacher?: boolean;
-  userRole?: 'admin' | 'guru' | null;
+  userRole?: UserRole | null;
   unreadFeedbackCount: number;
   navigationMenu?: NavigationMenuItem[];
   mobileMenuOpen?: boolean;
@@ -49,7 +49,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [internalMenuOpen, setInternalMenuOpen] = useState(false);
   const isMenuOpen = controlledMenuOpen !== undefined ? controlledMenuOpen : internalMenuOpen;
 
-  const canAccessGuru = isAdmin || isTeacher || userRole === 'admin' || userRole === 'guru';
+  const canAccessGuru = isAdmin || isTeacher || isTeacherRole(userRole);
 
   const handleToggleMenu = () => {
     if (onToggleMobileMenu) {

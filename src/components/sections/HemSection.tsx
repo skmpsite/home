@@ -25,9 +25,32 @@ import {
   Calendar,
   Percent,
   FileCheck,
-  CalendarCheck2
+  CalendarCheck2,
+  Plus,
+  Trash2,
+  Edit3,
+  ArrowUp,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Sliders,
+  Settings
 } from 'lucide-react';
-import { HemData, SchoolProfile, Staff, StudentRecord, StudentAbsenceRecord, SchoolHoliday } from '../../types';
+import {
+  HemData,
+  SchoolProfile,
+  Staff,
+  StudentRecord,
+  StudentAbsenceRecord,
+  SchoolHoliday,
+  UserRole,
+  isTeacherRole,
+  canEditHem,
+  HemRuleItem,
+  HemOfficer,
+  HemRmtMenuItem
+} from '../../types';
 import { initialHemData, initialSchoolHolidays } from '../../data/initialData';
 import { initialStudentsList } from '../../data/studentsData';
 import { initialAbsenceRecords } from '../../data/initialAttendance';
@@ -40,9 +63,20 @@ import {
   findPkKokurikulumStaff
 } from '../../utils/staffHelpers';
 import { getActiveSchoolHoliday } from '../../utils/studentHelpers';
+import { loadHemData, saveHemData } from '../../utils/storage';
+import {
+  EditStatsModal,
+  EditSpeechModal,
+  EditRuleModal,
+  EditUbkModal,
+  EditRmtModal,
+  EditOfficerModal,
+  EditPointModal
+} from './HemEditModals';
 
 interface HemSectionProps {
   hemData?: HemData;
+  onSaveHemData?: (data: HemData) => void;
   profile?: SchoolProfile;
   staffList?: Staff[];
   students?: StudentRecord[];
@@ -57,7 +91,7 @@ interface HemSectionProps {
   initialSubTab?: 'semua' | 'kehadiran' | 'disiplin' | 'kebajikan' | '3k';
   isAdmin?: boolean;
   isTeacher?: boolean;
-  userRole?: 'admin' | 'guru' | null;
+  userRole?: UserRole | null;
   onOpenStudentPortal?: () => void;
   onOpenRmtPortal?: () => void;
   onOpenLogin?: () => void;
@@ -65,6 +99,7 @@ interface HemSectionProps {
 
 export const HemSection: React.FC<HemSectionProps> = ({
   hemData = initialHemData,
+  onSaveHemData,
   profile,
   staffList,
   students = initialStudentsList,
@@ -82,10 +117,276 @@ export const HemSection: React.FC<HemSectionProps> = ({
   onOpenRmtPortal,
   onOpenLogin
 }) => {
-  const isAuthorized = isAdmin || isTeacher || userRole === 'admin' || userRole === 'guru';
-  const data = hemData || initialHemData;
+  const isAuthorized = isAdmin || isTeacher || isTeacherRole(userRole);
+  const canEdit = canEditHem(userRole, isAdmin);
+  const [isEditMode, setIsEditMode] = useState<boolean>(false);
+  const [currentHemData, setCurrentHemData] = useState<HemData>(() => {
+    return hemData || loadHemData();
+  });
+  const [statusMsg, setStatusMsg] = useState<string | null>(null);
+
+  // Sync if hemData prop changes
+  useEffect(() => {
+    if (hemData) {
+      setCurrentHemData(hemData);
+    }
+  }, [hemData]);
+
+  const showToast = (msg: string) => {
+    setStatusMsg(msg);
+    setTimeout(() => setStatusMsg(null), 3500);
+  };
+
+  const handleSaveData = (updated: HemData, msg?: string) => {
+    setCurrentHemData(updated);
+    saveHemData(updated);
+    if (onSaveHemData) {
+      onSaveHemData(updated);
+    }
+    showToast(msg || 'Maklumat HEM berjaya dikemas kini!');
+  };
+
+  const data = currentHemData;
   const [activeSubTab, setActiveSubTab] = useState<'semua' | 'kehadiran' | 'disiplin' | 'kebajikan' | '3k'>(initialSubTab);
   const [isRmtModalOpen, setIsRmtModalOpen] = useState(false);
+
+  // Edit Modals State
+  const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
+  const [isSpeechModalOpen, setIsSpeechModalOpen] = useState(false);
+  const [editingRule, setEditingRule] = useState<{ rule: HemRuleItem; isNew: boolean } | null>(null);
+  const [editingUbk, setEditingUbk] = useState<{ service: { title: string; desc: string }; isNew: boolean; index?: number } | null>(null);
+  const [editingRmt, setEditingRmt] = useState<{ item: HemRmtMenuItem; isNew: boolean; index?: number } | null>(null);
+  const [editingOfficer, setEditingOfficer] = useState<{ officer: HemOfficer; isNew: boolean } | null>(null);
+  const [editingPoint, setEditingPoint] = useState<{
+    title: string;
+    categoryLabel: string;
+    value: string;
+    isNew: boolean;
+    onSave: (val: string) => void;
+  } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    title: string;
+    message?: string;
+    onConfirm: () => void;
+  } | null>(null);
+
+  // Manager identity label
+  const managerRoleLabel = useMemo(() => {
+    if (isAdmin) return 'Pentadbir Sistem (Admin)';
+    if (userRole === 'pk_hem') return 'Penolong Kanan Hal Ehwal Murid (PK HEM)';
+    if (userRole === 'su_hem') return 'Setiausaha HEM (SU HEM)';
+    return 'Pengurusan HEM';
+  }, [isAdmin, userRole]);
+
+  // Array reorder helper
+  const moveItemInArray = <T,>(arr: T[], index: number, direction: -1 | 1): T[] => {
+    const targetIdx = index + direction;
+    if (targetIdx < 0 || targetIdx >= arr.length) return arr;
+    const next = [...arr];
+    const temp = next[index];
+    next[index] = next[targetIdx];
+    next[targetIdx] = temp;
+    return next;
+  };
+
+  // Reorder Disiplin Rules
+  const handleMoveRule = (index: number, direction: -1 | 1) => {
+    const rules = data.disiplin?.rules || [];
+    const updatedRules = moveItemInArray(rules, index, direction);
+    const updated = {
+      ...data,
+      disiplin: {
+        ...data.disiplin,
+        rules: updatedRules
+      }
+    };
+    handleSaveData(updated, 'Susunan peraturan disiplin dikemas kini!');
+  };
+
+  // Reorder UBK Services
+  const handleMoveUbk = (index: number, direction: -1 | 1) => {
+    const services = data.disiplin?.ubkServices || [];
+    const updatedServices = moveItemInArray(services, index, direction);
+    const updated = {
+      ...data,
+      disiplin: {
+        ...data.disiplin,
+        ubkServices: updatedServices
+      }
+    };
+    handleSaveData(updated, 'Susunan perkhidmatan UBK dikemas kini!');
+  };
+
+  // Reorder RMT Menu
+  const handleMoveRmt = (index: number, direction: -1 | 1) => {
+    const rmtMenu = data.kebajikan?.rmtMenu || [];
+    const updatedMenu = moveItemInArray(rmtMenu, index, direction);
+    const updated = {
+      ...data,
+      kebajikan: {
+        ...data.kebajikan,
+        rmtMenu: updatedMenu
+      }
+    };
+    handleSaveData(updated, 'Susunan jadual menu RMT dikemas kini!');
+  };
+
+  // Reorder Committee Officer
+  const handleMoveOfficer = (index: number, direction: -1 | 1) => {
+    const committee = data.committee || [];
+    const updatedCommittee = moveItemInArray(committee, index, direction);
+    const updated = {
+      ...data,
+      committee: updatedCommittee
+    };
+    handleSaveData(updated, 'Susunan jawatankuasa HEM dikemas kini!');
+  };
+
+  // Reorder simple array (SPBT, BAP, 3K)
+  const handleMovePointItem = (
+    listType: 'spbt' | 'bap' | 'safety' | 'health' | 'cleanliness',
+    index: number,
+    direction: -1 | 1
+  ) => {
+    let updated = { ...data };
+    if (listType === 'spbt') {
+      const list = data.kebajikan?.spbtGuidelines || [];
+      updated.kebajikan = { ...updated.kebajikan, spbtGuidelines: moveItemInArray(list, index, direction) };
+    } else if (listType === 'bap') {
+      const list = data.kebajikan?.bapDetails || [];
+      updated.kebajikan = { ...updated.kebajikan, bapDetails: moveItemInArray(list, index, direction) };
+    } else if (listType === 'safety') {
+      const list = data.program3k?.safetyPoints || [];
+      updated.program3k = { ...updated.program3k, safetyPoints: moveItemInArray(list, index, direction) };
+    } else if (listType === 'health') {
+      const list = data.program3k?.healthPoints || [];
+      updated.program3k = { ...updated.program3k, healthPoints: moveItemInArray(list, index, direction) };
+    } else if (listType === 'cleanliness') {
+      const list = data.program3k?.cleanlinessPoints || [];
+      updated.program3k = { ...updated.program3k, cleanlinessPoints: moveItemInArray(list, index, direction) };
+    }
+    handleSaveData(updated, 'Susunan panduan dikemas kini!');
+  };
+
+  // Save / Delete Disiplin Rule
+  const handleSaveRule = (savedRule: HemRuleItem) => {
+    const rules = [...(data.disiplin?.rules || [])];
+    const existingIdx = rules.findIndex((r) => r.id === savedRule.id);
+    if (existingIdx !== -1) {
+      rules[existingIdx] = savedRule;
+    } else {
+      rules.push(savedRule);
+    }
+    const updated = {
+      ...data,
+      disiplin: {
+        ...data.disiplin,
+        rules
+      }
+    };
+    handleSaveData(updated, 'Peraturan disiplin berjaya disimpan!');
+    setEditingRule(null);
+  };
+
+  const handleDeleteRule = (ruleId: string) => {
+    const rules = (data.disiplin?.rules || []).filter((r) => r.id !== ruleId);
+    const updated = {
+      ...data,
+      disiplin: {
+        ...data.disiplin,
+        rules
+      }
+    };
+    handleSaveData(updated, 'Peraturan disiplin dipadamkan!');
+  };
+
+  // Save / Delete UBK
+  const handleSaveUbk = (service: { title: string; desc: string }, index?: number) => {
+    const services = [...(data.disiplin?.ubkServices || [])];
+    if (index !== undefined && index >= 0 && index < services.length) {
+      services[index] = service;
+    } else {
+      services.push(service);
+    }
+    const updated = {
+      ...data,
+      disiplin: {
+        ...data.disiplin,
+        ubkServices: services
+      }
+    };
+    handleSaveData(updated, 'Perkhidmatan UBK berjaya disimpan!');
+    setEditingUbk(null);
+  };
+
+  const handleDeleteUbk = (index: number) => {
+    const services = (data.disiplin?.ubkServices || []).filter((_, i) => i !== index);
+    const updated = {
+      ...data,
+      disiplin: {
+        ...data.disiplin,
+        ubkServices: services
+      }
+    };
+    handleSaveData(updated, 'Perkhidmatan UBK dipadamkan!');
+  };
+
+  // Save / Delete RMT Menu
+  const handleSaveRmt = (item: HemRmtMenuItem, index?: number) => {
+    const menu = [...(data.kebajikan?.rmtMenu || [])];
+    if (index !== undefined && index >= 0 && index < menu.length) {
+      menu[index] = item;
+    } else {
+      menu.push(item);
+    }
+    const updated = {
+      ...data,
+      kebajikan: {
+        ...data.kebajikan,
+        rmtMenu: menu
+      }
+    };
+    handleSaveData(updated, 'Menu RMT berjaya disimpan!');
+    setEditingRmt(null);
+  };
+
+  const handleDeleteRmt = (index: number) => {
+    const menu = (data.kebajikan?.rmtMenu || []).filter((_, i) => i !== index);
+    const updated = {
+      ...data,
+      kebajikan: {
+        ...data.kebajikan,
+        rmtMenu: menu
+      }
+    };
+    handleSaveData(updated, 'Menu RMT dipadamkan!');
+  };
+
+  // Save / Delete Committee Officer
+  const handleSaveOfficer = (officer: HemOfficer) => {
+    const committee = [...(data.committee || [])];
+    const existingIdx = committee.findIndex((c) => c.id === officer.id);
+    if (existingIdx !== -1) {
+      committee[existingIdx] = officer;
+    } else {
+      committee.push(officer);
+    }
+    const updated = {
+      ...data,
+      committee
+    };
+    handleSaveData(updated, 'Pegawai jawatankuasa HEM berjaya disimpan!');
+    setEditingOfficer(null);
+  };
+
+  const handleDeleteOfficer = (officerId: string) => {
+    const committee = (data.committee || []).filter((c) => c.id !== officerId);
+    const updated = {
+      ...data,
+      committee
+    };
+    handleSaveData(updated, 'Pegawai jawatankuasa dipadamkan!');
+  };
 
   const handleOpenRmt = () => {
     if (!isAuthorized) return;
@@ -205,6 +506,123 @@ export const HemSection: React.FC<HemSectionProps> = ({
 
   return (
     <div className="space-y-8 animate-fadeIn text-white">
+      {/* Toast Feedback */}
+      {statusMsg && (
+        <div className="fixed bottom-6 right-6 z-50 bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-emerald-400/50 animate-bounce">
+          <Check className="w-5 h-5" />
+          <span className="text-xs sm:text-sm font-black">{statusMsg}</span>
+        </div>
+      )}
+
+      {/* Direct Management Toolbar for Admin, PK HEM & SU HEM */}
+      {canEdit && (
+        <div className="bg-gradient-to-r from-emerald-950/90 via-slate-900/90 to-blue-950/90 border-2 border-emerald-400/40 rounded-3xl p-4 sm:p-5 shadow-2xl backdrop-blur-xl">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-400 flex-shrink-0">
+                <Sliders className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] uppercase font-black px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                    Akses Pengurusan Langsung HEM
+                  </span>
+                  <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-yellow-400/20 text-yellow-300 border border-yellow-400/30">
+                    {managerRoleLabel}
+                  </span>
+                </div>
+                <h3 className="text-base sm:text-lg font-black text-white mt-0.5">
+                  Mod Sunting & Susun Atur Terus Halaman HEM
+                </h3>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setIsEditMode(!isEditMode)}
+                className={`px-4 py-2.5 rounded-xl text-xs font-black transition flex items-center gap-2 shadow-md cursor-pointer ${
+                  isEditMode
+                    ? 'bg-yellow-400 text-blue-950 hover:bg-yellow-300 ring-2 ring-yellow-300/50'
+                    : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
+                }`}
+              >
+                <Edit3 className="w-4 h-4" />
+                <span>{isEditMode ? 'Mod Sunting: AKTIF' : 'Aktifkan Mod Sunting'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Action Shortcut Bar when Edit Mode is active */}
+          {isEditMode && (
+            <div className="mt-4 pt-3 border-t border-white/10 flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+              <span className="text-[11px] font-bold text-slate-300 whitespace-nowrap flex items-center gap-1.5 mr-1">
+                <Settings className="w-3.5 h-3.5 text-yellow-400" />
+                Tindakan Pantas:
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  setEditingRule({
+                    rule: { id: `rule-${Date.now()}`, title: '', desc: '', type: 'info' },
+                    isNew: true
+                  })
+                }
+                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-amber-400 hover:text-slate-950 font-bold text-slate-200 transition whitespace-nowrap border border-white/10 flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Tambah Peraturan
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditingUbk({ service: { title: '', desc: '' }, isNew: true })}
+                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-purple-400 hover:text-slate-950 font-bold text-slate-200 transition whitespace-nowrap border border-white/10 flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Tambah Perkhidmatan UBK
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditingRmt({ item: { day: '', menu: '' }, isNew: true })}
+                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-amber-400 hover:text-slate-950 font-bold text-slate-200 transition whitespace-nowrap border border-white/10 flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Tambah Menu RMT
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setEditingOfficer({
+                    officer: { id: `officer-${Date.now()}`, role: '', name: '', unit: 'HEM' },
+                    isNew: true
+                  })
+                }
+                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-yellow-400 hover:text-blue-950 font-bold text-slate-200 transition whitespace-nowrap border border-white/10 flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Tambah Pegawai HEM
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsStatsModalOpen(true)}
+                className="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-400 hover:text-slate-950 text-emerald-300 font-bold transition whitespace-nowrap border border-emerald-400/30 flex items-center gap-1.5 cursor-pointer"
+              >
+                <Percent className="w-3.5 h-3.5" />
+                Kemas Kini Statistik
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsSpeechModalOpen(true)}
+                className="px-3 py-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-400 hover:text-slate-950 text-blue-300 font-bold transition whitespace-nowrap border border-blue-400/30 flex items-center gap-1.5 cursor-pointer"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                Kemas Kini Penerangan
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Title Banner */}
       <div className="bg-white/10 backdrop-blur-xl text-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-white/20 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -233,15 +651,28 @@ export const HemSection: React.FC<HemSectionProps> = ({
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setShowHemIntro(!showHemIntro)}
-                className="inline-flex items-center gap-1.5 text-[11px] font-bold text-yellow-300 hover:text-yellow-200 bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg transition mt-1 border border-white/10"
-                title={showHemIntro ? "Sembunyikan penerangan" : "Baca penerangan penuh"}
-              >
-                <span>{showHemIntro ? "Sembunyikan Info" : "Info Hal Ehwal Murid"}</span>
-                {showHemIntro ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              </button>
+              <div className="flex items-center gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowHemIntro(!showHemIntro)}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-bold text-yellow-300 hover:text-yellow-200 bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg transition border border-white/10 cursor-pointer"
+                  title={showHemIntro ? "Sembunyikan penerangan" : "Baca penerangan penuh"}
+                >
+                  <span>{showHemIntro ? "Sembunyikan Info" : "Info Hal Ehwal Murid"}</span>
+                  {showHemIntro ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </button>
+
+                {canEdit && isEditMode && (
+                  <button
+                    type="button"
+                    onClick={() => setIsSpeechModalOpen(true)}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-300 hover:text-emerald-200 bg-emerald-500/20 hover:bg-emerald-500/30 px-2.5 py-1 rounded-lg transition border border-emerald-400/30 cursor-pointer"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Sunting Penerangan</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -475,6 +906,19 @@ export const HemSection: React.FC<HemSectionProps> = ({
                 <p className="text-[11px] font-semibold text-slate-300">Amalan Sahsiah Baik</p>
               </div>
             </div>
+
+            {canEdit && isEditMode && (
+              <div className="col-span-2 sm:col-span-4 flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsStatsModalOpen(true)}
+                  className="px-3.5 py-1.5 rounded-xl bg-yellow-400 text-blue-950 font-black text-xs flex items-center gap-1.5 shadow hover:bg-yellow-300 transition cursor-pointer"
+                >
+                  <Percent className="w-3.5 h-3.5" />
+                  <span>Kemas Kini Statistik Utama</span>
+                </button>
+              </div>
+            )}
           </div>
         </>
       )}
@@ -489,17 +933,52 @@ export const HemSection: React.FC<HemSectionProps> = ({
                 1. Disiplin & Bimbingan Kaunseling
               </h3>
             </div>
-            <span className="text-[11px] bg-yellow-400/20 text-yellow-300 font-bold px-3 py-1 rounded-full border border-yellow-400/30">
-              Sahsiah & Integriti
-            </span>
+            <div className="flex items-center gap-2">
+              {canEdit && isEditMode && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEditingRule({
+                      rule: { id: `rule-${Date.now()}`, title: '', desc: '', type: 'info' },
+                      isNew: true
+                    })
+                  }
+                  className="px-2.5 py-1 rounded-lg bg-yellow-400 text-blue-950 font-black text-xs flex items-center gap-1 shadow hover:bg-yellow-300 transition cursor-pointer"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>Tambah Peraturan</span>
+                </button>
+              )}
+              <span className="text-[11px] bg-yellow-400/20 text-yellow-300 font-bold px-3 py-1 rounded-full border border-yellow-400/30">
+                Sahsiah & Integriti
+              </span>
+            </div>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
             {/* Card 1.1: Peraturan Sekolah */}
             <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-lg flex flex-col justify-between space-y-4 hover:border-yellow-400/40 transition">
               <div className="space-y-3">
-                <div className="w-10 h-10 bg-amber-500/20 text-amber-300 rounded-2xl flex items-center justify-center font-bold border border-amber-400/30">
-                  <ShieldAlert className="w-5 h-5 text-amber-300" />
+                <div className="flex items-center justify-between">
+                  <div className="w-10 h-10 bg-amber-500/20 text-amber-300 rounded-2xl flex items-center justify-center font-bold border border-amber-400/30">
+                    <ShieldAlert className="w-5 h-5 text-amber-300" />
+                  </div>
+                  {canEdit && isEditMode && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingRule({
+                          rule: { id: `rule-${Date.now()}`, title: '', desc: '', type: 'info' },
+                          isNew: true
+                        })
+                      }
+                      className="p-1.5 rounded-lg bg-amber-400/20 hover:bg-amber-400 text-amber-300 hover:text-slate-950 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                      title="Tambah Peraturan Disiplin"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tambah</span>
+                    </button>
+                  )}
                 </div>
                 <h4 className="font-extrabold text-white text-base">
                   {data.disiplin?.title || 'Peraturan & Kod Disiplin Sekolah'}
@@ -511,53 +990,165 @@ export const HemSection: React.FC<HemSectionProps> = ({
 
                 <div className="space-y-2 pt-2 text-xs text-slate-300">
                   {data.disiplin?.rules?.map((rule, idx) => (
-                    <div key={rule.id || idx} className="flex items-start gap-2">
-                      {rule.type === 'warning' ? (
-                        <AlertTriangle className="w-3.5 h-3.5 text-rose-400 mt-0.5 flex-shrink-0" />
-                      ) : rule.type === 'info' ? (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 mt-0.5 flex-shrink-0" />
-                      ) : (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                    <div
+                      key={rule.id || idx}
+                      className={`flex items-start justify-between gap-2 p-2 rounded-xl transition ${
+                        isEditMode ? 'bg-white/5 border border-white/10 hover:border-amber-400/40' : ''
+                      }`}
+                    >
+                      <div className="flex items-start gap-2 flex-1">
+                        {rule.type === 'warning' ? (
+                          <AlertTriangle className="w-3.5 h-3.5 text-rose-400 mt-0.5 flex-shrink-0" />
+                        ) : rule.type === 'info' ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 mt-0.5 flex-shrink-0" />
+                        ) : (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                        )}
+                        <span className="leading-snug">
+                          <strong>{rule.title}:</strong> {rule.desc}
+                        </span>
+                      </div>
+
+                      {canEdit && isEditMode && (
+                        <div className="flex items-center gap-1 flex-shrink-0 ml-1">
+                          <button
+                            type="button"
+                            disabled={idx === 0}
+                            onClick={() => handleMoveRule(idx, -1)}
+                            className="p-1 rounded-md bg-white/10 hover:bg-white/20 text-slate-300 disabled:opacity-30 cursor-pointer"
+                            title="Pindah ke atas"
+                          >
+                            <ArrowUp className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={idx === (data.disiplin?.rules?.length || 0) - 1}
+                            onClick={() => handleMoveRule(idx, 1)}
+                            className="p-1 rounded-md bg-white/10 hover:bg-white/20 text-slate-300 disabled:opacity-30 cursor-pointer"
+                            title="Pindah ke bawah"
+                          >
+                            <ArrowDown className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingRule({ rule, isNew: false })}
+                            className="p-1 rounded-md bg-amber-400/20 hover:bg-amber-400 text-amber-300 hover:text-slate-950 transition cursor-pointer"
+                            title="Sunting Peraturan"
+                          >
+                            <Edit3 className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDeleteConfirm({
+                                title: `Padam Peraturan "${rule.title}"?`,
+                                onConfirm: () => handleDeleteRule(rule.id)
+                              })
+                            }
+                            className="p-1 rounded-md bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white transition cursor-pointer"
+                            title="Padam Peraturan"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       )}
-                      <span>
-                        <strong>{rule.title}:</strong> {rule.desc}
-                      </span>
                     </div>
                   ))}
+
+                  {canEdit && isEditMode && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingRule({
+                          rule: { id: `rule-${Date.now()}`, title: '', desc: '', type: 'info' },
+                          isNew: true
+                        })
+                      }
+                      className="w-full py-1.5 px-2.5 mt-2 rounded-xl border border-dashed border-amber-400/40 text-amber-300 hover:bg-amber-400/10 font-bold text-[11px] flex items-center justify-center gap-1.5 transition cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tambah Peraturan Disiplin</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
-              <button
-                onClick={() =>
-                  setSelectedDetailModal({
-                    title: 'Buku Panduan & Kod Disiplin SK Merbau Pulas',
-                    category: 'Disiplin Sekolah',
-                    icon: ShieldAlert,
-                    content: (
-                      <div className="space-y-4 text-xs text-slate-200">
-                        <div className="p-3 bg-amber-500/10 border border-amber-400/30 rounded-xl text-amber-200">
-                          📌 <strong>Matlamat Disiplin:</strong> Membentuk murid yang berdaya tahan, menghormati guru, berakhlak mulia serta menepati masa dalam semua urusan harian.
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedDetailModal({
+                      title: 'Buku Panduan & Kod Disiplin SK Merbau Pulas',
+                      category: 'Disiplin Sekolah',
+                      icon: ShieldAlert,
+                      content: (
+                        <div className="space-y-4 text-xs text-slate-200">
+                          <div className="p-3 bg-amber-500/10 border border-amber-400/30 rounded-xl text-amber-200">
+                            📌 <strong>Matlamat Disiplin:</strong> Membentuk murid yang berdaya tahan, menghormati guru, berakhlak mulia serta menepati masa dalam semua urusan harian.
+                          </div>
+                          <div className="p-4 bg-white/5 border border-white/10 rounded-2xl whitespace-pre-line text-slate-200 leading-relaxed">
+                            {data.disiplin?.fullGuidelines ||
+                              '1. Waktu Persekolahan: 7.30 pagi - 1.00 petang (Tahap 1) / 1.30 petang (Tahap 2).\n2. Hari Rabu: Pemakaian unit beruniform lengkap sepanjang hari persekolahan.\n3. Kebenaran Keluar: Sebarang urusan keluar kawasan sekolah wajib mendapat kelulusan Pentadbir/PK HEM dan dicatat dalam Buku Keluar.'}
+                          </div>
                         </div>
-                        <div className="p-4 bg-white/5 border border-white/10 rounded-2xl whitespace-pre-line text-slate-200 leading-relaxed">
-                          {data.disiplin?.fullGuidelines ||
-                            '1. Waktu Persekolahan: 7.30 pagi - 1.00 petang (Tahap 1) / 1.30 petang (Tahap 2).\n2. Hari Rabu: Pemakaian unit beruniform lengkap sepanjang hari persekolahan.\n3. Kebenaran Keluar: Sebarang urusan keluar kawasan sekolah wajib mendapat kelulusan Pentadbir/PK HEM dan dicatat dalam Buku Keluar.'}
-                        </div>
-                      </div>
-                    )
-                  })
-                }
-                className="w-full py-2.5 px-3 bg-white/10 hover:bg-yellow-400 hover:text-blue-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
-              >
-                <span>Lihat Kod Peraturan Penuh</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
+                      )
+                    })
+                  }
+                  className="w-full py-2.5 px-3 bg-white/10 hover:bg-yellow-400 hover:text-blue-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <span>Lihat Kod Peraturan Penuh</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+
+                {canEdit && isEditMode && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEditingPoint({
+                        title: 'Kod Peraturan Disiplin Penuh',
+                        categoryLabel: 'Disiplin Sekolah',
+                        value: data.disiplin?.fullGuidelines || '',
+                        isNew: false,
+                        onSave: (val) => {
+                          const updated = {
+                            ...data,
+                            disiplin: {
+                              ...data.disiplin,
+                              fullGuidelines: val
+                            }
+                          };
+                          handleSaveData(updated, 'Kod peraturan penuh dikemas kini!');
+                          setEditingPoint(null);
+                        }
+                      })
+                    }
+                    className="w-full py-1.5 px-2.5 rounded-xl bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 font-bold text-xs border border-amber-400/30 flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Sunting Teks Kod Peraturan Penuh</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Card 1.2: Unit Bimbingan & Kaunseling (UBK) */}
             <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-lg flex flex-col justify-between space-y-4 hover:border-yellow-400/40 transition">
               <div className="space-y-3">
-                <div className="w-10 h-10 bg-purple-500/20 text-purple-300 rounded-2xl flex items-center justify-center font-bold border border-purple-400/30">
-                  <Smile className="w-5 h-5 text-purple-300" />
+                <div className="flex items-center justify-between">
+                  <div className="w-10 h-10 bg-purple-500/20 text-purple-300 rounded-2xl flex items-center justify-center font-bold border border-purple-400/30">
+                    <Smile className="w-5 h-5 text-purple-300" />
+                  </div>
+                  {canEdit && isEditMode && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingUbk({ service: { title: '', desc: '' }, isNew: true })}
+                      className="p-1.5 rounded-lg bg-purple-400/20 hover:bg-purple-400 text-purple-300 hover:text-slate-950 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                      title="Tambah Perkhidmatan UBK"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tambah</span>
+                    </button>
+                  )}
                 </div>
                 <h4 className="font-extrabold text-white text-base">
                   {data.disiplin?.ubkTitle || 'Unit Bimbingan & Kaunseling (UBK)'}
@@ -568,47 +1159,112 @@ export const HemSection: React.FC<HemSectionProps> = ({
                 </p>
 
                 <div className="space-y-2 pt-2 text-xs text-slate-300">
-                  {data.disiplin?.ubkServices?.slice(0, 4).map((srv, idx) => (
-                    <div key={idx} className="flex items-start gap-2">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-purple-400 mt-0.5 flex-shrink-0" />
-                      <span>
-                        <strong>{srv.title}:</strong> {srv.desc}
-                      </span>
+                  {data.disiplin?.ubkServices?.slice(0, isEditMode ? 10 : 4).map((srv, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex items-start justify-between gap-2 p-2 rounded-xl transition ${
+                        isEditMode ? 'bg-white/5 border border-white/10 hover:border-purple-400/40' : ''
+                      }`}
+                    >
+                      <div className="flex items-start gap-2 flex-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-purple-400 mt-0.5 flex-shrink-0" />
+                        <span className="leading-snug">
+                          <strong>{srv.title}:</strong> {srv.desc}
+                        </span>
+                      </div>
+
+                      {canEdit && isEditMode && (
+                        <div className="flex items-center gap-1 flex-shrink-0 ml-1">
+                          <button
+                            type="button"
+                            disabled={idx === 0}
+                            onClick={() => handleMoveUbk(idx, -1)}
+                            className="p-1 rounded-md bg-white/10 hover:bg-white/20 text-slate-300 disabled:opacity-30 cursor-pointer"
+                            title="Pindah ke atas"
+                          >
+                            <ArrowUp className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={idx === (data.disiplin?.ubkServices?.length || 0) - 1}
+                            onClick={() => handleMoveUbk(idx, 1)}
+                            className="p-1 rounded-md bg-white/10 hover:bg-white/20 text-slate-300 disabled:opacity-30 cursor-pointer"
+                            title="Pindah ke bawah"
+                          >
+                            <ArrowDown className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingUbk({ service: srv, isNew: false, index: idx })}
+                            className="p-1 rounded-md bg-purple-400/20 hover:bg-purple-400 text-purple-300 hover:text-slate-950 transition cursor-pointer"
+                            title="Sunting Perkhidmatan"
+                          >
+                            <Edit3 className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDeleteConfirm({
+                                title: `Padam Perkhidmatan "${srv.title}"?`,
+                                onConfirm: () => handleDeleteUbk(idx)
+                              })
+                            }
+                            className="p-1 rounded-md bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white transition cursor-pointer"
+                            title="Padam Perkhidmatan"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
+
+                  {canEdit && isEditMode && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingUbk({ service: { title: '', desc: '' }, isNew: true })}
+                      className="w-full py-1.5 px-2.5 mt-2 rounded-xl border border-dashed border-purple-400/40 text-purple-300 hover:bg-purple-400/10 font-bold text-[11px] flex items-center justify-center gap-1.5 transition cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tambah Perkhidmatan UBK</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
-              <button
-                onClick={() =>
-                  setSelectedDetailModal({
-                    title: 'Perkhidmatan Unit Bimbingan & Kaunseling (UBK)',
-                    category: 'Kaunseling & Sahsiah',
-                    icon: Smile,
-                    content: (
-                      <div className="space-y-4 text-xs text-slate-200">
-                        <div className="p-3 bg-purple-500/10 border border-purple-400/30 rounded-xl text-purple-200">
-                          🤝 <strong>Misi UBK:</strong> "Membimbing Dengan Hati, Membina Insan Sejati" — Menyokong kestabilan psikososial murid dalam suasana pembelajaran yang tenang dan inklusif.
-                        </div>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedDetailModal({
+                      title: 'Perkhidmatan Unit Bimbingan & Kaunseling (UBK)',
+                      category: 'Kaunseling & Sahsiah',
+                      icon: Smile,
+                      content: (
+                        <div className="space-y-4 text-xs text-slate-200">
+                          <div className="p-3 bg-purple-500/10 border border-purple-400/30 rounded-xl text-purple-200">
+                            🤝 <strong>Misi UBK:</strong> "Membimbing Dengan Hati, Membina Insan Sejati" — Menyokong kestabilan psikososial murid dalam suasana pembelajaran yang tenang dan inklusif.
+                          </div>
 
-                        <h5 className="font-black text-white text-sm">Aktiviti Teras UBK Sepanjang Tahun:</h5>
-                        <div className="grid sm:grid-cols-2 gap-3">
-                          {data.disiplin?.ubkServices?.map((srv, idx) => (
-                            <div key={idx} className="p-3 bg-white/5 border border-white/10 rounded-xl">
-                              <h6 className="font-bold text-yellow-300">{srv.title}</h6>
-                              <p className="text-[11px] text-slate-300 mt-1">{srv.desc}</p>
-                            </div>
-                          ))}
+                          <h5 className="font-black text-white text-sm">Aktiviti Teras UBK Sepanjang Tahun:</h5>
+                          <div className="grid sm:grid-cols-2 gap-3">
+                            {data.disiplin?.ubkServices?.map((srv, idx) => (
+                              <div key={idx} className="p-3 bg-white/5 border border-white/10 rounded-xl">
+                                <h6 className="font-bold text-yellow-300">{srv.title}</h6>
+                                <p className="text-[11px] text-slate-300 mt-1">{srv.desc}</p>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )
-                  })
-                }
-                className="w-full py-2.5 px-3 bg-white/10 hover:bg-yellow-400 hover:text-blue-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
-              >
-                <span>Info Perkhidmatan UBK</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
+                      )
+                    })
+                  }
+                  className="w-full py-2.5 px-3 bg-white/10 hover:bg-yellow-400 hover:text-blue-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <span>Info Perkhidmatan UBK</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
 
             {/* Card 1.3: SSDM (Sistem Sahsiah Diri Murid) */}
@@ -640,6 +1296,35 @@ export const HemSection: React.FC<HemSectionProps> = ({
               </div>
 
               <div className="space-y-2">
+                {canEdit && isEditMode && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEditingPoint({
+                        title: 'Penerangan SSDM 2.0',
+                        categoryLabel: 'Disiplin Sekolah',
+                        value: data.disiplin?.ssdmDescription || '',
+                        isNew: false,
+                        onSave: (val) => {
+                          const updated = {
+                            ...data,
+                            disiplin: {
+                              ...data.disiplin,
+                              ssdmDescription: val
+                            }
+                          };
+                          handleSaveData(updated, 'Penerangan SSDM dikemas kini!');
+                          setEditingPoint(null);
+                        }
+                      })
+                    }
+                    className="w-full py-1.5 px-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-bold text-xs border border-emerald-400/30 flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Sunting Penerangan SSDM</span>
+                  </button>
+                )}
+
                 <a
                   href={data.disiplin?.ssdmUrl || "https://ssdm.moe.gov.my/"}
                   target="_blank"
@@ -665,17 +1350,58 @@ export const HemSection: React.FC<HemSectionProps> = ({
                 2. Kebajikan Murid
               </h3>
             </div>
-            <span className="text-[11px] bg-rose-500/20 text-rose-300 font-bold px-3 py-1 rounded-full border border-rose-400/30">
-              Bantuan & Hak Murid
-            </span>
+            <div className="flex items-center gap-2">
+              {canEdit && isEditMode && (
+                <button
+                  type="button"
+                  onClick={() => setEditingRmt({ item: { day: '', menu: '' }, isNew: true })}
+                  className="px-2.5 py-1 rounded-lg bg-amber-400 text-slate-950 font-black text-xs flex items-center gap-1 shadow hover:bg-amber-300 transition cursor-pointer"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>Tambah Menu RMT</span>
+                </button>
+              )}
+              <span className="text-[11px] bg-rose-500/20 text-rose-300 font-bold px-3 py-1 rounded-full border border-rose-400/30">
+                Bantuan & Hak Murid
+              </span>
+            </div>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
             {/* SPBT */}
             <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-lg space-y-4 hover:border-yellow-400/40 transition flex flex-col justify-between">
               <div className="space-y-3">
-                <div className="w-10 h-10 bg-blue-500/20 text-blue-300 rounded-2xl flex items-center justify-center font-bold border border-blue-400/30">
-                  <BookMarked className="w-5 h-5 text-blue-300" />
+                <div className="flex items-center justify-between">
+                  <div className="w-10 h-10 bg-blue-500/20 text-blue-300 rounded-2xl flex items-center justify-center font-bold border border-blue-400/30">
+                    <BookMarked className="w-5 h-5 text-blue-300" />
+                  </div>
+                  {canEdit && isEditMode && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingPoint({
+                          title: 'Tambah Panduan Penjagaan SPBT',
+                          categoryLabel: 'Kebajikan SPBT',
+                          value: '',
+                          isNew: true,
+                          onSave: (val) => {
+                            const list = [...(data.kebajikan?.spbtGuidelines || []), val];
+                            const updated = {
+                              ...data,
+                              kebajikan: { ...data.kebajikan, spbtGuidelines: list }
+                            };
+                            handleSaveData(updated, 'Panduan SPBT ditambah!');
+                            setEditingPoint(null);
+                          }
+                        })
+                      }
+                      className="p-1.5 rounded-lg bg-blue-400/20 hover:bg-blue-400 text-blue-300 hover:text-slate-950 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                      title="Tambah Panduan SPBT"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tambah</span>
+                    </button>
+                  )}
                 </div>
                 <h4 className="font-extrabold text-white text-base">
                   {data.kebajikan?.spbtTitle || 'Skim Pinjaman Buku Teks (SPBT)'}
@@ -688,19 +1414,118 @@ export const HemSection: React.FC<HemSectionProps> = ({
                 <div className="space-y-2 pt-2 text-xs text-slate-300">
                   <div className="p-3 bg-white/5 border border-white/10 rounded-xl space-y-1">
                     <span className="font-bold text-yellow-300">Panduan Penjagaan:</span>
-                    <ul className="list-disc list-inside text-[11px] space-y-0.5 text-slate-300">
-                      {data.kebajikan?.spbtGuidelines?.slice(0, 3).map((g, idx) => (
-                        <li key={idx}>{g}</li>
+                    <div className="space-y-1 mt-1">
+                      {data.kebajikan?.spbtGuidelines?.map((g, idx) => (
+                        <div
+                          key={idx}
+                          className={`flex items-start justify-between gap-1.5 p-1 rounded-lg text-[11px] ${
+                            isEditMode ? 'bg-white/5 border border-white/10' : ''
+                          }`}
+                        >
+                          <span className="leading-tight flex-1">• {g}</span>
+                          {canEdit && isEditMode && (
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <button
+                                type="button"
+                                disabled={idx === 0}
+                                onClick={() => handleMovePointItem('spbt', idx, -1)}
+                                className="p-0.5 rounded bg-white/10 hover:bg-white/20 text-slate-300 disabled:opacity-30 cursor-pointer"
+                              >
+                                <ArrowUp className="w-2.5 h-2.5" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={idx === (data.kebajikan?.spbtGuidelines?.length || 0) - 1}
+                                onClick={() => handleMovePointItem('spbt', idx, 1)}
+                                className="p-0.5 rounded bg-white/10 hover:bg-white/20 text-slate-300 disabled:opacity-30 cursor-pointer"
+                              >
+                                <ArrowDown className="w-2.5 h-2.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setEditingPoint({
+                                    title: 'Sunting Panduan SPBT',
+                                    categoryLabel: 'Kebajikan SPBT',
+                                    value: g,
+                                    isNew: false,
+                                    onSave: (val) => {
+                                      const list = [...(data.kebajikan?.spbtGuidelines || [])];
+                                      list[idx] = val;
+                                      const updated = {
+                                        ...data,
+                                        kebajikan: { ...data.kebajikan, spbtGuidelines: list }
+                                      };
+                                      handleSaveData(updated, 'Panduan SPBT dikemas kini!');
+                                      setEditingPoint(null);
+                                    }
+                                  })
+                                }
+                                className="p-0.5 rounded bg-blue-400/20 hover:bg-blue-400 text-blue-300 hover:text-slate-950 cursor-pointer"
+                              >
+                                <Edit3 className="w-2.5 h-2.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setDeleteConfirm({
+                                    title: 'Padam Panduan SPBT?',
+                                    message: g,
+                                    onConfirm: () => {
+                                      const list = (data.kebajikan?.spbtGuidelines || []).filter((_, i) => i !== idx);
+                                      const updated = {
+                                        ...data,
+                                        kebajikan: { ...data.kebajikan, spbtGuidelines: list }
+                                      };
+                                      handleSaveData(updated, 'Panduan SPBT dipadam!');
+                                    }
+                                  })
+                                }
+                                className="p-0.5 rounded bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white cursor-pointer"
+                              >
+                                <Trash2 className="w-2.5 h-2.5" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   </div>
-                  <p className="text-[11px] text-slate-400">
-                    🏢 <strong>Penyelaras SPBT:</strong> {data.kebajikan?.spbtCoordinator || 'Cikgu Nurul Ain binti Mahadzir'}
-                  </p>
+
+                  <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <p>
+                      🏢 <strong>Penyelaras:</strong> {data.kebajikan?.spbtCoordinator || 'Cikgu Nurul Ain binti Mahadzir'}
+                    </p>
+                    {canEdit && isEditMode && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEditingPoint({
+                            title: 'Penyelaras SPBT',
+                            categoryLabel: 'Kebajikan SPBT',
+                            value: data.kebajikan?.spbtCoordinator || '',
+                            isNew: false,
+                            onSave: (val) => {
+                              const updated = {
+                                ...data,
+                                kebajikan: { ...data.kebajikan, spbtCoordinator: val }
+                              };
+                              handleSaveData(updated, 'Penyelaras SPBT dikemas kini!');
+                              setEditingPoint(null);
+                            }
+                          })
+                        }
+                        className="p-1 rounded bg-blue-400/20 hover:bg-blue-400 text-blue-300 hover:text-slate-950 text-[10px] font-bold cursor-pointer"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
               <button
+                type="button"
                 onClick={() =>
                   setSelectedDetailModal({
                     title: 'Skim Pinjaman Buku Teks (SPBT) SK Merbau Pulas',
@@ -722,7 +1547,7 @@ export const HemSection: React.FC<HemSectionProps> = ({
                     )
                   })
                 }
-                className="w-full py-2.5 px-3 bg-white/10 hover:bg-yellow-400 hover:text-blue-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 px-3 bg-white/10 hover:bg-yellow-400 hover:text-blue-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <span>Info Penuh SPBT</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -732,11 +1557,24 @@ export const HemSection: React.FC<HemSectionProps> = ({
             {/* RMT & Program Susu Sekolah */}
             <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-lg space-y-4 hover:border-yellow-400/40 transition flex flex-col justify-between">
               <div 
-                onClick={isAuthorized ? handleOpenRmt : undefined}
-                className={`space-y-3 ${isAuthorized ? 'cursor-pointer' : ''}`}
+                onClick={isAuthorized && !isEditMode ? handleOpenRmt : undefined}
+                className={`space-y-3 ${isAuthorized && !isEditMode ? 'cursor-pointer' : ''}`}
               >
-                <div className="w-10 h-10 bg-amber-500/20 text-amber-300 rounded-2xl flex items-center justify-center font-bold border border-amber-400/30">
-                  <Utensils className="w-5 h-5 text-amber-300" />
+                <div className="flex items-center justify-between">
+                  <div className="w-10 h-10 bg-amber-500/20 text-amber-300 rounded-2xl flex items-center justify-center font-bold border border-amber-400/30">
+                    <Utensils className="w-5 h-5 text-amber-300" />
+                  </div>
+                  {canEdit && isEditMode && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingRmt({ item: { day: '', menu: '' }, isNew: true })}
+                      className="p-1.5 rounded-lg bg-amber-400/20 hover:bg-amber-400 text-amber-300 hover:text-slate-950 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                      title="Tambah Menu RMT"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tambah</span>
+                    </button>
+                  )}
                 </div>
                 <h4 className={`font-extrabold text-white text-base ${isAuthorized ? 'hover:text-amber-300' : ''} transition`}>
                   {data.kebajikan?.rmtTitle || 'Rancangan Makanan Tambahan (RMT) & Susu'}
@@ -748,17 +1586,106 @@ export const HemSection: React.FC<HemSectionProps> = ({
 
                 <div className="space-y-2 pt-2 text-xs text-slate-300">
                   <div className="p-3 bg-white/5 border border-white/10 rounded-xl space-y-1">
-                    <span className="font-bold text-yellow-300">Penyelaras:</span>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-yellow-300">Penyelaras RMT:</span>
+                      {canEdit && isEditMode && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setEditingPoint({
+                              title: 'Penyelaras RMT',
+                              categoryLabel: 'Kebajikan RMT',
+                              value: data.kebajikan?.rmtCoordinator || '',
+                              isNew: false,
+                              onSave: (val) => {
+                                const updated = {
+                                  ...data,
+                                  kebajikan: { ...data.kebajikan, rmtCoordinator: val }
+                                };
+                                handleSaveData(updated, 'Penyelaras RMT dikemas kini!');
+                                setEditingPoint(null);
+                              }
+                            })
+                          }
+                          className="p-0.5 rounded bg-amber-400/20 hover:bg-amber-400 text-amber-300 hover:text-slate-950 cursor-pointer"
+                        >
+                          <Edit3 className="w-2.5 h-2.5" />
+                        </button>
+                      )}
+                    </div>
                     <p className="text-[11px] text-slate-300">
                       {data.kebajikan?.rmtCoordinator || 'Puan Fazilah binti Mat'}
                     </p>
+
                     <div className="mt-1.5 pt-1.5 border-t border-white/10">
-                      <span className="font-bold text-yellow-300">Contoh Menu RMT:</span>
-                      <ul className="text-[11px] space-y-0.5 text-slate-300 mt-1">
-                        {data.kebajikan?.rmtMenu?.slice(0, 2).map((m, idx) => (
-                          <li key={idx}><strong>{m.day}:</strong> {m.menu}</li>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-bold text-yellow-300">Jadual Menu RMT:</span>
+                        {canEdit && isEditMode && (
+                          <button
+                            type="button"
+                            onClick={() => setEditingRmt({ item: { day: '', menu: '' }, isNew: true })}
+                            className="text-[10px] font-bold text-amber-300 hover:underline flex items-center gap-0.5 cursor-pointer"
+                          >
+                            <Plus className="w-2.5 h-2.5" />
+                            Tambah Menu
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        {data.kebajikan?.rmtMenu?.map((m, idx) => (
+                          <div
+                            key={idx}
+                            className={`flex items-start justify-between gap-1.5 p-1 rounded-lg text-[11px] ${
+                              isEditMode ? 'bg-white/5 border border-white/10' : ''
+                            }`}
+                          >
+                            <span className="leading-tight flex-1">
+                              <strong>{m.day}:</strong> {m.menu}
+                            </span>
+                            {canEdit && isEditMode && (
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                <button
+                                  type="button"
+                                  disabled={idx === 0}
+                                  onClick={() => handleMoveRmt(idx, -1)}
+                                  className="p-0.5 rounded bg-white/10 hover:bg-white/20 text-slate-300 disabled:opacity-30 cursor-pointer"
+                                >
+                                  <ArrowUp className="w-2.5 h-2.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={idx === (data.kebajikan?.rmtMenu?.length || 0) - 1}
+                                  onClick={() => handleMoveRmt(idx, 1)}
+                                  className="p-0.5 rounded bg-white/10 hover:bg-white/20 text-slate-300 disabled:opacity-30 cursor-pointer"
+                                >
+                                  <ArrowDown className="w-2.5 h-2.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingRmt({ item: m, isNew: false, index: idx })}
+                                  className="p-0.5 rounded bg-amber-400/20 hover:bg-amber-400 text-amber-300 hover:text-slate-950 cursor-pointer"
+                                >
+                                  <Edit3 className="w-2.5 h-2.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setDeleteConfirm({
+                                      title: `Padam Menu "${m.day}"?`,
+                                      message: m.menu,
+                                      onConfirm: () => handleDeleteRmt(idx)
+                                    })
+                                  }
+                                  className="p-0.5 rounded bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white cursor-pointer"
+                                >
+                                  <Trash2 className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         ))}
-                      </ul>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -776,11 +1703,12 @@ export const HemSection: React.FC<HemSectionProps> = ({
                     className="w-full py-2.5 px-3 bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-400 hover:to-emerald-500 text-slate-950 font-black text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 active:scale-95 cursor-pointer"
                   >
                     <Utensils className="w-4 h-4 text-slate-950" />
-                    <span>Buka Portal RMT (89 Murid)</span>
+                    <span>Buka Portal RMT ({data.stats?.rmtCount || '78 Murid'})</span>
                   </button>
                 )}
 
                 <button
+                  type="button"
                   onClick={() =>
                     setSelectedDetailModal({
                       title: 'Rancangan Makanan Tambahan (RMT) & Susu Sekolah',
@@ -804,7 +1732,7 @@ export const HemSection: React.FC<HemSectionProps> = ({
                       )
                     })
                   }
-                  className="w-full py-2 px-3 bg-white/10 hover:bg-white/20 text-slate-200 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
+                  className="w-full py-2 px-3 bg-white/10 hover:bg-white/20 text-slate-200 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <span>Info Menu & Kelayakan RMT</span>
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -815,8 +1743,37 @@ export const HemSection: React.FC<HemSectionProps> = ({
             {/* BAP & Bantuan Khas */}
             <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-lg space-y-4 hover:border-yellow-400/40 transition flex flex-col justify-between">
               <div className="space-y-3">
-                <div className="w-10 h-10 bg-emerald-500/20 text-emerald-300 rounded-2xl flex items-center justify-center font-bold border border-emerald-400/30">
-                  <Coins className="w-5 h-5 text-emerald-300" />
+                <div className="flex items-center justify-between">
+                  <div className="w-10 h-10 bg-emerald-500/20 text-emerald-300 rounded-2xl flex items-center justify-center font-bold border border-emerald-400/30">
+                    <Coins className="w-5 h-5 text-emerald-300" />
+                  </div>
+                  {canEdit && isEditMode && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingPoint({
+                          title: 'Tambah Maklumat BAP',
+                          categoryLabel: 'Kebajikan BAP',
+                          value: '',
+                          isNew: true,
+                          onSave: (val) => {
+                            const list = [...(data.kebajikan?.bapDetails || []), val];
+                            const updated = {
+                              ...data,
+                              kebajikan: { ...data.kebajikan, bapDetails: list }
+                            };
+                            handleSaveData(updated, 'Maklumat BAP ditambah!');
+                            setEditingPoint(null);
+                          }
+                        })
+                      }
+                      className="p-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                      title="Tambah Maklumat BAP"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tambah</span>
+                    </button>
+                  )}
                 </div>
                 <h4 className="font-extrabold text-white text-base">
                   {data.kebajikan?.bapTitle || 'Bantuan Awal Persekolahan (BAP) & KWAPM'}
@@ -829,16 +1786,88 @@ export const HemSection: React.FC<HemSectionProps> = ({
                 <div className="space-y-2 pt-2 text-xs text-slate-300">
                   <div className="p-3 bg-white/5 border border-white/10 rounded-xl space-y-1">
                     <span className="font-bold text-yellow-300">Bantuan Yang Disalurkan:</span>
-                    <ul className="list-disc list-inside text-[11px] space-y-0.5 text-slate-300">
-                      {data.kebajikan?.bapDetails?.slice(0, 3).map((det, idx) => (
-                        <li key={idx}>{det}</li>
+                    <div className="space-y-1 mt-1">
+                      {data.kebajikan?.bapDetails?.map((det, idx) => (
+                        <div
+                          key={idx}
+                          className={`flex items-start justify-between gap-1.5 p-1 rounded-lg text-[11px] ${
+                            isEditMode ? 'bg-white/5 border border-white/10' : ''
+                          }`}
+                        >
+                          <span className="leading-tight flex-1">• {det}</span>
+                          {canEdit && isEditMode && (
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <button
+                                type="button"
+                                disabled={idx === 0}
+                                onClick={() => handleMovePointItem('bap', idx, -1)}
+                                className="p-0.5 rounded bg-white/10 hover:bg-white/20 text-slate-300 disabled:opacity-30 cursor-pointer"
+                              >
+                                <ArrowUp className="w-2.5 h-2.5" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={idx === (data.kebajikan?.bapDetails?.length || 0) - 1}
+                                onClick={() => handleMovePointItem('bap', idx, 1)}
+                                className="p-0.5 rounded bg-white/10 hover:bg-white/20 text-slate-300 disabled:opacity-30 cursor-pointer"
+                              >
+                                <ArrowDown className="w-2.5 h-2.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setEditingPoint({
+                                    title: 'Sunting Butiran BAP',
+                                    categoryLabel: 'Kebajikan BAP',
+                                    value: det,
+                                    isNew: false,
+                                    onSave: (val) => {
+                                      const list = [...(data.kebajikan?.bapDetails || [])];
+                                      list[idx] = val;
+                                      const updated = {
+                                        ...data,
+                                        kebajikan: { ...data.kebajikan, bapDetails: list }
+                                      };
+                                      handleSaveData(updated, 'Butiran BAP dikemas kini!');
+                                      setEditingPoint(null);
+                                    }
+                                  })
+                                }
+                                className="p-0.5 rounded bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 cursor-pointer"
+                              >
+                                <Edit3 className="w-2.5 h-2.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setDeleteConfirm({
+                                    title: 'Padam Butiran BAP?',
+                                    message: det,
+                                    onConfirm: () => {
+                                      const list = (data.kebajikan?.bapDetails || []).filter((_, i) => i !== idx);
+                                      const updated = {
+                                        ...data,
+                                        kebajikan: { ...data.kebajikan, bapDetails: list }
+                                      };
+                                      handleSaveData(updated, 'Butiran BAP dipadam!');
+                                    }
+                                  })
+                                }
+                                className="p-0.5 rounded bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white cursor-pointer"
+                              >
+                                <Trash2 className="w-2.5 h-2.5" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   </div>
                 </div>
               </div>
 
               <button
+                type="button"
                 onClick={() =>
                   setSelectedDetailModal({
                     title: 'Bantuan Awal Persekolahan (BAP) & Bantuan Kebajikan',
@@ -860,7 +1889,7 @@ export const HemSection: React.FC<HemSectionProps> = ({
                     )
                   })
                 }
-                className="w-full py-2.5 px-3 bg-white/10 hover:bg-yellow-400 hover:text-blue-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 px-3 bg-white/10 hover:bg-yellow-400 hover:text-blue-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <span>Info BAP & Bantuan Khas</span>
                 <ChevronRight className="w-3.5 h-3.5" />

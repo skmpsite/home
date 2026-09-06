@@ -17,7 +17,9 @@ import {
   SignageConfig,
   HemData,
   NavigationMenuItem,
-  SchoolHoliday
+  SchoolHoliday,
+  AcademicSubject,
+  AcademicProgram
 } from '../types';
 
 export const initialSchoolProfile: SchoolProfile = {
@@ -1359,4 +1361,45 @@ export const initialSchoolHolidays: SchoolHoliday[] = [
     createdAt: new Date().toISOString()
   }
 ];
+
+export const initialAcademicSubjects: AcademicSubject[] = [
+  { id: 'sub-1', name: 'Bahasa Melayu', type: 'Teras', icon: '📖', order: 1 },
+  { id: 'sub-2', name: 'Bahasa Inggeris (DLP)', type: 'Teras Dual-Language', icon: '🇬🇧', order: 2 },
+  { id: 'sub-3', name: 'Matematik', type: 'STEM / Teras', icon: '📐', order: 3 },
+  { id: 'sub-4', name: 'Sains', type: 'STEM / Teras', icon: '🔬', order: 4 },
+  { id: 'sub-5', name: 'Pendidikan Islam / Moral', type: 'Teras', icon: '🌙', order: 5 },
+  { id: 'sub-6', name: 'Bahasa Arab', type: 'Tambahan', icon: '🕌', order: 6 },
+  { id: 'sub-7', name: 'Sejarah', type: 'Teras Tahap 2', icon: '🏛️', order: 7 },
+  { id: 'sub-8', name: 'Reka Bentuk & Teknologi (RBT)', type: 'Kemahiran', icon: '⚙️', order: 8 },
+  { id: 'sub-9', name: 'Pendidikan Seni Visual (PSV)', type: 'Kesenian', icon: '🎨', order: 9 },
+  { id: 'sub-10', name: 'Pendidikan Jasmani & Kesihatan (PJK)', type: 'Aktiviti', icon: '⚽', order: 10 }
+];
+
+export const initialAcademicPrograms: AcademicProgram[] = [
+  {
+    id: 'prog-1',
+    title: 'KSSR Semakan & DLP',
+    description: 'SK Merbau Pulas melaksanakan Kurikulum Standard Sekolah Rendah (KSSR Semakan) merangkumi Program DLP bagi mata pelajaran Sains dan Matematik dalam Bahasa Inggeris.',
+    iconName: 'BookOpen',
+    badge: 'Kurikulum KPM',
+    order: 1
+  },
+  {
+    id: 'prog-2',
+    title: 'Pentaksiran Bilik Darjah (PBD)',
+    description: 'Pentaksiran berterusan holistik menilai perkembangan pembelajaran murid dari Tahap 1 (Tahun 1–3) hingga Tahap 2 (Tahun 4–6) mengikut Tahap Penguasaan (TP1–TP6).',
+    iconName: 'Award',
+    badge: 'Pentaksiran Holistik',
+    order: 2
+  },
+  {
+    id: 'prog-3',
+    title: 'Program NILAM & PSS',
+    description: 'Pusat Sumber Seri Merbau memperkasakan budaya membaca melalui rekod NILAM digital dan Kem Galakan Membaca sepanjang tahun.',
+    iconName: 'FileText',
+    badge: 'Budaya Membaca',
+    order: 3
+  }
+];
+
 

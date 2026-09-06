@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { SchoolProfile, SearchResultItem } from '../types';
+import { SchoolProfile, SearchResultItem, UserRole } from '../types';
 import { Search, Lock, UserCheck, MapPin, Phone, Mail, LogOut, ChevronRight, X, ShieldAlert, Menu, Users, Utensils, Smartphone } from 'lucide-react';
 import { PWAInstallModal } from './PWAInstallModal';
 
 interface HeaderProps {
   profile: SchoolProfile;
   isAdmin: boolean;
-  userRole?: 'admin' | 'guru' | 'user' | null;
+  userRole?: UserRole | null;
   onOpenLogin: () => void;
   onLogout: () => void;
   searchResults: SearchResultItem[];
@@ -68,7 +68,7 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="flex items-center gap-2">
                 <button
                   onClick={onOpenAdminDashboard}
-                  className="inline-flex items-center gap-1 text-xs font-bold text-blue-950 hover:bg-yellow-400 bg-yellow-400 px-3 py-0.5 rounded-full border border-yellow-300 shadow-md transition"
+                  className="inline-flex items-center gap-1 text-xs font-bold text-blue-950 hover:bg-yellow-400 bg-yellow-400 px-3 py-0.5 rounded-full border border-yellow-300 shadow-md transition cursor-pointer"
                   title="Buka Papan Pemuka Pentadbir (CMS)"
                 >
                   <UserCheck className="w-3.5 h-3.5" />
@@ -76,7 +76,64 @@ export const Header: React.FC<HeaderProps> = ({
                 </button>
                 <button
                   onClick={onLogout}
-                  className="text-xs text-rose-300 hover:text-rose-100 flex items-center gap-1 ml-1 font-semibold"
+                  className="text-xs text-rose-300 hover:text-rose-100 flex items-center gap-1 ml-1 font-semibold cursor-pointer"
+                  title="Log Keluar"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Keluar</span>
+                </button>
+              </div>
+            ) : userRole === 'pk_kurikulum' || userRole === 'su_kurikulum' ? (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={onOpenTeacherPortal}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-white hover:bg-blue-600 bg-blue-700 px-3 py-0.5 rounded-full border border-blue-400 shadow-md transition cursor-pointer"
+                  title={userRole === 'pk_kurikulum' ? 'PK Pentadbiran / Kurikulum Active' : 'SU Kurikulum Active'}
+                >
+                  <UserCheck className="w-3.5 h-3.5 text-yellow-300" />
+                  <span>{userRole === 'pk_kurikulum' ? 'PK Kurikulum Active' : 'SU Kurikulum Active'}</span>
+                </button>
+                <button
+                  onClick={onLogout}
+                  className="text-xs text-rose-300 hover:text-rose-100 flex items-center gap-1 ml-1 font-semibold cursor-pointer"
+                  title="Log Keluar"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Keluar</span>
+                </button>
+              </div>
+            ) : userRole === 'pk_hem' || userRole === 'su_hem' ? (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={onOpenTeacherPortal}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-white hover:bg-teal-600 bg-teal-700 px-3 py-0.5 rounded-full border border-teal-400 shadow-md transition cursor-pointer"
+                  title={userRole === 'pk_hem' ? 'PK Hal Ehwal Murid Active' : 'SU HEM Active'}
+                >
+                  <UserCheck className="w-3.5 h-3.5 text-yellow-300" />
+                  <span>{userRole === 'pk_hem' ? 'PK HEM Active' : 'SU HEM Active'}</span>
+                </button>
+                <button
+                  onClick={onLogout}
+                  className="text-xs text-rose-300 hover:text-rose-100 flex items-center gap-1 ml-1 font-semibold cursor-pointer"
+                  title="Log Keluar"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Keluar</span>
+                </button>
+              </div>
+            ) : userRole === 'pk_kokurikulum' || userRole === 'su_kokurikulum' ? (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={onOpenTeacherPortal}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-white hover:bg-amber-600 bg-amber-700 px-3 py-0.5 rounded-full border border-amber-400 shadow-md transition cursor-pointer"
+                  title={userRole === 'pk_kokurikulum' ? 'PK Kokurikulum Active' : 'SU Kokurikulum Active'}
+                >
+                  <UserCheck className="w-3.5 h-3.5 text-yellow-300" />
+                  <span>{userRole === 'pk_kokurikulum' ? 'PK Ko Active' : 'SU Ko Active'}</span>
+                </button>
+                <button
+                  onClick={onLogout}
+                  className="text-xs text-rose-300 hover:text-rose-100 flex items-center gap-1 ml-1 font-semibold cursor-pointer"
                   title="Log Keluar"
                 >
                   <LogOut className="w-3.5 h-3.5" />
@@ -87,15 +144,15 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="flex items-center gap-2">
                 <button
                   onClick={onOpenTeacherPortal}
-                  className="inline-flex items-center gap-1 text-xs font-bold text-white hover:bg-rose-500 bg-rose-600 px-3 py-0.5 rounded-full border border-rose-400 shadow-md transition"
+                  className="inline-flex items-center gap-1 text-xs font-bold text-white hover:bg-rose-500 bg-rose-600 px-3 py-0.5 rounded-full border border-rose-400 shadow-md transition cursor-pointer"
                   title="Buka Portal Guru SKMP"
                 >
-                  <UserCheck className="w-3.5 h-3.5" />
+                  <UserCheck className="w-3.5 h-3.5 text-yellow-300" />
                   <span>Guru Active</span>
                 </button>
                 <button
                   onClick={onLogout}
-                  className="text-xs text-rose-300 hover:text-rose-100 flex items-center gap-1 ml-1 font-semibold"
+                  className="text-xs text-rose-300 hover:text-rose-100 flex items-center gap-1 ml-1 font-semibold cursor-pointer"
                   title="Log Keluar"
                 >
                   <LogOut className="w-3.5 h-3.5" />

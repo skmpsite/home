@@ -467,4 +467,57 @@ export interface IctCashFlowRecord {
   updatedBy?: string;
 }
 
+export interface AcademicSubject {
+  id: string;
+  name: string;
+  type: string;
+  icon: string;
+  order?: number;
+}
+
+export interface AcademicProgram {
+  id: string;
+  title: string;
+  description: string;
+  iconName?: string;
+  badge?: string;
+  order?: number;
+}
+
+export type UserRole =
+  | 'admin'
+  | 'guru'
+  | 'user'
+  | 'pk_kurikulum'
+  | 'su_kurikulum'
+  | 'pk_hem'
+  | 'su_hem'
+  | 'pk_kokurikulum'
+  | 'su_kokurikulum';
+
+export const isTeacherRole = (role: UserRole | null | undefined): boolean => {
+  return (
+    role === 'guru' ||
+    role === 'admin' ||
+    role === 'pk_kurikulum' ||
+    role === 'su_kurikulum' ||
+    role === 'pk_hem' ||
+    role === 'su_hem' ||
+    role === 'pk_kokurikulum' ||
+    role === 'su_kokurikulum'
+  );
+};
+
+export const canEditKurikulum = (role: UserRole | null | undefined, isAdmin?: boolean): boolean => {
+  return Boolean(isAdmin || role === 'admin' || role === 'pk_kurikulum' || role === 'su_kurikulum');
+};
+
+export const canEditHem = (role: UserRole | null | undefined, isAdmin?: boolean): boolean => {
+  return Boolean(isAdmin || role === 'admin' || role === 'pk_hem' || role === 'su_hem');
+};
+
+export const canEditKokurikulum = (role: UserRole | null | undefined, isAdmin?: boolean): boolean => {
+  return Boolean(isAdmin || role === 'admin' || role === 'pk_kokurikulum' || role === 'su_kokurikulum');
+};
+
 
