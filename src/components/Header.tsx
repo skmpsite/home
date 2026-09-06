@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { SchoolProfile, SearchResultItem } from '../types';
-import { Search, Lock, UserCheck, MapPin, Phone, Mail, LogOut, ChevronRight, X, ShieldAlert, Menu, Users, Utensils } from 'lucide-react';
+import { Search, Lock, UserCheck, MapPin, Phone, Mail, LogOut, ChevronRight, X, ShieldAlert, Menu, Users, Utensils, Smartphone } from 'lucide-react';
+import { PWAInstallModal } from './PWAInstallModal';
 
 interface HeaderProps {
   profile: SchoolProfile;
@@ -37,6 +38,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const [isPWAInstallOpen, setIsPWAInstallOpen] = useState(false);
 
   return (
     <header className="bg-white/10 backdrop-blur-lg border-b border-white/10 text-white shadow-md">
@@ -129,6 +131,17 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="hidden sm:inline">Log Masuk</span>
               </button>
             )}
+
+            {/* Butang Pasang Aplikasi di Telefon Pintar (PWA / Shortcut) */}
+            <button
+              onClick={() => setIsPWAInstallOpen(true)}
+              className="p-1.5 sm:px-2.5 sm:py-1 rounded-lg text-emerald-300 hover:text-emerald-200 hover:bg-emerald-500/20 border border-emerald-400/40 transition inline-flex items-center justify-center gap-1.5 shadow-sm cursor-pointer text-xs font-bold"
+              title="Pasang Pintasan Aplikasi di Telefon Pintar"
+              aria-label="Pasang Aplikasi"
+            >
+              <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">Pasang App</span>
+            </button>
 
             {/* Garisan Pemisah & Jarak Jelas Agar Tidak Rapat */}
             <div className="h-4 w-px bg-white/25 mx-1 sm:mx-2" />
@@ -345,6 +358,12 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
       </div>
+
+      {/* PWA / Shortcut Install Modal */}
+      <PWAInstallModal
+        isOpen={isPWAInstallOpen}
+        onClose={() => setIsPWAInstallOpen(false)}
+      />
     </header>
   );
 };

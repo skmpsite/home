@@ -725,6 +725,19 @@ KEUPAYAAN ILMU & JAWAPAN MENYELURUH (GEMINI OMNISCIENCE):
     }
   });
 
+  // Serve static public assets (icons, manifest, service worker)
+  const publicPath = path.join(process.cwd(), "public");
+  if (fs.existsSync(publicPath)) {
+    app.use(express.static(publicPath, {
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith("sw.js")) {
+          res.setHeader("Service-Worker-Allowed", "/");
+          res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        }
+      }
+    }));
+  }
+
   // Vite middleware in dev or static serving in production
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
