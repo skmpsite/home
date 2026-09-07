@@ -33,12 +33,14 @@ import {
   Layers,
   ExternalLink,
   CheckCircle2,
-  Info
+  Info,
+  Medal
 } from 'lucide-react';
 import { formatGoogleDriveUrl } from '../../utils/imageHelpers';
 import { findPkKokurikulumStaff } from '../../utils/staffHelpers';
 import { saveCoCurriculum } from '../../utils/storage';
 import { EditUnitModal, EditKokoBannerModal } from './KokoEditModals';
+import { KotSubSection } from './KotSubSection';
 
 interface CokurriculumSectionProps {
   units: CoCurriculumUnit[];
@@ -49,7 +51,7 @@ interface CokurriculumSectionProps {
   isTeacher?: boolean;
   userRole?: UserRole | null;
   onOpenLogin?: () => void;
-  initialSubTab?: 'utama' | 'jadual' | 'pajsk';
+  initialSubTab?: 'utama' | 'jadual' | 'pajsk' | 'kot';
 }
 
 export const CokurriculumSection: React.FC<CokurriculumSectionProps> = ({
@@ -62,7 +64,7 @@ export const CokurriculumSection: React.FC<CokurriculumSectionProps> = ({
   onOpenLogin,
   initialSubTab = 'utama'
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'utama' | 'jadual' | 'pajsk'>(initialSubTab);
+  const [activeSubTab, setActiveSubTab] = useState<'utama' | 'jadual' | 'pajsk' | 'kot'>(initialSubTab);
   const [showDesc, setShowDesc] = useState<boolean>(true);
   const [isEditMode, setIsEditMode] = useState<boolean>(false);
   const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
@@ -466,6 +468,29 @@ export const CokurriculumSection: React.FC<CokurriculumSectionProps> = ({
             >
               <Award className="w-4 h-4 text-emerald-400" />
               <span>Portal PAJSK & Sistem</span>
+            </button>
+
+            {/* 4. Sub Menu: KOT (Kejohanan Olahraga Tahunan) */}
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('kot')}
+              className={`px-4 py-2.5 rounded-2xl text-xs font-black flex items-center gap-2 transition cursor-pointer shadow-sm ${
+                activeSubTab === 'kot'
+                  ? 'bg-yellow-400 text-blue-950 shadow-md shadow-yellow-400/20 border border-yellow-300'
+                  : 'bg-amber-600/30 hover:bg-amber-600/50 text-amber-200 border border-amber-400/40'
+              }`}
+            >
+              <Medal className="w-4 h-4 text-amber-400" />
+              <span>KOT</span>
+              <span
+                className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
+                  activeSubTab === 'kot'
+                    ? 'bg-blue-950/40 text-yellow-300'
+                    : 'bg-white/10 text-amber-300'
+                }`}
+              >
+                2026
+              </span>
             </button>
           </div>
 
@@ -902,6 +927,13 @@ export const CokurriculumSection: React.FC<CokurriculumSectionProps> = ({
               })}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* SUB MENU 4: KOT (KEJOHANAN OLAHRAGA TAHUNAN 2026) */}
+      {activeSubTab === 'kot' && (
+        <div className="space-y-8 animate-fadeIn">
+          <KotSubSection />
         </div>
       )}
 

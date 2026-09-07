@@ -2612,77 +2612,103 @@ export const HemSection: React.FC<HemSectionProps> = ({
       )}
 
       {/* MODAL EDITING FOR HEM */}
-      <EditStatsModal
-        isOpen={isStatsModalOpen}
-        onClose={() => setIsStatsModalOpen(false)}
-        stats={data.stats || { spbtPercentage: '100%', rmtCount: '78 Murid', bapAmount: 'RM150', sahsiahPercentage: '98.5%' }}
-        onSave={(newStats) => {
-          const updated = { ...data, stats: newStats };
-          handleSaveData(updated, 'Statistik HEM dikemas kini!');
-        }}
-      />
+      {isStatsModalOpen && (
+        <EditStatsModal
+          isOpen={isStatsModalOpen}
+          onClose={() => setIsStatsModalOpen(false)}
+          stats={data.stats || { spbtPercentage: '100%', rmtCount: '78 Murid', bapAmount: 'RM150', sahsiahPercentage: '98.5%' }}
+          onSave={(newStats) => {
+            const updated = { ...data, stats: newStats };
+            handleSaveData(updated, 'Statistik HEM dikemas kini!');
+          }}
+        />
+      )}
 
-      <EditSpeechModal
-        isOpen={isSpeechModalOpen}
-        onClose={() => setIsSpeechModalOpen(false)}
-        gpkName={data.gpkName || pkHemName}
-        gpkTitle={data.gpkTitle || pkHemTitle}
-        gpkSpeech={data.gpkSpeech || ''}
-        onSave={(fields) => {
-          const updated = {
-            ...data,
-            gpkName: fields.gpkName,
-            gpkTitle: fields.gpkTitle,
-            gpkSpeech: fields.gpkSpeech
-          };
-          handleSaveData(updated, 'Perutusan PK HEM dikemas kini!');
-        }}
-      />
+      {isSpeechModalOpen && (
+        <EditSpeechModal
+          isOpen={isSpeechModalOpen}
+          onClose={() => setIsSpeechModalOpen(false)}
+          gpkName={data.gpkName || pkHemName}
+          gpkTitle={data.gpkTitle || pkHemTitle}
+          gpkSpeech={data.gpkSpeech || ''}
+          speech={data.gpkSpeech || ''}
+          onSave={(fields) => {
+            if (typeof fields === 'string') {
+              const updated = { ...data, gpkSpeech: fields };
+              handleSaveData(updated, 'Perutusan PK HEM dikemas kini!');
+            } else {
+              const updated = {
+                ...data,
+                gpkName: fields.gpkName,
+                gpkTitle: fields.gpkTitle,
+                gpkSpeech: fields.gpkSpeech
+              };
+              handleSaveData(updated, 'Perutusan PK HEM dikemas kini!');
+            }
+          }}
+        />
+      )}
 
-      <EditRuleModal
-        isOpen={Boolean(editingRule)}
-        onClose={() => setEditingRule(null)}
-        initialRule={editingRule?.rule}
-        isNew={Boolean(editingRule?.isNew)}
-        onSave={handleSaveRule}
-      />
+      {Boolean(editingRule) && (
+        <EditRuleModal
+          isOpen={Boolean(editingRule)}
+          onClose={() => setEditingRule(null)}
+          rule={editingRule?.rule}
+          initialRule={editingRule?.rule}
+          isNew={Boolean(editingRule?.isNew)}
+          onSave={handleSaveRule}
+        />
+      )}
 
-      <EditUbkModal
-        isOpen={Boolean(editingUbk)}
-        onClose={() => setEditingUbk(null)}
-        initialService={editingUbk?.service}
-        isNew={Boolean(editingUbk?.isNew)}
-        onSave={(srv) => handleSaveUbk(srv, editingUbk?.index)}
-      />
+      {Boolean(editingUbk) && (
+        <EditUbkModal
+          isOpen={Boolean(editingUbk)}
+          onClose={() => setEditingUbk(null)}
+          service={editingUbk?.service}
+          initialService={editingUbk?.service}
+          isNew={Boolean(editingUbk?.isNew)}
+          onSave={(srv) => handleSaveUbk(srv, editingUbk?.index)}
+        />
+      )}
 
-      <EditRmtModal
-        isOpen={Boolean(editingRmt)}
-        onClose={() => setEditingRmt(null)}
-        initialItem={editingRmt?.item}
-        isNew={Boolean(editingRmt?.isNew)}
-        onSave={(item) => handleSaveRmt(item, editingRmt?.index)}
-      />
+      {Boolean(editingRmt) && (
+        <EditRmtModal
+          isOpen={Boolean(editingRmt)}
+          onClose={() => setEditingRmt(null)}
+          item={editingRmt?.item}
+          initialItem={editingRmt?.item}
+          isNew={Boolean(editingRmt?.isNew)}
+          onSave={(item) => handleSaveRmt(item, editingRmt?.index)}
+        />
+      )}
 
-      <EditOfficerModal
-        isOpen={Boolean(editingOfficer)}
-        onClose={() => setEditingOfficer(null)}
-        initialOfficer={editingOfficer?.officer}
-        isNew={Boolean(editingOfficer?.isNew)}
-        onSave={handleSaveOfficer}
-      />
+      {Boolean(editingOfficer) && (
+        <EditOfficerModal
+          isOpen={Boolean(editingOfficer)}
+          onClose={() => setEditingOfficer(null)}
+          officer={editingOfficer?.officer}
+          initialOfficer={editingOfficer?.officer}
+          isNew={Boolean(editingOfficer?.isNew)}
+          onSave={handleSaveOfficer}
+        />
+      )}
 
-      <EditPointModal
-        isOpen={Boolean(editingPoint)}
-        onClose={() => setEditingPoint(null)}
-        title={editingPoint?.title || 'Sunting Butiran'}
-        categoryLabel={editingPoint?.categoryLabel || 'HEM'}
-        initialValue={editingPoint?.value || ''}
-        onSave={(val) => {
-          if (editingPoint?.onSave) {
-            editingPoint.onSave(val);
-          }
-        }}
-      />
+      {Boolean(editingPoint) && (
+        <EditPointModal
+          isOpen={Boolean(editingPoint)}
+          onClose={() => setEditingPoint(null)}
+          title={editingPoint?.title || 'Butiran'}
+          categoryLabel={editingPoint?.categoryLabel || 'HEM'}
+          initialValue={editingPoint?.value || ''}
+          value={editingPoint?.value || ''}
+          isNew={Boolean(editingPoint?.isNew)}
+          onSave={(val) => {
+            if (editingPoint?.onSave) {
+              editingPoint.onSave(val);
+            }
+          }}
+        />
+      )}
 
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">

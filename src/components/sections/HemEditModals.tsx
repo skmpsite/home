@@ -20,6 +20,7 @@ import { HemRuleItem, HemOfficer, HemRmtMenuItem } from '../../types';
 
 // 1. Modal: Sunting Statistik Pantas HEM
 interface EditStatsModalProps {
+  isOpen?: boolean;
   stats: {
     spbtPercentage: string;
     rmtCount: string;
@@ -35,8 +36,14 @@ interface EditStatsModalProps {
   }) => void;
 }
 
-export const EditStatsModal: React.FC<EditStatsModalProps> = ({ stats, onClose, onSave }) => {
+export const EditStatsModal: React.FC<EditStatsModalProps> = ({ isOpen = true, stats, onClose, onSave }) => {
   const [formData, setFormData] = useState({ ...stats });
+
+  React.useEffect(() => {
+    setFormData({ ...stats });
+  }, [stats, isOpen]);
+
+  if (isOpen === false) return null;
 
   return (
     <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadeIn">
@@ -137,13 +144,31 @@ export const EditStatsModal: React.FC<EditStatsModalProps> = ({ stats, onClose, 
 
 // 2. Modal: Sunting Info & Ucapan Penerangan HEM
 interface EditSpeechModalProps {
-  speech: string;
+  isOpen?: boolean;
+  gpkName?: string;
+  gpkTitle?: string;
+  gpkSpeech?: string;
+  speech?: string;
   onClose: () => void;
-  onSave: (speech: string) => void;
+  onSave: (data: any) => void;
 }
 
-export const EditSpeechModal: React.FC<EditSpeechModalProps> = ({ speech, onClose, onSave }) => {
-  const [text, setText] = useState(speech);
+export const EditSpeechModal: React.FC<EditSpeechModalProps> = ({
+  isOpen = true,
+  gpkName,
+  gpkTitle,
+  gpkSpeech,
+  speech,
+  onClose,
+  onSave
+}) => {
+  const [text, setText] = useState(gpkSpeech || speech || '');
+
+  React.useEffect(() => {
+    setText(gpkSpeech || speech || '');
+  }, [gpkSpeech, speech, isOpen]);
+
+  if (isOpen === false) return null;
 
   return (
     <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadeIn">
@@ -161,7 +186,11 @@ export const EditSpeechModal: React.FC<EditSpeechModalProps> = ({ speech, onClos
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            onSave(text);
+            if (gpkName !== undefined || gpkTitle !== undefined) {
+              onSave({ gpkName, gpkTitle, gpkSpeech: text });
+            } else {
+              onSave(text);
+            }
           }}
           className="space-y-3.5 text-xs"
         >
@@ -202,14 +231,31 @@ export const EditSpeechModal: React.FC<EditSpeechModalProps> = ({ speech, onClos
 
 // 3. Modal: Tambah / Sunting Peraturan Disiplin
 interface EditRuleModalProps {
-  rule: HemRuleItem;
-  isNew: boolean;
+  isOpen?: boolean;
+  rule?: HemRuleItem;
+  initialRule?: HemRuleItem;
+  isNew?: boolean;
   onClose: () => void;
   onSave: (rule: HemRuleItem) => void;
 }
 
-export const EditRuleModal: React.FC<EditRuleModalProps> = ({ rule, isNew, onClose, onSave }) => {
-  const [formData, setFormData] = useState<HemRuleItem>({ ...rule });
+export const EditRuleModal: React.FC<EditRuleModalProps> = ({
+  isOpen = true,
+  rule,
+  initialRule,
+  isNew = false,
+  onClose,
+  onSave
+}) => {
+  const current = rule || initialRule || { id: '', title: '', desc: '', type: 'info' as const };
+  const [formData, setFormData] = useState<HemRuleItem>({ ...current });
+
+  React.useEffect(() => {
+    const item = rule || initialRule || { id: '', title: '', desc: '', type: 'info' as const };
+    setFormData({ ...item });
+  }, [rule, initialRule, isOpen]);
+
+  if (isOpen === false) return null;
 
   return (
     <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadeIn">
@@ -300,14 +346,31 @@ export const EditRuleModal: React.FC<EditRuleModalProps> = ({ rule, isNew, onClo
 
 // 4. Modal: Tambah / Sunting Perkhidmatan UBK
 interface EditUbkModalProps {
-  service: { title: string; desc: string };
-  isNew: boolean;
+  isOpen?: boolean;
+  service?: { title: string; desc: string };
+  initialService?: { title: string; desc: string };
+  isNew?: boolean;
   onClose: () => void;
   onSave: (service: { title: string; desc: string }) => void;
 }
 
-export const EditUbkModal: React.FC<EditUbkModalProps> = ({ service, isNew, onClose, onSave }) => {
-  const [formData, setFormData] = useState({ ...service });
+export const EditUbkModal: React.FC<EditUbkModalProps> = ({
+  isOpen = true,
+  service,
+  initialService,
+  isNew = false,
+  onClose,
+  onSave
+}) => {
+  const current = service || initialService || { title: '', desc: '' };
+  const [formData, setFormData] = useState({ ...current });
+
+  React.useEffect(() => {
+    const srv = service || initialService || { title: '', desc: '' };
+    setFormData({ ...srv });
+  }, [service, initialService, isOpen]);
+
+  if (isOpen === false) return null;
 
   return (
     <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadeIn">
@@ -383,14 +446,31 @@ export const EditUbkModal: React.FC<EditUbkModalProps> = ({ service, isNew, onCl
 
 // 5. Modal: Tambah / Sunting Menu RMT
 interface EditRmtModalProps {
-  item: HemRmtMenuItem;
-  isNew: boolean;
+  isOpen?: boolean;
+  item?: HemRmtMenuItem;
+  initialItem?: HemRmtMenuItem;
+  isNew?: boolean;
   onClose: () => void;
   onSave: (item: HemRmtMenuItem) => void;
 }
 
-export const EditRmtModal: React.FC<EditRmtModalProps> = ({ item, isNew, onClose, onSave }) => {
-  const [formData, setFormData] = useState<HemRmtMenuItem>({ ...item });
+export const EditRmtModal: React.FC<EditRmtModalProps> = ({
+  isOpen = true,
+  item,
+  initialItem,
+  isNew = false,
+  onClose,
+  onSave
+}) => {
+  const current = item || initialItem || { day: '', menu: '' };
+  const [formData, setFormData] = useState<HemRmtMenuItem>({ ...current });
+
+  React.useEffect(() => {
+    const m = item || initialItem || { day: '', menu: '' };
+    setFormData({ ...m });
+  }, [item, initialItem, isOpen]);
+
+  if (isOpen === false) return null;
 
   return (
     <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadeIn">
@@ -466,14 +546,31 @@ export const EditRmtModal: React.FC<EditRmtModalProps> = ({ item, isNew, onClose
 
 // 6. Modal: Tambah / Sunting Pegawai Jawatankuasa Induk HEM
 interface EditOfficerModalProps {
-  officer: HemOfficer;
-  isNew: boolean;
+  isOpen?: boolean;
+  officer?: HemOfficer;
+  initialOfficer?: HemOfficer;
+  isNew?: boolean;
   onClose: () => void;
   onSave: (officer: HemOfficer) => void;
 }
 
-export const EditOfficerModal: React.FC<EditOfficerModalProps> = ({ officer, isNew, onClose, onSave }) => {
-  const [formData, setFormData] = useState<HemOfficer>({ ...officer });
+export const EditOfficerModal: React.FC<EditOfficerModalProps> = ({
+  isOpen = true,
+  officer,
+  initialOfficer,
+  isNew = false,
+  onClose,
+  onSave
+}) => {
+  const current = officer || initialOfficer || { role: '', name: '', unit: '', phone: '' };
+  const [formData, setFormData] = useState<HemOfficer>({ ...current });
+
+  React.useEffect(() => {
+    const off = officer || initialOfficer || { role: '', name: '', unit: '', phone: '' };
+    setFormData({ ...off });
+  }, [officer, initialOfficer, isOpen]);
+
+  if (isOpen === false) return null;
 
   return (
     <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadeIn">
@@ -576,23 +673,39 @@ export const EditOfficerModal: React.FC<EditOfficerModalProps> = ({ officer, isN
 
 // 7. Modal: Tambah / Sunting Teks Item (SPBT Guidelines, BAP Details, 3K Points)
 interface EditPointModalProps {
+  isOpen?: boolean;
   title: string;
-  categoryLabel: string;
-  value: string;
-  isNew: boolean;
+  categoryLabel?: string;
+  value?: string;
+  initialValue?: string;
+  isNew?: boolean;
   onClose: () => void;
   onSave: (val: string) => void;
 }
 
 export const EditPointModal: React.FC<EditPointModalProps> = ({
+  isOpen = true,
   title,
-  categoryLabel,
+  categoryLabel = 'HEM',
   value,
-  isNew,
+  initialValue,
+  isNew = false,
   onClose,
   onSave
 }) => {
-  const [text, setText] = useState(value);
+  const currentVal = value !== undefined ? value : (initialValue || '');
+  const [text, setText] = useState(currentVal);
+
+  React.useEffect(() => {
+    const val = value !== undefined ? value : (initialValue || '');
+    setText(val);
+  }, [value, initialValue, isOpen]);
+
+  if (isOpen === false) return null;
+
+  const displayTitle = title.startsWith('Sunting ') || title.startsWith('Tambah ')
+    ? title
+    : (isNew ? `Tambah ${title}` : `Sunting ${title}`);
 
   return (
     <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadeIn">
@@ -601,7 +714,7 @@ export const EditPointModal: React.FC<EditPointModalProps> = ({
           <div>
             <span className="text-[10px] font-black uppercase text-yellow-400">{categoryLabel}</span>
             <h3 className="font-black text-white text-base">
-              {isNew ? `Tambah ${title}` : `Sunting ${title}`}
+              {displayTitle}
             </h3>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-white font-bold p-1">
