@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { SchoolProfile, NewsItem, CalendarEvent, Staff, StudentRecord } from '../../types';
 import { initialSchoolProfile } from '../../data/initialData';
 import { isAdministrator } from '../../utils/staffHelpers';
@@ -61,6 +61,22 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   const displayTitle = profile.principalTitle || (guruBesarFromStaff ? guruBesarFromStaff.position : 'Guru Besar (DG48)');
   const displayBadge = profile.principalBadge || 'Perutusan & Kata Alu-Aluan';
   const pinnedNews = latestNews.filter((n) => n.isPinned)[0] || latestNews[0];
+
+  const [homeFilter, setHomeFilter] = useState<'semua' | 'kurikulum' | 'hem' | 'kokurikulum'>('semua');
+
+  // Filter news that have showOnHome !== false (ticked by Admin/PK/SU)
+  const displayedHomeNews = useMemo(() => {
+    const ticked = (latestNews || []).filter((n) => n.showOnHome !== false);
+    if (homeFilter === 'semua') return ticked;
+    return ticked.filter((n) => {
+      const effectiveUnit = n.unitScope || (
+        (n.author || '').toLowerCase().includes('hem') ? 'hem' :
+        (n.author || '').toLowerCase().includes('koku') ? 'kokurikulum' :
+        (n.author || '').toLowerCase().includes('kurikulum') ? 'kurikulum' : 'sekolah'
+      );
+      return effectiveUnit === homeFilter;
+    });
+  }, [latestNews, homeFilter]);
 
   // Pengiraan Dinamik Data: Pentadbir, Guru, Staf (daripada Carta Organisasi) & Murid (daripada HEM)
   const pentadbirCount = useMemo(() => {
@@ -262,64 +278,147 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       <div className="grid lg:grid-cols-12 gap-8">
         {/* Left: Latest News Section */}
         <div className="lg:col-span-8 space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-white/10">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-white/10">
             <div className="flex items-center gap-2">
               <Bell className="w-5 h-5 text-yellow-400" />
               <h3 className="text-lg font-black text-white">Berita & Pengumuman Sekolah</h3>
             </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => onNavigate('berita')}
+                className="text-xs font-bold text-yellow-400 hover:text-yellow-300 flex items-center gap-1 transition"
+              >
+                <span>Lihat Semua</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Unit Filter Tabs on Home Page */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-bold text-slate-400">Unit:</span>
             <button
-              onClick={() => onNavigate('berita')}
-              className="text-xs font-bold text-yellow-400 hover:text-yellow-300 flex items-center gap-1 transition"
+              type="button"
+              onClick={() => setHomeFilter('semua')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                homeFilter === 'semua'
+                  ? 'bg-yellow-400 text-blue-950 font-black shadow-md'
+                  : 'bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10'
+              }`}
             >
-              <span>Lihat Semua</span>
-              <ChevronRight className="w-3.5 h-3.5" />
+              Semua
+            </button>
+            <button
+              type="button"
+              onClick={() => setHomeFilter('kurikulum')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                homeFilter === 'kurikulum'
+                  ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-500/30'
+                  : 'bg-white/5 hover:bg-white/10 text-blue-300 border border-blue-500/20'
+              }`}
+            >
+              Kurikulum
+            </button>
+            <button
+              type="button"
+              onClick={() => setHomeFilter('hem')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                homeFilter === 'hem'
+                  ? 'bg-emerald-600 text-white font-black shadow-md shadow-emerald-500/30'
+                  : 'bg-white/5 hover:bg-white/10 text-emerald-300 border border-emerald-500/20'
+              }`}
+            >
+              HEM
+            </button>
+            <button
+              type="button"
+              onClick={() => setHomeFilter('kokurikulum')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                homeFilter === 'kokurikulum'
+                  ? 'bg-amber-600 text-slate-950 font-black shadow-md shadow-amber-500/30'
+                  : 'bg-white/5 hover:bg-white/10 text-amber-300 border border-amber-500/20'
+              }`}
+            >
+              Kokurikulum
             </button>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
-            {(latestNews || []).slice(0, 4).map((news) => (
-              <div
-                key={news.id}
-                onClick={() => onSelectNews(news)}
-                className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden shadow-lg hover:border-yellow-400/50 hover:bg-white/15 transition cursor-pointer group flex flex-col justify-between"
-              >
-                <div>
-                  <div className="h-40 overflow-hidden relative bg-slate-900/40">
-                    <img
-                      src={getSafeNewsImageUrl(news.imageUrl, news.category, news.id)}
-                      alt={news.title}
-                      referrerPolicy="no-referrer"
-                      onError={(e) => {
-                        e.currentTarget.src = SECONDARY_FALLBACK_PHOTOS[news.category] || SECONDARY_FALLBACK_PHOTOS.default;
-                      }}
-                      className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                    />
-                    <span className="absolute top-3 left-3 px-2.5 py-1 bg-blue-950/90 backdrop-blur-sm text-yellow-300 font-extrabold rounded-lg text-[10px] uppercase tracking-wider border border-white/20">
-                      {news.category}
-                    </span>
-                  </div>
-                  <div className="p-4 space-y-2">
-                    <div className="flex items-center gap-2 text-[11px] text-slate-300 font-medium">
-                      <Clock className="w-3 h-3 text-yellow-400" />
-                      <span>{news.date}</span>
-                      <span>•</span>
-                      <span>{news.author}</span>
+          {displayedHomeNews.length === 0 ? (
+            <div className="p-8 text-center bg-white/5 rounded-2xl border border-white/10 text-slate-400 text-xs">
+              Tiada pengumuman bagi unit yang dipilih pada masa ini.
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-2 gap-4">
+              {displayedHomeNews.slice(0, 4).map((news) => {
+                const effectiveUnit = news.unitScope || (
+                  (news.author || '').toLowerCase().includes('hem') ? 'hem' :
+                  (news.author || '').toLowerCase().includes('koku') ? 'kokurikulum' :
+                  (news.author || '').toLowerCase().includes('kurikulum') ? 'kurikulum' : 'sekolah'
+                );
+
+                const unitBadgeStyle = 
+                  effectiveUnit === 'kurikulum' ? 'bg-blue-600/90 text-white border-blue-400/40' :
+                  effectiveUnit === 'hem' ? 'bg-emerald-600/90 text-white border-emerald-400/40' :
+                  effectiveUnit === 'kokurikulum' ? 'bg-amber-600/90 text-slate-950 font-black border-amber-400/40' :
+                  'bg-purple-600/90 text-white border-purple-400/40';
+
+                const unitBadgeLabel =
+                  effectiveUnit === 'kurikulum' ? 'Kurikulum' :
+                  effectiveUnit === 'hem' ? 'HEM' :
+                  effectiveUnit === 'kokurikulum' ? 'Kokurikulum' :
+                  'Sekolah';
+
+                return (
+                  <div
+                    key={news.id}
+                    onClick={() => onSelectNews(news)}
+                    className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden shadow-lg hover:border-yellow-400/50 hover:bg-white/15 transition cursor-pointer group flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="h-40 overflow-hidden relative bg-slate-900/40">
+                        <img
+                          src={getSafeNewsImageUrl(news.imageUrl, news.category, news.id)}
+                          alt={news.title}
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            e.currentTarget.src = SECONDARY_FALLBACK_PHOTOS[news.category] || SECONDARY_FALLBACK_PHOTOS.default;
+                          }}
+                          className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                        />
+                        {/* Category badge */}
+                        <span className="absolute top-3 left-3 px-2.5 py-1 bg-blue-950/90 backdrop-blur-sm text-yellow-300 font-extrabold rounded-lg text-[10px] uppercase tracking-wider border border-white/20">
+                          {news.category}
+                        </span>
+
+                        {/* Unit badge */}
+                        <span className={`absolute top-3 right-3 px-2.5 py-1 backdrop-blur-sm rounded-lg text-[10px] uppercase tracking-wider font-extrabold border shadow-sm ${unitBadgeStyle}`}>
+                          {unitBadgeLabel}
+                        </span>
+                      </div>
+                      <div className="p-4 space-y-2">
+                        <div className="flex items-center gap-2 text-[11px] text-slate-300 font-medium">
+                          <Clock className="w-3 h-3 text-yellow-400 flex-shrink-0" />
+                          <span>{news.date}</span>
+                          <span>•</span>
+                          <span className="truncate">{news.author}</span>
+                        </div>
+                        <h4 className="font-extrabold text-xs sm:text-sm text-white group-hover:text-yellow-300 transition line-clamp-2 leading-snug">
+                          {news.title}
+                        </h4>
+                        <p className="text-xs text-slate-300 line-clamp-2 font-normal leading-relaxed">
+                          {news.summary}
+                        </p>
+                      </div>
                     </div>
-                    <h4 className="font-extrabold text-xs sm:text-sm text-white group-hover:text-yellow-300 transition line-clamp-2 leading-snug">
-                      {news.title}
-                    </h4>
-                    <p className="text-xs text-slate-300 line-clamp-2 font-normal leading-relaxed">
-                      {news.summary}
-                    </p>
+                    <div className="px-4 pb-4 pt-1 flex items-center justify-between text-xs font-bold text-yellow-400 group-hover:text-yellow-300">
+                      <span>Baca Lanjut</span>
+                      <ArrowUpRight className="w-4 h-4" />
+                    </div>
                   </div>
-                </div>
-                <div className="px-4 pb-4 pt-1 flex items-center justify-between text-xs font-bold text-yellow-400 group-hover:text-yellow-300">
-                  <span>Baca Lanjut</span>
-                  <ArrowUpRight className="w-4 h-4" />
-                </div>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Right: Upcoming Events Calendar Widget */}

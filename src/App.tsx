@@ -295,11 +295,22 @@ export default function App() {
       return false;
     }
   });
-  const [userRole, setUserRole] = useState<'admin' | 'guru' | 'user' | null>(() => {
+  const [userRole, setUserRole] = useState<UserRole | null>(() => {
     try {
       const saved = localStorage.getItem('skmp_attendance_auth_user');
-      if (saved === 'admin') return 'admin';
-      if (saved === 'guru') return 'guru';
+      if (
+        saved === 'admin' ||
+        saved === 'guru_besar' ||
+        saved === 'guru' ||
+        saved === 'pk_kurikulum' ||
+        saved === 'su_kurikulum' ||
+        saved === 'pk_hem' ||
+        saved === 'su_hem' ||
+        saved === 'pk_kokurikulum' ||
+        saved === 'su_kokurikulum'
+      ) {
+        return saved as UserRole;
+      }
       if (saved === 'skmp') return 'user';
     } catch {
       // ignore
@@ -974,6 +985,8 @@ export default function App() {
             onSaveEvents={handleUpdateEvents}
             profile={profile}
             staffList={staffList}
+            newsList={newsList}
+            onSaveNews={handleUpdateNews}
             initialSubTab={kurikulumSubTab}
             initialIctSubTab={ictSubTab}
             isAdmin={isAdmin}
@@ -994,6 +1007,8 @@ export default function App() {
             onAddAbsenceRecord={handleAddAbsenceRecord}
             onUpdateAbsenceRecord={handleUpdateAbsenceRecord}
             onDeleteAbsenceRecord={handleDeleteAbsenceRecord}
+            newsList={newsList}
+            onSaveNews={handleUpdateNews}
             initialSubTab={hemSubTab}
             isAdmin={isAdmin}
             isTeacher={userRole === 'guru' || isTeacherRole(userRole)}
@@ -1011,6 +1026,8 @@ export default function App() {
             onSaveCoCurriculum={handleUpdateCoCurriculum}
             profile={profile}
             staffList={staffList}
+            newsList={newsList}
+            onSaveNews={handleUpdateNews}
             isAdmin={isAdmin}
             isTeacher={userRole === 'guru' || isTeacherRole(userRole)}
             userRole={userRole}

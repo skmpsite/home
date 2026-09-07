@@ -49,13 +49,15 @@ import {
   canEditHem,
   HemRuleItem,
   HemOfficer,
-  HemRmtMenuItem
+  HemRmtMenuItem,
+  NewsItem
 } from '../../types';
 import { initialHemData, initialSchoolHolidays } from '../../data/initialData';
 import { initialStudentsList } from '../../data/studentsData';
 import { initialAbsenceRecords } from '../../data/initialAttendance';
 import { HemAttendanceSubSection } from './HemAttendanceSubSection';
 import { TeacherRmtSubSection } from './TeacherRmtSubSection';
+import { UnitNewsSection } from '../common/UnitNewsSection';
 import { formatGoogleDriveUrl } from '../../utils/imageHelpers';
 import {
   findPkHemStaff,
@@ -89,6 +91,8 @@ interface HemSectionProps {
   onUpdateAbsenceRecord?: (record: StudentAbsenceRecord) => void;
   onDeleteAbsenceRecord?: (id: string) => void;
   initialSubTab?: 'semua' | 'kehadiran' | 'disiplin' | 'kebajikan' | '3k';
+  newsList?: NewsItem[];
+  onSaveNews?: (news: NewsItem[]) => void;
   isAdmin?: boolean;
   isTeacher?: boolean;
   userRole?: UserRole | null;
@@ -109,6 +113,8 @@ export const HemSection: React.FC<HemSectionProps> = ({
   onAddAbsenceRecord,
   onUpdateAbsenceRecord,
   onDeleteAbsenceRecord,
+  newsList = [],
+  onSaveNews = () => {},
   initialSubTab = 'semua',
   isAdmin = false,
   isTeacher = false,
@@ -919,6 +925,20 @@ export const HemSection: React.FC<HemSectionProps> = ({
                 </button>
               </div>
             )}
+          </div>
+
+          {/* Bahagian Berita & Pengumuman Hal Ehwal Murid (HEM) */}
+          <div className="pt-2">
+            <UnitNewsSection
+              unit="hem"
+              unitTitle="Berita & Pengumuman Hal Ehwal Murid (HEM)"
+              unitSubtitle="Hebahan pendaftaran murid, bantuan kebajikan & RMT, pekeliling disiplin, dan makluman rasmi HEM."
+              newsList={newsList}
+              onSaveNews={onSaveNews}
+              canEdit={canEdit}
+              managerRoleLabel={managerRoleLabel}
+              onOpenLogin={onOpenLogin}
+            />
           </div>
         </>
       )}

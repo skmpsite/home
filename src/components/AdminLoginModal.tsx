@@ -34,6 +34,27 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
     const cleanPass = password.trim();
     const cleanPassLower = cleanPass.toLowerCase();
 
+    // 0. Semak GURU BESAR (ID: GB, Katalaluan: GB5012)
+    if (
+      (cleanUser === 'gb' && (cleanPass === 'GB5012' || cleanPassLower === 'gb5012')) ||
+      (cleanPass === 'GB5012' || (cleanUser === '' && cleanPassLower === 'gb5012'))
+    ) {
+      setIsSubmitting(true);
+      try {
+        localStorage.setItem('skmp_attendance_auth_user', 'guru_besar');
+      } catch (e) {
+        console.error(e);
+      }
+      setSuccessMsg('Log masuk Guru Besar Berjaya! Membuka Portal Guru & Pentadbiran Sekolah...');
+      setTimeout(() => {
+        setIsSubmitting(false);
+        onLoginSuccess('guru_besar');
+        onClose();
+        setSuccessMsg('');
+      }, 500);
+      return;
+    }
+
     // 1. Semak PK Pentadbiran / Kurikulum (ID: PK1, Katalaluan: PK15012)
     if (
       (cleanUser === 'pk1' && (cleanPass === 'PK15012' || cleanPassLower === 'pk15012')) ||
@@ -326,7 +347,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                 <span>{isSubmitting ? 'Mengesahkan Log Masuk...' : 'Log Masuk'}</span>
               </button>
               <p className="text-center text-[11px] text-slate-400">
-                Sistem menyokong log masuk Pentadbir, Guru, PK & SU (Kurikulum, HEM, Kokurikulum) serta Pengguna SKMP.
+                Sistem menyokong log masuk Guru Besar (ID: GB), Pentadbir, Guru, PK & SU (Kurikulum, HEM, Kokurikulum) serta Pengguna SKMP.
               </p>
             </div>
           </form>

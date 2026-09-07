@@ -210,7 +210,9 @@ export const initialNewsList: NewsItem[] = [
     imageUrl: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&q=80&w=600",
     author: "Unit HEM SKMP",
     isPinned: true,
-    views: 342
+    views: 342,
+    showOnHome: true,
+    unitScope: "hem"
   },
   {
     id: "news-2",
@@ -222,7 +224,23 @@ export const initialNewsList: NewsItem[] = [
     imageUrl: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&q=80&w=600",
     author: "Unit Kokurikulum",
     isPinned: true,
-    views: 521
+    views: 521,
+    showOnHome: true,
+    unitScope: "kokurikulum"
+  },
+  {
+    id: "news-4",
+    title: "Pelaksanaan Pentaksiran Sumatif & Dialog Prestasi Akademik Penggal II",
+    date: "28 Julai 2026",
+    category: "pengumuman",
+    summary: "Penyelarasan jadual Ujian Akhir Sesi Akademik (UASA) dan persediaan Pentaksiran Bilik Darjah (PBD) Tahun 1 hingga 6.",
+    content: "Unit Kurikulum memaklumkan bahawa Pentaksiran Sumatif Bilik Darjah (PBD) Pertengahan Tahun dan Dialog Prestasi Panitia Mata Pelajaran akan diadakan mengikut takwim yang ditetapkan. Semua guru diminta melengkapkan pelaporan transit bagi tujuan bimbingan berfokus.",
+    imageUrl: "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&q=80&w=600",
+    author: "Unit Kurikulum SKMP",
+    isPinned: true,
+    views: 415,
+    showOnHome: true,
+    unitScope: "kurikulum"
   },
   {
     id: "news-3",
@@ -234,7 +252,9 @@ export const initialNewsList: NewsItem[] = [
     imageUrl: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&q=80&w=600",
     author: "Pentadbiran Sekolah",
     isPinned: false,
-    views: 189
+    views: 189,
+    showOnHome: true,
+    unitScope: "kurikulum"
   }
 ];
 

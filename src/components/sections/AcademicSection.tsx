@@ -7,7 +7,8 @@ import {
   isTeacherRole,
   canEditKurikulum,
   AcademicSubject,
-  AcademicProgram
+  AcademicProgram,
+  NewsItem
 } from '../../types';
 import {
   GraduationCap,
@@ -50,12 +51,15 @@ import {
 import { IctBookingSubSection } from './IctBookingSubSection';
 import { IctDelimaSubSection } from './IctDelimaSubSection';
 import { IctFinanceSubSection } from './IctFinanceSubSection';
+import { UnitNewsSection } from '../common/UnitNewsSection';
 
 interface AcademicSectionProps {
   events: CalendarEvent[];
   onSaveEvents?: (events: CalendarEvent[]) => void;
   profile?: SchoolProfile;
   staffList?: Staff[];
+  newsList?: NewsItem[];
+  onSaveNews?: (news: NewsItem[]) => void;
   initialSubTab?: 'utama' | 'ict';
   initialIctSubTab?: 'jadual' | 'delima' | 'kewangan';
   isAdmin?: boolean;
@@ -69,6 +73,8 @@ export const AcademicSection: React.FC<AcademicSectionProps> = ({
   onSaveEvents,
   profile,
   staffList,
+  newsList = [],
+  onSaveNews = () => {},
   initialSubTab = 'utama',
   initialIctSubTab = 'jadual',
   isAdmin = false,
@@ -651,6 +657,18 @@ export const AcademicSection: React.FC<AcademicSectionProps> = ({
               <span>{statusMsg}</span>
             </div>
           )}
+
+          {/* Bahagian Berita & Pengumuman Kurikulum */}
+          <UnitNewsSection
+            unit="kurikulum"
+            unitTitle="Berita & Pengumuman Kurikulum"
+            unitSubtitle="Hebahan program akademik, pentaksiran UASA, dialog prestasi, dan makluman panitia."
+            newsList={newsList}
+            onSaveNews={onSaveNews}
+            canEdit={canEdit}
+            managerRoleLabel={managerRoleLabel}
+            onOpenLogin={onOpenLogin}
+          />
 
           {/* Curriculum & Key Programs Grid */}
           <div className="space-y-3">

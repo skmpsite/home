@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SchoolProfile, SearchResultItem, UserRole } from '../types';
-import { Search, Lock, UserCheck, MapPin, Phone, Mail, LogOut, ChevronRight, X, ShieldAlert, Menu, Users, Utensils, Smartphone } from 'lucide-react';
+import { Search, Lock, UserCheck, MapPin, Phone, Mail, LogOut, ChevronRight, X, ShieldAlert, Menu, Users, Utensils, Smartphone, Crown } from 'lucide-react';
 import { PWAInstallModal } from './PWAInstallModal';
 
 interface HeaderProps {
@@ -73,6 +73,25 @@ export const Header: React.FC<HeaderProps> = ({
                 >
                   <UserCheck className="w-3.5 h-3.5" />
                   <span>Admin Active</span>
+                </button>
+                <button
+                  onClick={onLogout}
+                  className="text-xs text-rose-300 hover:text-rose-100 flex items-center gap-1 ml-1 font-semibold cursor-pointer"
+                  title="Log Keluar"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Keluar</span>
+                </button>
+              </div>
+            ) : userRole === 'guru_besar' ? (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={onOpenTeacherPortal}
+                  className="inline-flex items-center gap-1.5 text-xs font-black text-white hover:bg-amber-600 bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700 px-3.5 py-0.5 rounded-full border border-yellow-300 shadow-lg shadow-amber-950/40 transition cursor-pointer"
+                  title="Guru Besar SKMP Aktif - Akses Penuh Pentadbiran & Portal Guru"
+                >
+                  <Crown className="w-3.5 h-3.5 text-yellow-200" />
+                  <span>Guru Besar Aktif</span>
                 </button>
                 <button
                   onClick={onLogout}

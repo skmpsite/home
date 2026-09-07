@@ -70,6 +70,8 @@ export interface NewsItem {
   author: string;
   isPinned: boolean;
   views: number;
+  showOnHome?: boolean;
+  unitScope?: 'kurikulum' | 'hem' | 'kokurikulum' | 'sekolah';
 }
 
 export interface CalendarEvent {
@@ -486,6 +488,7 @@ export interface AcademicProgram {
 
 export type UserRole =
   | 'admin'
+  | 'guru_besar'
   | 'guru'
   | 'user'
   | 'pk_kurikulum'
@@ -497,6 +500,7 @@ export type UserRole =
 
 export const isTeacherRole = (role: UserRole | null | undefined): boolean => {
   return (
+    role === 'guru_besar' ||
     role === 'guru' ||
     role === 'admin' ||
     role === 'pk_kurikulum' ||
@@ -508,16 +512,20 @@ export const isTeacherRole = (role: UserRole | null | undefined): boolean => {
   );
 };
 
+export const canEditPengumumanRasmi = (role: UserRole | null | undefined, isAdmin?: boolean): boolean => {
+  return Boolean(isAdmin || role === 'admin' || role === 'guru_besar');
+};
+
 export const canEditKurikulum = (role: UserRole | null | undefined, isAdmin?: boolean): boolean => {
-  return Boolean(isAdmin || role === 'admin' || role === 'pk_kurikulum' || role === 'su_kurikulum');
+  return Boolean(isAdmin || role === 'admin' || role === 'guru_besar' || role === 'pk_kurikulum' || role === 'su_kurikulum');
 };
 
 export const canEditHem = (role: UserRole | null | undefined, isAdmin?: boolean): boolean => {
-  return Boolean(isAdmin || role === 'admin' || role === 'pk_hem' || role === 'su_hem');
+  return Boolean(isAdmin || role === 'admin' || role === 'guru_besar' || role === 'pk_hem' || role === 'su_hem');
 };
 
 export const canEditKokurikulum = (role: UserRole | null | undefined, isAdmin?: boolean): boolean => {
-  return Boolean(isAdmin || role === 'admin' || role === 'pk_kokurikulum' || role === 'su_kokurikulum');
+  return Boolean(isAdmin || role === 'admin' || role === 'guru_besar' || role === 'pk_kokurikulum' || role === 'su_kokurikulum');
 };
 
 

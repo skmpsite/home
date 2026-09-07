@@ -179,19 +179,52 @@ export function saveStaff(staffList: Staff[]): void {
 export function loadNews(): NewsItem[] {
   const news = getStored<NewsItem[]>(KEYS.NEWS, initialNewsList);
   if (Array.isArray(news)) {
-    let hasCorrupted = false;
-    const sanitized = news.map((item) => {
+    let hasChanged = false;
+    const sanitized: NewsItem[] = news.map((item) => {
       const safeUrl = getSafeNewsImageUrl(item.imageUrl, item.category, item.id);
       if (safeUrl !== item.imageUrl) {
-        hasCorrupted = true;
+        hasChanged = true;
       }
+
+      let scope = item.unitScope;
+      if (!scope) {
+        const lowerAuthor = (item.author || '').toLowerCase();
+        const lowerTitle = (item.title || '').toLowerCase();
+        if (lowerAuthor.includes('hem') || lowerTitle.includes('pendaftaran') || lowerTitle.includes('idme') || lowerTitle.includes('spbt')) {
+          scope = 'hem';
+        } else if (lowerAuthor.includes('koku') || lowerAuthor.includes('sukan') || lowerTitle.includes('sukan') || lowerTitle.includes('kejohanan')) {
+          scope = 'kokurikulum';
+        } else if (lowerAuthor.includes('kurikulum') || lowerAuthor.includes('akademik') || lowerTitle.includes('uasa') || lowerTitle.includes('pbd')) {
+          scope = 'kurikulum';
+        } else {
+          scope = 'sekolah';
+        }
+        hasChanged = true;
+      }
+
+      const showOnHome = item.showOnHome !== undefined ? item.showOnHome : true;
+      if (item.showOnHome === undefined) {
+        hasChanged = true;
+      }
+
       return {
         ...item,
+        unitScope: scope,
+        showOnHome,
         imageUrl: safeUrl
       };
     });
 
-    if (hasCorrupted) {
+    // If initial Kurikulum news (news-4) is missing from old storage, include it
+    if (!sanitized.some(n => n.id === 'news-4') && initialNewsList.some(n => n.id === 'news-4')) {
+      const kurikulumInitial = initialNewsList.find(n => n.id === 'news-4');
+      if (kurikulumInitial) {
+        sanitized.push(kurikulumInitial);
+        hasChanged = true;
+      }
+    }
+
+    if (hasChanged) {
       setStored(KEYS.NEWS, sanitized);
     }
     return sanitized;

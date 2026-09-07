@@ -149,7 +149,7 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
   const canAccess = isAdmin || isTeacher || isTeacherRole(userRole);
 
   const canEditCategory = (catKey: string) => {
-    if (isAdmin || userRole === 'admin') return true;
+    if (isAdmin || userRole === 'admin' || userRole === 'guru_besar') return true;
     if ((userRole === 'pk_kurikulum' || userRole === 'su_kurikulum') && catKey === 'kurikulum') return true;
     if ((userRole === 'pk_hem' || userRole === 'su_hem') && catKey === 'hem') return true;
     if ((userRole === 'pk_kokurikulum' || userRole === 'su_kokurikulum') && catKey === 'kokurikulum') return true;
@@ -159,6 +159,7 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
   const hasAnyEditPermission =
     isAdmin ||
     userRole === 'admin' ||
+    userRole === 'guru_besar' ||
     userRole === 'pk_kurikulum' ||
     userRole === 'su_kurikulum' ||
     userRole === 'pk_hem' ||

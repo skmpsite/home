@@ -4,7 +4,8 @@ import {
   SchoolProfile,
   Staff,
   UserRole,
-  canEditKokurikulum
+  canEditKokurikulum,
+  NewsItem
 } from '../../types';
 import {
   Trophy,
@@ -41,12 +42,15 @@ import { findPkKokurikulumStaff } from '../../utils/staffHelpers';
 import { saveCoCurriculum } from '../../utils/storage';
 import { EditUnitModal, EditKokoBannerModal } from './KokoEditModals';
 import { KotSubSection } from './KotSubSection';
+import { UnitNewsSection } from '../common/UnitNewsSection';
 
 interface CokurriculumSectionProps {
   units: CoCurriculumUnit[];
   onSaveCoCurriculum?: (units: CoCurriculumUnit[]) => void;
   profile?: SchoolProfile;
   staffList?: Staff[];
+  newsList?: NewsItem[];
+  onSaveNews?: (news: NewsItem[]) => void;
   isAdmin?: boolean;
   isTeacher?: boolean;
   userRole?: UserRole | null;
@@ -59,6 +63,8 @@ export const CokurriculumSection: React.FC<CokurriculumSectionProps> = ({
   onSaveCoCurriculum,
   profile,
   staffList,
+  newsList = [],
+  onSaveNews = () => {},
   isAdmin = false,
   userRole = null,
   onOpenLogin,
@@ -551,6 +557,18 @@ export const CokurriculumSection: React.FC<CokurriculumSectionProps> = ({
               </div>
             </div>
           )}
+
+          {/* Bahagian Berita & Pengumuman Kokurikulum */}
+          <UnitNewsSection
+            unit="kokurikulum"
+            unitTitle="Berita & Pengumuman Kokurikulum"
+            unitSubtitle="Hebahan aktiviti kokurikulum, pencapaian kejohanan, pekeliling, dan makluman sukan sekolah."
+            newsList={newsList}
+            onSaveNews={onSaveNews}
+            canEdit={canEdit}
+            managerRoleLabel={roleLabel}
+            onOpenLogin={onOpenLogin}
+          />
 
           {/* Kad Penyatuan: Badan Beruniform, Kelab & Persatuan, dan Sukan & Permainan disatukan di bawah Utama Kokurikulum */}
           <div className="bg-slate-900/60 backdrop-blur-md rounded-3xl border border-white/10 p-5 sm:p-6 shadow-xl">
