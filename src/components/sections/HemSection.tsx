@@ -1918,8 +1918,37 @@ export const HemSection: React.FC<HemSectionProps> = ({
             {/* 3.1 Keselamatan */}
             <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-lg space-y-4 hover:border-yellow-400/40 transition flex flex-col justify-between">
               <div className="space-y-3">
-                <div className="w-10 h-10 bg-blue-500/20 text-blue-300 rounded-2xl flex items-center justify-center font-bold border border-blue-400/30">
-                  <ShieldAlert className="w-5 h-5 text-blue-300" />
+                <div className="flex items-center justify-between">
+                  <div className="w-10 h-10 bg-blue-500/20 text-blue-300 rounded-2xl flex items-center justify-center font-bold border border-blue-400/30">
+                    <ShieldAlert className="w-5 h-5 text-blue-300" />
+                  </div>
+                  {canEdit && isEditMode && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingPoint({
+                          title: 'Tambah Panduan Keselamatan',
+                          categoryLabel: 'Keselamatan 3K',
+                          value: '',
+                          isNew: true,
+                          onSave: (val) => {
+                            const list = [...(data.program3k?.safetyPoints || []), val];
+                            const updated = {
+                              ...data,
+                              program3k: { ...data.program3k, safetyPoints: list }
+                            };
+                            handleSaveData(updated, 'Panduan keselamatan ditambah!');
+                            setEditingPoint(null);
+                          }
+                        })
+                      }
+                      className="p-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500 text-blue-300 hover:text-slate-950 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                      title="Tambah Panduan Keselamatan"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tambah</span>
+                    </button>
+                  )}
                 </div>
                 <h4 className="font-extrabold text-white text-base">
                   {data.program3k?.safetyTitle || 'Panduan Keselamatan Murid'}
@@ -1931,15 +1960,91 @@ export const HemSection: React.FC<HemSectionProps> = ({
 
                 <div className="space-y-2 pt-2 text-xs text-slate-300">
                   {data.program3k?.safetyPoints?.map((pt, idx) => (
-                    <div key={idx} className="flex items-start gap-2">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 mt-0.5 flex-shrink-0" />
-                      <span>{pt}</span>
+                    <div
+                      key={idx}
+                      className={`flex items-start justify-between gap-1.5 p-1 rounded-lg ${
+                        isEditMode ? 'bg-white/5 border border-white/10' : ''
+                      }`}
+                    >
+                      <div className="flex items-start gap-2 flex-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 mt-0.5 flex-shrink-0" />
+                        <span className="leading-tight">{pt}</span>
+                      </div>
+                      {canEdit && isEditMode && (
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button
+                            type="button"
+                            disabled={idx === 0}
+                            onClick={() => handleMovePointItem('safety', idx, -1)}
+                            className="p-0.5 rounded bg-white/10 hover:bg-white/20 text-slate-300 disabled:opacity-30 cursor-pointer"
+                            title="Pindah ke atas"
+                          >
+                            <ArrowUp className="w-2.5 h-2.5" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={idx === (data.program3k?.safetyPoints?.length || 0) - 1}
+                            onClick={() => handleMovePointItem('safety', idx, 1)}
+                            className="p-0.5 rounded bg-white/10 hover:bg-white/20 text-slate-300 disabled:opacity-30 cursor-pointer"
+                            title="Pindah ke bawah"
+                          >
+                            <ArrowDown className="w-2.5 h-2.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditingPoint({
+                                title: 'Sunting Panduan Keselamatan',
+                                categoryLabel: 'Keselamatan 3K',
+                                value: pt,
+                                isNew: false,
+                                onSave: (val) => {
+                                  const list = [...(data.program3k?.safetyPoints || [])];
+                                  list[idx] = val;
+                                  const updated = {
+                                    ...data,
+                                    program3k: { ...data.program3k, safetyPoints: list }
+                                  };
+                                  handleSaveData(updated, 'Panduan keselamatan dikemas kini!');
+                                  setEditingPoint(null);
+                                }
+                              })
+                            }
+                            className="p-0.5 rounded bg-blue-500/20 hover:bg-blue-500 text-blue-300 hover:text-slate-950 cursor-pointer"
+                            title="Sunting"
+                          >
+                            <Edit3 className="w-2.5 h-2.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDeleteConfirm({
+                                title: 'Padam Panduan Keselamatan?',
+                                message: pt,
+                                onConfirm: () => {
+                                  const list = (data.program3k?.safetyPoints || []).filter((_, i) => i !== idx);
+                                  const updated = {
+                                    ...data,
+                                    program3k: { ...data.program3k, safetyPoints: list }
+                                  };
+                                  handleSaveData(updated, 'Panduan keselamatan dipadam!');
+                                }
+                              })
+                            }
+                            className="p-0.5 rounded bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white cursor-pointer"
+                            title="Padam"
+                          >
+                            <Trash2 className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
               </div>
 
               <button
+                type="button"
                 onClick={() =>
                   setSelectedDetailModal({
                     title: 'Prosedur Standard Keselamatan Murid (SOP Keselamatan)',
@@ -1961,7 +2066,7 @@ export const HemSection: React.FC<HemSectionProps> = ({
                     )
                   })
                 }
-                className="w-full py-2.5 px-3 bg-white/10 hover:bg-yellow-400 hover:text-blue-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 px-3 bg-white/10 hover:bg-yellow-400 hover:text-blue-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <span>Lihat SOP Keselamatan</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -1971,8 +2076,37 @@ export const HemSection: React.FC<HemSectionProps> = ({
             {/* 3.2 Kesihatan */}
             <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-lg space-y-4 hover:border-yellow-400/40 transition flex flex-col justify-between">
               <div className="space-y-3">
-                <div className="w-10 h-10 bg-rose-500/20 text-rose-300 rounded-2xl flex items-center justify-center font-bold border border-rose-400/30">
-                  <Activity className="w-5 h-5 text-rose-300" />
+                <div className="flex items-center justify-between">
+                  <div className="w-10 h-10 bg-rose-500/20 text-rose-300 rounded-2xl flex items-center justify-center font-bold border border-rose-400/30">
+                    <Activity className="w-5 h-5 text-rose-300" />
+                  </div>
+                  {canEdit && isEditMode && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingPoint({
+                          title: 'Tambah Program Kesihatan',
+                          categoryLabel: 'Kesihatan 3K',
+                          value: '',
+                          isNew: true,
+                          onSave: (val) => {
+                            const list = [...(data.program3k?.healthPoints || []), val];
+                            const updated = {
+                              ...data,
+                              program3k: { ...data.program3k, healthPoints: list }
+                            };
+                            handleSaveData(updated, 'Program kesihatan ditambah!');
+                            setEditingPoint(null);
+                          }
+                        })
+                      }
+                      className="p-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                      title="Tambah Program Kesihatan"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tambah</span>
+                    </button>
+                  )}
                 </div>
                 <h4 className="font-extrabold text-white text-base">
                   {data.program3k?.healthTitle || 'Kesihatan & Rawatan Murid'}
@@ -1984,15 +2118,91 @@ export const HemSection: React.FC<HemSectionProps> = ({
 
                 <div className="space-y-2 pt-2 text-xs text-slate-300">
                   {data.program3k?.healthPoints?.map((pt, idx) => (
-                    <div key={idx} className="flex items-start gap-2">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-rose-400 mt-0.5 flex-shrink-0" />
-                      <span>{pt}</span>
+                    <div
+                      key={idx}
+                      className={`flex items-start justify-between gap-1.5 p-1 rounded-lg ${
+                        isEditMode ? 'bg-white/5 border border-white/10' : ''
+                      }`}
+                    >
+                      <div className="flex items-start gap-2 flex-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-rose-400 mt-0.5 flex-shrink-0" />
+                        <span className="leading-tight">{pt}</span>
+                      </div>
+                      {canEdit && isEditMode && (
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button
+                            type="button"
+                            disabled={idx === 0}
+                            onClick={() => handleMovePointItem('health', idx, -1)}
+                            className="p-0.5 rounded bg-white/10 hover:bg-white/20 text-slate-300 disabled:opacity-30 cursor-pointer"
+                            title="Pindah ke atas"
+                          >
+                            <ArrowUp className="w-2.5 h-2.5" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={idx === (data.program3k?.healthPoints?.length || 0) - 1}
+                            onClick={() => handleMovePointItem('health', idx, 1)}
+                            className="p-0.5 rounded bg-white/10 hover:bg-white/20 text-slate-300 disabled:opacity-30 cursor-pointer"
+                            title="Pindah ke bawah"
+                          >
+                            <ArrowDown className="w-2.5 h-2.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditingPoint({
+                                title: 'Sunting Program Kesihatan',
+                                categoryLabel: 'Kesihatan 3K',
+                                value: pt,
+                                isNew: false,
+                                onSave: (val) => {
+                                  const list = [...(data.program3k?.healthPoints || [])];
+                                  list[idx] = val;
+                                  const updated = {
+                                    ...data,
+                                    program3k: { ...data.program3k, healthPoints: list }
+                                  };
+                                  handleSaveData(updated, 'Program kesihatan dikemas kini!');
+                                  setEditingPoint(null);
+                                }
+                              })
+                            }
+                            className="p-0.5 rounded bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white cursor-pointer"
+                            title="Sunting"
+                          >
+                            <Edit3 className="w-2.5 h-2.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDeleteConfirm({
+                                title: 'Padam Program Kesihatan?',
+                                message: pt,
+                                onConfirm: () => {
+                                  const list = (data.program3k?.healthPoints || []).filter((_, i) => i !== idx);
+                                  const updated = {
+                                    ...data,
+                                    program3k: { ...data.program3k, healthPoints: list }
+                                  };
+                                  handleSaveData(updated, 'Program kesihatan dipadam!');
+                                }
+                              })
+                            }
+                            className="p-0.5 rounded bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white cursor-pointer"
+                            title="Padam"
+                          >
+                            <Trash2 className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
               </div>
 
               <button
+                type="button"
                 onClick={() =>
                   setSelectedDetailModal({
                     title: 'Program Kesihatan & Rawatan Pergigian / Vaksinasi KKM',
@@ -2014,7 +2224,7 @@ export const HemSection: React.FC<HemSectionProps> = ({
                     )
                   })
                 }
-                className="w-full py-2.5 px-3 bg-white/10 hover:bg-yellow-400 hover:text-blue-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 px-3 bg-white/10 hover:bg-yellow-400 hover:text-blue-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <span>Info Program Kesihatan</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -2024,8 +2234,37 @@ export const HemSection: React.FC<HemSectionProps> = ({
             {/* 3.3 Kebersihan */}
             <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-lg space-y-4 hover:border-yellow-400/40 transition flex flex-col justify-between">
               <div className="space-y-3">
-                <div className="w-10 h-10 bg-emerald-500/20 text-emerald-300 rounded-2xl flex items-center justify-center font-bold border border-emerald-400/30">
-                  <Sparkles className="w-5 h-5 text-emerald-300" />
+                <div className="flex items-center justify-between">
+                  <div className="w-10 h-10 bg-emerald-500/20 text-emerald-300 rounded-2xl flex items-center justify-center font-bold border border-emerald-400/30">
+                    <Sparkles className="w-5 h-5 text-emerald-300" />
+                  </div>
+                  {canEdit && isEditMode && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingPoint({
+                          title: 'Tambah Amalan Kebersihan',
+                          categoryLabel: 'Kebersihan 3K',
+                          value: '',
+                          isNew: true,
+                          onSave: (val) => {
+                            const list = [...(data.program3k?.cleanlinessPoints || []), val];
+                            const updated = {
+                              ...data,
+                              program3k: { ...data.program3k, cleanlinessPoints: list }
+                            };
+                            handleSaveData(updated, 'Amalan kebersihan ditambah!');
+                            setEditingPoint(null);
+                          }
+                        })
+                      }
+                      className="p-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                      title="Tambah Amalan Kebersihan"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tambah</span>
+                    </button>
+                  )}
                 </div>
                 <h4 className="font-extrabold text-white text-base">
                   {data.program3k?.cleanlinessTitle || 'Kebersihan & Keceriaan Bilik Darjah'}
@@ -2037,15 +2276,91 @@ export const HemSection: React.FC<HemSectionProps> = ({
 
                 <div className="space-y-2 pt-2 text-xs text-slate-300">
                   {data.program3k?.cleanlinessPoints?.map((pt, idx) => (
-                    <div key={idx} className="flex items-start gap-2">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
-                      <span>{pt}</span>
+                    <div
+                      key={idx}
+                      className={`flex items-start justify-between gap-1.5 p-1 rounded-lg ${
+                        isEditMode ? 'bg-white/5 border border-white/10' : ''
+                      }`}
+                    >
+                      <div className="flex items-start gap-2 flex-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                        <span className="leading-tight">{pt}</span>
+                      </div>
+                      {canEdit && isEditMode && (
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button
+                            type="button"
+                            disabled={idx === 0}
+                            onClick={() => handleMovePointItem('cleanliness', idx, -1)}
+                            className="p-0.5 rounded bg-white/10 hover:bg-white/20 text-slate-300 disabled:opacity-30 cursor-pointer"
+                            title="Pindah ke atas"
+                          >
+                            <ArrowUp className="w-2.5 h-2.5" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={idx === (data.program3k?.cleanlinessPoints?.length || 0) - 1}
+                            onClick={() => handleMovePointItem('cleanliness', idx, 1)}
+                            className="p-0.5 rounded bg-white/10 hover:bg-white/20 text-slate-300 disabled:opacity-30 cursor-pointer"
+                            title="Pindah ke bawah"
+                          >
+                            <ArrowDown className="w-2.5 h-2.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditingPoint({
+                                title: 'Sunting Amalan Kebersihan',
+                                categoryLabel: 'Kebersihan 3K',
+                                value: pt,
+                                isNew: false,
+                                onSave: (val) => {
+                                  const list = [...(data.program3k?.cleanlinessPoints || [])];
+                                  list[idx] = val;
+                                  const updated = {
+                                    ...data,
+                                    program3k: { ...data.program3k, cleanlinessPoints: list }
+                                  };
+                                  handleSaveData(updated, 'Amalan kebersihan dikemas kini!');
+                                  setEditingPoint(null);
+                                }
+                              })
+                            }
+                            className="p-0.5 rounded bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 cursor-pointer"
+                            title="Sunting"
+                          >
+                            <Edit3 className="w-2.5 h-2.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDeleteConfirm({
+                                title: 'Padam Amalan Kebersihan?',
+                                message: pt,
+                                onConfirm: () => {
+                                  const list = (data.program3k?.cleanlinessPoints || []).filter((_, i) => i !== idx);
+                                  const updated = {
+                                    ...data,
+                                    program3k: { ...data.program3k, cleanlinessPoints: list }
+                                  };
+                                  handleSaveData(updated, 'Amalan kebersihan dipadam!');
+                                }
+                              })
+                            }
+                            className="p-0.5 rounded bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white cursor-pointer"
+                            title="Padam"
+                          >
+                            <Trash2 className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
               </div>
 
               <button
+                type="button"
                 onClick={() =>
                   setSelectedDetailModal({
                     title: 'Program Kebersihan Bilik Darjah & Ekosistem Sekolah Sejahtera',
@@ -2067,7 +2382,7 @@ export const HemSection: React.FC<HemSectionProps> = ({
                     )
                   })
                 }
-                className="w-full py-2.5 px-3 bg-white/10 hover:bg-yellow-400 hover:text-blue-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 px-3 bg-white/10 hover:bg-yellow-400 hover:text-blue-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <span>Info Penilaian Kebersihan</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -2079,9 +2394,32 @@ export const HemSection: React.FC<HemSectionProps> = ({
 
       {/* JAWATANKUASA KERJA INDUK UNIT HEM */}
       <div className="bg-white/10 backdrop-blur-md rounded-3xl border border-white/10 p-6 sm:p-8 shadow-xl space-y-6">
-        <div className="flex items-center gap-2.5 pb-3 border-b border-white/10">
-          <Users className="w-5 h-5 text-yellow-400" />
-          <h3 className="text-xl font-black text-white">Jawatankuasa Kerja Induk Pengurusan HEM</h3>
+        <div className="flex items-center justify-between pb-3 border-b border-white/10">
+          <div className="flex items-center gap-2.5">
+            <Users className="w-5 h-5 text-yellow-400" />
+            <h3 className="text-xl font-black text-white">Jawatankuasa Kerja Induk Pengurusan HEM</h3>
+          </div>
+          {canEdit && isEditMode && (
+            <button
+              type="button"
+              onClick={() =>
+                setEditingOfficer({
+                  officer: {
+                    id: Date.now().toString(),
+                    role: '',
+                    name: '',
+                    unit: '',
+                    phone: ''
+                  },
+                  isNew: true
+                })
+              }
+              className="px-3 py-1.5 rounded-xl bg-yellow-400 text-blue-950 font-bold text-xs flex items-center gap-1.5 hover:bg-yellow-300 transition shadow cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Tambah Pegawai</span>
+            </button>
+          )}
         </div>
 
         <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4">
@@ -2113,24 +2451,71 @@ export const HemSection: React.FC<HemSectionProps> = ({
         {/* Dynamic List of HEM Committee Officers */}
         <div className="grid sm:grid-cols-3 gap-3 pt-2">
           {data.committee && data.committee.length > 0 ? (
-            data.committee.map((officer) => (
+            data.committee.map((officer, idx) => (
               <div
                 key={officer.id}
-                className="p-3 bg-white/5 rounded-xl border border-white/10 flex items-center justify-between text-xs"
+                className="p-3 bg-white/5 rounded-xl border border-white/10 flex flex-col justify-between gap-2 text-xs"
               >
-                <div>
-                  <p className="font-bold text-white">{officer.role}</p>
-                  <p className="text-[11px] text-yellow-300">{officer.name}</p>
-                  {officer.phone && (
-                    <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
-                      <PhoneCall className="w-2.5 h-2.5 text-emerald-400" />
-                      <span>{officer.phone}</span>
-                    </p>
-                  )}
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-bold text-white">{officer.role}</p>
+                    <p className="text-[11px] text-yellow-300">{officer.name}</p>
+                    {officer.phone && (
+                      <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                        <PhoneCall className="w-2.5 h-2.5 text-emerald-400" />
+                        <span>{officer.phone}</span>
+                      </p>
+                    )}
+                  </div>
+                  <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-slate-300 max-w-[100px] truncate">
+                    {officer.unit}
+                  </span>
                 </div>
-                <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-slate-300 max-w-[100px] truncate">
-                  {officer.unit}
-                </span>
+
+                {canEdit && isEditMode && (
+                  <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-white/10">
+                    <button
+                      type="button"
+                      disabled={idx === 0}
+                      onClick={() => handleMoveOfficer(idx, -1)}
+                      className="p-1 rounded bg-white/10 hover:bg-white/20 text-slate-300 disabled:opacity-30 cursor-pointer"
+                      title="Pindah ke hadapan"
+                    >
+                      <ArrowUp className="w-3 h-3" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={idx === data.committee.length - 1}
+                      onClick={() => handleMoveOfficer(idx, 1)}
+                      className="p-1 rounded bg-white/10 hover:bg-white/20 text-slate-300 disabled:opacity-30 cursor-pointer"
+                      title="Pindah ke belakang"
+                    >
+                      <ArrowDown className="w-3 h-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingOfficer({ officer, isNew: false })}
+                      className="p-1 rounded bg-yellow-400/20 hover:bg-yellow-400 text-yellow-300 hover:text-slate-950 cursor-pointer"
+                      title="Sunting Pegawai"
+                    >
+                      <Edit3 className="w-3 h-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDeleteConfirm({
+                          title: `Padam Pegawai ${officer.role}?`,
+                          message: officer.name,
+                          onConfirm: () => handleDeleteOfficer(officer.id)
+                        })
+                      }
+                      className="p-1 rounded bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white cursor-pointer"
+                      title="Padam Pegawai"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
               </div>
             ))
           ) : (
@@ -2220,6 +2605,114 @@ export const HemSection: React.FC<HemSectionProps> = ({
                 className="px-5 py-2 bg-yellow-400 hover:bg-yellow-300 text-blue-950 font-black rounded-xl text-xs transition shadow"
               >
                 Tutup Maklumat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDITING FOR HEM */}
+      <EditStatsModal
+        isOpen={isStatsModalOpen}
+        onClose={() => setIsStatsModalOpen(false)}
+        stats={data.stats || { spbtPercentage: '100%', rmtCount: '78 Murid', bapAmount: 'RM150', sahsiahPercentage: '98.5%' }}
+        onSave={(newStats) => {
+          const updated = { ...data, stats: newStats };
+          handleSaveData(updated, 'Statistik HEM dikemas kini!');
+        }}
+      />
+
+      <EditSpeechModal
+        isOpen={isSpeechModalOpen}
+        onClose={() => setIsSpeechModalOpen(false)}
+        gpkName={data.gpkName || pkHemName}
+        gpkTitle={data.gpkTitle || pkHemTitle}
+        gpkSpeech={data.gpkSpeech || ''}
+        onSave={(fields) => {
+          const updated = {
+            ...data,
+            gpkName: fields.gpkName,
+            gpkTitle: fields.gpkTitle,
+            gpkSpeech: fields.gpkSpeech
+          };
+          handleSaveData(updated, 'Perutusan PK HEM dikemas kini!');
+        }}
+      />
+
+      <EditRuleModal
+        isOpen={Boolean(editingRule)}
+        onClose={() => setEditingRule(null)}
+        initialRule={editingRule?.rule}
+        isNew={Boolean(editingRule?.isNew)}
+        onSave={handleSaveRule}
+      />
+
+      <EditUbkModal
+        isOpen={Boolean(editingUbk)}
+        onClose={() => setEditingUbk(null)}
+        initialService={editingUbk?.service}
+        isNew={Boolean(editingUbk?.isNew)}
+        onSave={(srv) => handleSaveUbk(srv, editingUbk?.index)}
+      />
+
+      <EditRmtModal
+        isOpen={Boolean(editingRmt)}
+        onClose={() => setEditingRmt(null)}
+        initialItem={editingRmt?.item}
+        isNew={Boolean(editingRmt?.isNew)}
+        onSave={(item) => handleSaveRmt(item, editingRmt?.index)}
+      />
+
+      <EditOfficerModal
+        isOpen={Boolean(editingOfficer)}
+        onClose={() => setEditingOfficer(null)}
+        initialOfficer={editingOfficer?.officer}
+        isNew={Boolean(editingOfficer?.isNew)}
+        onSave={handleSaveOfficer}
+      />
+
+      <EditPointModal
+        isOpen={Boolean(editingPoint)}
+        onClose={() => setEditingPoint(null)}
+        title={editingPoint?.title || 'Sunting Butiran'}
+        categoryLabel={editingPoint?.categoryLabel || 'HEM'}
+        initialValue={editingPoint?.value || ''}
+        onSave={(val) => {
+          if (editingPoint?.onSave) {
+            editingPoint.onSave(val);
+          }
+        }}
+      />
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border border-rose-500/30 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-center">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 mx-auto flex items-center justify-center">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="font-extrabold text-white text-base">{deleteConfirm.title}</h4>
+              {deleteConfirm.message && (
+                <p className="text-xs text-slate-300 line-clamp-3">{deleteConfirm.message}</p>
+              )}
+            </div>
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm(null)}
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 text-xs font-bold transition cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  deleteConfirm.onConfirm();
+                  setDeleteConfirm(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition shadow-lg shadow-rose-600/30 cursor-pointer"
+              >
+                Ya, Padam
               </button>
             </div>
           </div>
