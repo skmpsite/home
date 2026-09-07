@@ -63,7 +63,6 @@ export const CokurriculumSection: React.FC<CokurriculumSectionProps> = ({
   initialSubTab = 'utama'
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'utama' | 'jadual' | 'pajsk'>(initialSubTab);
-  const [activeCategory, setActiveCategory] = useState<'semua' | 'beruniform' | 'kelab' | 'sukan'>('semua');
   const [showDesc, setShowDesc] = useState<boolean>(true);
   const [isEditMode, setIsEditMode] = useState<boolean>(false);
   const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
@@ -509,7 +508,7 @@ export const CokurriculumSection: React.FC<CokurriculumSectionProps> = ({
                     setEditingUnit({
                       unit: null,
                       isNew: true,
-                      defaultCategory: activeCategory === 'semua' ? 'beruniform' : activeCategory
+                      defaultCategory: 'beruniform'
                     })
                   }
                   className="px-4 py-2 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-blue-950 font-black text-xs flex items-center gap-1.5 transition shadow cursor-pointer"
@@ -530,7 +529,7 @@ export const CokurriculumSection: React.FC<CokurriculumSectionProps> = ({
 
           {/* Kad Penyatuan: Badan Beruniform, Kelab & Persatuan, dan Sukan & Permainan disatukan di bawah Utama Kokurikulum */}
           <div className="bg-slate-900/60 backdrop-blur-md rounded-3xl border border-white/10 p-5 sm:p-6 shadow-xl">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-white/10">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-yellow-400/20 text-yellow-300 border border-yellow-400/30">
@@ -544,7 +543,7 @@ export const CokurriculumSection: React.FC<CokurriculumSectionProps> = ({
                   Badan Beruniform, Kelab & Persatuan, dan Sukan & Permainan
                 </h3>
                 <p className="text-xs text-slate-300">
-                  Ketiga-tiga bidang kokurikulum disatukan di bawah sub menu Utama Kokurikulum untuk paparan komprehensif, teratur, dan mudah diuruskan secara terus.
+                  Ketiga-tiga bidang kokurikulum kini disatukan sepenuhnya di bawah sub menu Utama Kokurikulum untuk paparan komprehensif, teratur, dan mudah diuruskan secara terus.
                 </p>
               </div>
 
@@ -570,47 +569,11 @@ export const CokurriculumSection: React.FC<CokurriculumSectionProps> = ({
                 </div>
               </div>
             </div>
-
-            {/* Filter Pills dalam Utama Kokurikulum */}
-            <div className="pt-4 flex flex-wrap items-center gap-2">
-              {[
-                { id: 'semua', label: 'Semua Kategori (Disatukan)', count: units.length },
-                { id: 'beruniform', label: 'Badan Beruniform', count: units.filter((u) => u.category === 'beruniform').length },
-                { id: 'kelab', label: 'Kelab & Persatuan', count: units.filter((u) => u.category === 'kelab').length },
-                { id: 'sukan', label: 'Sukan & Permainan', count: units.filter((u) => u.category === 'sukan').length }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveCategory(tab.id as any)}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
-                    activeCategory === tab.id
-                      ? 'bg-yellow-400 text-blue-950 font-black shadow-lg shadow-yellow-400/20'
-                      : 'bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10'
-                  }`}
-                >
-                  <span>{tab.label}</span>
-                  <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
-                      activeCategory === tab.id
-                        ? 'bg-blue-950/40 text-yellow-300'
-                        : 'bg-white/10 text-slate-300'
-                    }`}
-                  >
-                    {tab.count}
-                  </span>
-                </button>
-              ))}
-            </div>
           </div>
 
-          {/* Units Sections (Disatukan di bawah Utama Kokurikulum) */}
+          {/* Units Sections (Disatukan sepenuhnya di bawah Utama Kokurikulum) */}
           <div className="space-y-10">
             {categoriesConfig.map((cat) => {
-              if (activeCategory !== 'semua' && activeCategory !== cat.id) {
-                return null;
-              }
-
               const catUnits = units.filter((u) => u.category === cat.id);
               const CatIcon = cat.icon;
 
