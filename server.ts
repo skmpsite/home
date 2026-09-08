@@ -148,6 +148,7 @@ async function startServer() {
 
   const DATA_DIR = path.join(process.cwd(), "data");
   const SIGNAGE_FILE = path.join(DATA_DIR, "signage-live.json");
+  const ICT_BOOKINGS_FILE = path.join(DATA_DIR, "ict-bookings-live.json");
 
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -173,6 +174,32 @@ async function startServer() {
       fs.writeFileSync(SIGNAGE_FILE, JSON.stringify(liveSignage, null, 2), "utf-8");
     } catch (e) {
       console.error("Error saving initial signage file:", e);
+    }
+  }
+
+  // ICT Bookings Server-Side Shared Storage
+  let liveIctBookings: any[] = [];
+  let ictBookingsLastUpdated = Date.now();
+
+  if (fs.existsSync(ICT_BOOKINGS_FILE)) {
+    try {
+      const fileData = JSON.parse(fs.readFileSync(ICT_BOOKINGS_FILE, "utf-8"));
+      if (fileData && Array.isArray(fileData.bookings)) {
+        liveIctBookings = fileData.bookings;
+        ictBookingsLastUpdated = fileData.lastUpdated || Date.now();
+      }
+    } catch (e) {
+      console.error("Error reading ict-bookings-live.json:", e);
+    }
+  } else {
+    try {
+      fs.writeFileSync(
+        ICT_BOOKINGS_FILE,
+        JSON.stringify({ bookings: liveIctBookings, lastUpdated: ictBookingsLastUpdated }, null, 2),
+        "utf-8"
+      );
+    } catch (e) {
+      console.error("Error saving initial ict-bookings file:", e);
     }
   }
 
@@ -213,6 +240,47 @@ async function startServer() {
         count: liveSignage.slides.length,
         lastUpdated: liveSignage.lastUpdated
       });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // GET Live ICT Room Bookings (Shared across all devices/users)
+  app.get("/api/ict-bookings", (_req, res) => {
+    res.json({
+      success: true,
+      bookings: liveIctBookings,
+      lastUpdated: ictBookingsLastUpdated
+    });
+  });
+
+  // POST Live ICT Room Bookings (Admin/Guru updates or deletes slots, synced to all devices)
+  app.post("/api/ict-bookings", (req, res) => {
+    try {
+      const { bookings } = req.body;
+      if (Array.isArray(bookings)) {
+        liveIctBookings = bookings;
+        ictBookingsLastUpdated = Date.now();
+
+        try {
+          fs.writeFileSync(
+            ICT_BOOKINGS_FILE,
+            JSON.stringify({ bookings: liveIctBookings, lastUpdated: ictBookingsLastUpdated }, null, 2),
+            "utf-8"
+          );
+        } catch (saveErr) {
+          console.error("Failed to write to ict-bookings-live.json:", saveErr);
+        }
+
+        console.log(`[LIVE ICT BOOKINGS] Synced ${liveIctBookings.length} bookings across all devices at ${new Date().toISOString()}`);
+        return res.json({
+          success: true,
+          count: liveIctBookings.length,
+          lastUpdated: ictBookingsLastUpdated
+        });
+      }
+
+      res.status(400).json({ success: false, error: "Format data tempahan tidak sah (array diperlukan)." });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }

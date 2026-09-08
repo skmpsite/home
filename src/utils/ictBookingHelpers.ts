@@ -245,32 +245,76 @@ export function getInitialIctBookings(): IctBookingRecord[] {
   ];
 }
 
-// Load bookings from LocalStorage
+// Custom Event for cross-component sync
+export const ICT_BOOKINGS_SYNCED_EVENT = 'skmp_ict_bookings_synced';
+
+// Load bookings from LocalStorage (instant cache)
 export function loadIctBookings(): IctBookingRecord[] {
   if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY_ICT_BOOKINGS);
     if (!raw) {
-      const initial = getInitialIctBookings();
-      localStorage.setItem(STORAGE_KEY_ICT_BOOKINGS, JSON.stringify(initial));
-      return initial;
+      return [];
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
       return parsed;
     }
   } catch (err) {
-    console.error('Error loading ICT bookings:', err);
+    console.error('Error loading ICT bookings from cache:', err);
   }
-  return getInitialIctBookings();
+  return [];
 }
 
-// Save bookings to LocalStorage
+// Save bookings to LocalStorage and trigger local event
 export function saveIctBookings(bookings: IctBookingRecord[]): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_KEY_ICT_BOOKINGS, JSON.stringify(bookings));
+    window.dispatchEvent(new CustomEvent(ICT_BOOKINGS_SYNCED_EVENT, { detail: bookings }));
   } catch (err) {
-    console.error('Error saving ICT bookings:', err);
+    console.error('Error saving ICT bookings to cache:', err);
   }
+}
+
+// Fetch live bookings from server
+export async function fetchLiveIctBookings(): Promise<IctBookingRecord[] | null> {
+  try {
+    const res = await fetch('/api/ict-bookings', {
+      headers: { 'Cache-Control': 'no-cache' }
+    });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    const data = await res.json();
+    if (data && data.success && Array.isArray(data.bookings)) {
+      // Update local storage cache
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY_ICT_BOOKINGS, JSON.stringify(data.bookings));
+      }
+      return data.bookings;
+    }
+  } catch (err) {
+    console.warn('Unable to fetch live ICT bookings from server, using local cache:', err);
+  }
+  return null;
+}
+
+// Push bookings to server for cross-device synchronization
+export async function syncIctBookingsToServer(bookings: IctBookingRecord[]): Promise<boolean> {
+  saveIctBookings(bookings);
+  try {
+    const res = await fetch('/api/ict-bookings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ bookings })
+    });
+    if (res.ok) {
+      const result = await res.json();
+      return result.success === true;
+    }
+  } catch (err) {
+    console.error('Failed to sync ICT bookings to server:', err);
+  }
+  return false;
 }

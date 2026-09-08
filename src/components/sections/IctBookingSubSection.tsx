@@ -26,7 +26,8 @@ import {
   Tv,
   Check,
   X,
-  Eye
+  Eye,
+  RefreshCw
 } from 'lucide-react';
 import { IctBookingRecord, SchoolProfile, Staff, UserRole, isTeacherRole } from '../../types';
 import {
@@ -40,6 +41,9 @@ import {
   getSchoolWeekDaysForDate,
   loadIctBookings,
   saveIctBookings,
+  fetchLiveIctBookings,
+  syncIctBookingsToServer,
+  ICT_BOOKINGS_SYNCED_EVENT,
   RECESS_DAY_LETTERS,
   isSlotCurrentTime
 } from '../../utils/ictBookingHelpers';
@@ -131,11 +135,46 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
     }
   }, [toastMessage]);
 
-  // Sync with LocalStorage
+  // Sync with LocalStorage and Server (Live Cross-Device Synchronization)
   const handleUpdateBookings = (newBookings: IctBookingRecord[]) => {
     setBookings(newBookings);
-    saveIctBookings(newBookings);
+    syncIctBookingsToServer(newBookings);
   };
+
+  // Live polling and listener for cross-device updates
+  useEffect(() => {
+    let isMounted = true;
+
+    // 1. Initial fetch from server
+    fetchLiveIctBookings().then((serverData) => {
+      if (isMounted && serverData !== null) {
+        setBookings(serverData);
+      }
+    });
+
+    // 2. Poll server every 5 seconds so deletions on other devices reflect immediately
+    const pollInterval = setInterval(() => {
+      fetchLiveIctBookings().then((serverData) => {
+        if (isMounted && serverData !== null) {
+          setBookings(serverData);
+        }
+      });
+    }, 5000);
+
+    // 3. Listen to local custom event for cross-tab synchronization
+    const handleLocalSync = (e: any) => {
+      if (isMounted && e.detail && Array.isArray(e.detail)) {
+        setBookings(e.detail);
+      }
+    };
+    window.addEventListener(ICT_BOOKINGS_SYNCED_EVENT, handleLocalSync);
+
+    return () => {
+      isMounted = false;
+      clearInterval(pollInterval);
+      window.removeEventListener(ICT_BOOKINGS_SYNCED_EVENT, handleLocalSync);
+    };
+  }, []);
 
   // Week days calculation (Ahad - Khamis)
   const weekDays = useMemo(() => {
@@ -605,6 +644,25 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
             <Laptop className="w-3.5 h-3.5 text-yellow-400" />
             <span>Makmal ICT</span>
           </div>
+
+          {/* Real-time Server Sync Refresh Button */}
+          <button
+            type="button"
+            onClick={async () => {
+              const live = await fetchLiveIctBookings();
+              if (live !== null) {
+                setBookings(live);
+                setToastMessage('Data tempahan Makmal ICT berjaya diselaraskan dengan pelayan pusat!');
+              } else {
+                setToastMessage('Segerak gagal atau tiada sambungan pelayan.');
+              }
+            }}
+            title="Segerak Terkini dari Pelayan Pusat (Semua Peranti)"
+            className="p-2 sm:px-2.5 sm:py-2 bg-white/10 hover:bg-white/20 text-cyan-300 rounded-xl text-xs font-bold border border-cyan-400/30 flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Segerak Pusat</span>
+          </button>
 
           {/* New Booking Button */}
           <button
