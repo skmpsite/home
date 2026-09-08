@@ -926,7 +926,7 @@ export default function App() {
           activeTab={activeTab}
           onTabChange={setActiveTab}
           isAdmin={isAdmin}
-          isTeacher={userRole === 'guru'}
+          isTeacher={userRole === 'guru' || userRole === 'guru_besar' || isTeacherRole(userRole)}
           userRole={userRole}
           unreadFeedbackCount={unreadFeedbackCount}
           navigationMenu={navigationMenu}
@@ -1046,6 +1046,9 @@ export default function App() {
         {activeTab === 'berita' && (
           <NewsSection
             newsList={newsList}
+            onSaveNews={handleUpdateNews}
+            isAdmin={isAdmin}
+            userRole={userRole}
             galleryItems={gallery}
             awards={awards}
             documents={documents}
@@ -1061,6 +1064,9 @@ export default function App() {
         {activeTab === 'galeri' && (
           <NewsSection
             newsList={newsList}
+            onSaveNews={handleUpdateNews}
+            isAdmin={isAdmin}
+            userRole={userRole}
             galleryItems={gallery}
             awards={awards}
             documents={documents}
@@ -1076,6 +1082,9 @@ export default function App() {
         {activeTab === 'anugerah' && (
           <NewsSection
             newsList={newsList}
+            onSaveNews={handleUpdateNews}
+            isAdmin={isAdmin}
+            userRole={userRole}
             galleryItems={gallery}
             awards={awards}
             documents={documents}
@@ -1091,6 +1100,9 @@ export default function App() {
         {activeTab === 'portal' && (
           <NewsSection
             newsList={newsList}
+            onSaveNews={handleUpdateNews}
+            isAdmin={isAdmin}
+            userRole={userRole}
             galleryItems={gallery}
             awards={awards}
             documents={documents}
@@ -1185,7 +1197,7 @@ export default function App() {
           if (role === 'admin') {
             setIsAdmin(true);
             setActiveTab('admin_cms');
-          } else if (role === 'guru') {
+          } else if (role === 'guru' || role === 'guru_besar') {
             setIsAdmin(false);
             setActiveTab('guru');
           } else {

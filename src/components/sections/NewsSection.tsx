@@ -6,7 +6,9 @@ import {
   DownloadDocument,
   SystemLink,
   PibgActivity,
-  PibgCommittee
+  PibgCommittee,
+  UserRole,
+  canEditPengumumanRasmi
 } from '../../types';
 import {
   initialGalleryItems,
@@ -47,12 +49,23 @@ import {
   ArrowUpRight,
   ShieldCheck,
   FolderDown,
-  Calendar
+  Calendar,
+  Plus,
+  Edit3,
+  Trash2,
+  EyeOff,
+  Crown,
+  Save,
+  AlertTriangle,
+  Megaphone
 } from 'lucide-react';
 import { getSafeNewsImageUrl, SECONDARY_FALLBACK_PHOTOS } from '../../utils/imageHelpers';
 
 export interface NewsSectionProps {
   newsList: NewsItem[];
+  onSaveNews?: (news: NewsItem[]) => void;
+  isAdmin?: boolean;
+  userRole?: UserRole | null;
   galleryItems?: GalleryItem[];
   awards?: AwardItem[];
   documents?: DownloadDocument[];
@@ -66,6 +79,9 @@ export interface NewsSectionProps {
 
 export const NewsSection: React.FC<NewsSectionProps> = ({
   newsList,
+  onSaveNews,
+  isAdmin = false,
+  userRole = null,
   galleryItems = initialGalleryItems,
   awards = initialAwardsList,
   documents = initialDownloadDocs,
@@ -76,6 +92,17 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
   onSelectNewsItem,
   initialSubTab = 'semua'
 }) => {
+  // Check permission for direct editing: Admin or Guru Besar
+  const canEdit = canEditPengumumanRasmi(userRole, isAdmin);
+  const isGuruBesar = userRole === 'guru_besar';
+
+  // Management states for Admin & Guru Besar
+  const [editingNews, setEditingNews] = useState<NewsItem | null>(null);
+  const [isNewNews, setIsNewNews] = useState(false);
+  const [isNewsModalOpen, setIsNewsModalOpen] = useState(false);
+  const [deleteConfirmNewsId, setDeleteConfirmNewsId] = useState<string | null>(null);
+  const [statusMsg, setStatusMsg] = useState('');
+
   // Main view switcher: semua | berita | galeri | anugerah | portal
   const [mainView, setMainView] = useState<'semua' | 'berita' | 'galeri' | 'anugerah' | 'portal'>(initialSubTab);
 
@@ -111,6 +138,107 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
       n.content.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
+
+  // Toggle status paparan di Halaman Utama (Bahagian Berita & Pengumuman Sekolah di bawah label Sekolah)
+  const handleToggleShowOnHome = (id: string, nextShow: boolean) => {
+    if (!canEdit || !onSaveNews) return;
+    const updated = (newsList || []).map((n) => {
+      if (n.id === id) {
+        return {
+          ...n,
+          showOnHome: nextShow,
+          unitScope: n.unitScope || 'sekolah'
+        };
+      }
+      return n;
+    });
+    onSaveNews(updated);
+    setStatusMsg(
+      nextShow
+        ? 'Pengumuman berjaya ditandakan untuk dipaparkan di Halaman Utama di bawah label Sekolah!'
+        : 'Pengumuman dialih keluar daripada paparan Halaman Utama.'
+    );
+    setTimeout(() => setStatusMsg(''), 4000);
+  };
+
+  // Toggle isPinned
+  const handleTogglePin = (id: string) => {
+    if (!canEdit || !onSaveNews) return;
+    const updated = (newsList || []).map((n) => {
+      if (n.id === id) {
+        return { ...n, isPinned: !n.isPinned };
+      }
+      return n;
+    });
+    onSaveNews(updated);
+    setStatusMsg('Status keutamaan berita (pin) dikemas kini!');
+    setTimeout(() => setStatusMsg(''), 3000);
+  };
+
+  // Buka modal tambah pengumuman rasmi baharu
+  const handleOpenAddNews = () => {
+    const todayStr = new Date().toLocaleDateString('ms-MY', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    });
+
+    setEditingNews({
+      id: `news-sekolah-${Date.now()}`,
+      title: '',
+      date: todayStr,
+      category: 'pengumuman',
+      summary: '',
+      content: '',
+      imageUrl: 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&q=80&w=800',
+      author: isGuruBesar ? 'Guru Besar SKMP' : 'Pihak Pentadbiran Sekolah',
+      isPinned: true,
+      views: 1,
+      showOnHome: true,
+      unitScope: 'sekolah'
+    });
+    setIsNewNews(true);
+    setIsNewsModalOpen(true);
+  };
+
+  // Buka modal sunting pengumuman rasmi
+  const handleOpenEditNews = (news: NewsItem) => {
+    setEditingNews({
+      ...news,
+      showOnHome: news.showOnHome !== false,
+      unitScope: news.unitScope || 'sekolah'
+    });
+    setIsNewNews(false);
+    setIsNewsModalOpen(true);
+  };
+
+  // Simpan pengumuman rasmi
+  const handleSaveNewsItem = (itemToSave: NewsItem) => {
+    if (!onSaveNews) return;
+    let updatedList: NewsItem[];
+    const exists = (newsList || []).some((n) => n.id === itemToSave.id);
+    if (exists) {
+      updatedList = (newsList || []).map((n) => (n.id === itemToSave.id ? itemToSave : n));
+      setStatusMsg(`Pengumuman "${itemToSave.title}" berjaya dikemas kini!`);
+    } else {
+      updatedList = [itemToSave, ...(newsList || [])];
+      setStatusMsg(`Pengumuman baharu "${itemToSave.title}" berjaya diterbitkan!`);
+    }
+    onSaveNews(updatedList);
+    setIsNewsModalOpen(false);
+    setEditingNews(null);
+    setTimeout(() => setStatusMsg(''), 4000);
+  };
+
+  // Padam pengumuman rasmi
+  const handleDeleteNewsItem = (id: string) => {
+    if (!onSaveNews) return;
+    const updated = (newsList || []).filter((n) => n.id !== id);
+    onSaveNews(updated);
+    setDeleteConfirmNewsId(null);
+    setStatusMsg('Pengumuman telah berjaya dipadam.');
+    setTimeout(() => setStatusMsg(''), 3000);
+  };
 
   // Filtered Gallery
   const filteredGallery = galleryItems.filter(
@@ -302,7 +430,7 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
                 <button
                   key={tab.id}
                   onClick={() => setNewsCategory(tab.id as any)}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                     newsCategory === tab.id
                       ? 'bg-yellow-400 text-blue-950 font-black shadow-lg shadow-yellow-400/20'
                       : 'bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10'
@@ -324,6 +452,40 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
               />
             </div>
           </div>
+
+          {/* Admin & Guru Besar Direct Management Action Banner */}
+          {canEdit && (
+            <div className="bg-gradient-to-r from-purple-950/80 via-indigo-950/70 to-blue-950/80 border border-purple-400/40 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-2xl bg-purple-600/30 border border-purple-400/40 text-purple-300 flex items-center justify-center flex-shrink-0">
+                  {isGuruBesar ? <Crown className="w-5 h-5 text-yellow-300" /> : <ShieldCheck className="w-5 h-5 text-blue-300" />}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs sm:text-sm font-black text-white">Kuasa Suntingan Pengumuman Rasmi</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-yellow-400/20 text-yellow-300 border border-yellow-300/30">
+                      {isGuruBesar ? 'Guru Besar' : 'Pentadbir Sekolah'}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Suntingan Langsung Aktif
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-purple-200 mt-1">
+                    Klik butang <strong>+ Terbit Pengumuman</strong> untuk siaran baharu, atau gunakan ikon pensel & kotak semak pada setiap kad untuk tentukan paparan di <strong>Halaman Utama (Label: Sekolah)</strong>.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleOpenAddNews}
+                className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-yellow-400 to-amber-400 hover:from-yellow-300 hover:to-amber-300 text-slate-950 text-xs font-black flex items-center justify-center gap-2 shadow-lg shadow-yellow-950/40 transition cursor-pointer flex-shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Terbit Pengumuman Rasmi</span>
+              </button>
+            </div>
+          )}
 
           {/* News Grid */}
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -355,12 +517,16 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
                   </div>
 
                   <div className="p-5 space-y-2">
-                    <div className="flex items-center gap-2 text-[11px] text-slate-300 font-medium">
-                      <Clock className="w-3 h-3 text-yellow-400" />
-                      <span>{news.date}</span>
+                    <div className="flex items-center gap-2 text-[11px] text-slate-300 font-medium flex-wrap">
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-yellow-400" />
+                        <span>{news.date}</span>
+                      </div>
                       <span>•</span>
-                      <User className="w-3 h-3 text-yellow-400" />
-                      <span>{news.author}</span>
+                      <div className="flex items-center gap-1">
+                        <User className="w-3 h-3 text-yellow-400" />
+                        <span>{news.author}</span>
+                      </div>
                     </div>
 
                     <h3 className="font-extrabold text-sm sm:text-base text-white group-hover:text-yellow-300 transition leading-snug line-clamp-2">
@@ -370,12 +536,104 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
                     <p className="text-xs text-slate-200 line-clamp-3 leading-relaxed font-normal">
                       {news.summary}
                     </p>
+
+                    {/* Kotak Tick untuk Pilihan Tampilan di Halaman Utama di Bawah Label Sekolah */}
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className={`mt-3 p-2.5 rounded-2xl border transition ${
+                        news.showOnHome !== false
+                          ? 'bg-purple-950/40 border-purple-500/40'
+                          : 'bg-slate-950/60 border-white/10'
+                      }`}
+                    >
+                      <label
+                        className={`flex items-center justify-between gap-2 text-xs select-none ${
+                          canEdit ? 'cursor-pointer' : 'cursor-default'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={news.showOnHome !== false}
+                            disabled={!canEdit}
+                            onChange={(e) => handleToggleShowOnHome(news.id, e.target.checked)}
+                            className="w-4 h-4 rounded text-purple-500 accent-purple-500 focus:ring-purple-500 cursor-pointer"
+                          />
+                          <span
+                            className={`font-bold text-[11px] flex items-center gap-1.5 ${
+                              news.showOnHome !== false ? 'text-purple-200' : 'text-slate-400'
+                            }`}
+                          >
+                            {news.showOnHome !== false ? (
+                              <>
+                                <CheckCircle2 className="w-3.5 h-3.5 text-purple-400" />
+                                <span>Papar di Halaman Utama</span>
+                              </>
+                            ) : (
+                              <>
+                                <EyeOff className="w-3.5 h-3.5 text-slate-400" />
+                                <span>Sembunyi di Halaman Utama</span>
+                              </>
+                            )}
+                          </span>
+                        </div>
+
+                        <span
+                          className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
+                            news.showOnHome !== false
+                              ? 'bg-purple-500/20 text-purple-200 border border-purple-400/30'
+                              : 'bg-white/5 text-slate-400 border border-white/10'
+                          }`}
+                        >
+                          {news.showOnHome !== false ? 'Label: Sekolah' : 'Arkib Sahaja'}
+                        </span>
+                      </label>
+                    </div>
                   </div>
                 </div>
 
-                <div className="p-5 pt-0 flex items-center justify-between text-xs font-bold text-yellow-400 group-hover:text-yellow-300">
-                  <span>Baca Artikel Lengkap</span>
-                  <ArrowRight className="w-4 h-4" />
+                {/* Card Footer with Direct Edit Buttons for Admin & Guru Besar */}
+                <div className="p-5 pt-2 flex items-center justify-between gap-2 border-t border-white/10">
+                  <div className="flex items-center gap-1 text-xs font-bold text-yellow-400 group-hover:text-yellow-300">
+                    <span>Baca Artikel Lengkap</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </div>
+
+                  {canEdit && (
+                    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => handleTogglePin(news.id)}
+                        className={`p-1.5 rounded-lg border transition cursor-pointer ${
+                          news.isPinned
+                            ? 'bg-amber-400/20 text-amber-300 border-amber-400/30'
+                            : 'bg-white/5 hover:bg-white/10 text-slate-400 border-white/10'
+                        }`}
+                        title={news.isPinned ? 'Nyahpin daripada teratas' : 'Sematkan ke teratas'}
+                      >
+                        <Pin className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditNews(news)}
+                        className="p-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-400/30 transition cursor-pointer flex items-center gap-1 text-[11px] font-bold px-2"
+                        title="Sunting Pengumuman Ini"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                        <span className="hidden sm:inline">Sunting</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirmNewsId(news.id)}
+                        className="p-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-400/30 transition cursor-pointer"
+                        title="Padam Pengumuman Ini"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -931,6 +1189,258 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
               {selectedLightboxItem.description && (
                 <p className="text-xs text-slate-300 leading-relaxed">{selectedLightboxItem.description}</p>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Toast Notification */}
+      {statusMsg && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-md p-4 rounded-2xl bg-gradient-to-r from-purple-900 to-indigo-900 text-white shadow-2xl border border-purple-400/50 flex items-center gap-3 animate-fadeIn">
+          <CheckCircle2 className="w-5 h-5 text-yellow-300 flex-shrink-0" />
+          <p className="text-xs font-bold leading-relaxed">{statusMsg}</p>
+          <button
+            type="button"
+            onClick={() => setStatusMsg('')}
+            className="p-1 text-slate-300 hover:text-white ml-auto cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* MODAL SUNATAN / TAMBAH PENGUMUMAN RASMI LANGSUNG (ADMIN & GURU BESAR) */}
+      {isNewsModalOpen && editingNews && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border border-purple-500/40 rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            {/* Header Modal */}
+            <div className="p-5 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-purple-950 via-indigo-950 to-slate-900">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-purple-600/30 border border-purple-400/40 text-purple-300 flex items-center justify-center">
+                  {isGuruBesar ? <Crown className="w-5 h-5 text-yellow-300" /> : <Megaphone className="w-5 h-5 text-blue-300" />}
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base sm:text-lg text-white">
+                    {isNewNews ? 'Terbit Pengumuman Rasmi Baharu' : 'Sunting Pengumuman Rasmi'}
+                  </h3>
+                  <p className="text-xs text-purple-200">
+                    Akses Suntingan Langsung: {isGuruBesar ? 'Guru Besar' : 'Pentadbir Sekolah'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsNewsModalOpen(false);
+                  setEditingNews(null);
+                }}
+                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content Form */}
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs">
+              {/* Pilihan Kotak Tick Paparan di Halaman Utama di Bawah Label Sekolah */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-950/60 to-indigo-950/60 border border-purple-400/40 space-y-2">
+                <label className="flex items-start gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={editingNews.showOnHome !== false}
+                    onChange={(e) => setEditingNews({ ...editingNews, showOnHome: e.target.checked })}
+                    className="w-5 h-5 mt-0.5 rounded text-purple-500 accent-purple-500 focus:ring-purple-500 cursor-pointer"
+                  />
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-extrabold text-sm text-yellow-300">
+                        Papar di Halaman Utama (Berita & Pengumuman Sekolah)
+                      </span>
+                      <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-purple-500/30 text-purple-200 border border-purple-400/30">
+                        Label: Sekolah
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-300 mt-1">
+                      Tandakan kotak ini agar pengumuman ini dipaparkan terus di bahagian utama portal sekolah di bawah tab label <strong>Sekolah</strong>.
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              {/* Tajuk Pengumuman */}
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">Tajuk Pengumuman / Hebahan *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: Majlis Permuafakatan Waris & Pelaporan PBD Penggal 1"
+                  value={editingNews.title}
+                  onChange={(e) => setEditingNews({ ...editingNews, title: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-yellow-400/50 outline-none font-bold"
+                />
+              </div>
+
+              {/* Baris 2: Tarikh, Penulis & Kategori */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">Tarikh Siaran</label>
+                  <input
+                    type="text"
+                    value={editingNews.date}
+                    onChange={(e) => setEditingNews({ ...editingNews, date: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">Dikeluarkan Oleh (Penulis)</label>
+                  <input
+                    type="text"
+                    value={editingNews.author}
+                    onChange={(e) => setEditingNews({ ...editingNews, author: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">Kategori</label>
+                  <select
+                    value={editingNews.category}
+                    onChange={(e) => setEditingNews({ ...editingNews, category: e.target.value as any })}
+                    className="w-full px-3.5 py-2.5 bg-slate-800 border border-white/10 rounded-xl text-white outline-none cursor-pointer"
+                  >
+                    <option value="pengumuman">Pengumuman Rasmi</option>
+                    <option value="aktiviti">Aktiviti Sekolah</option>
+                    <option value="pekeliling">Pekeliling KPM</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Ringkasan Ringkas */}
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">Ringkasan Pengumuman (Akan kelihatan pada kad)</label>
+                <textarea
+                  rows={2}
+                  placeholder="Kenyataan ringkas hebahan untuk paparan kad..."
+                  value={editingNews.summary}
+                  onChange={(e) => setEditingNews({ ...editingNews, summary: e.target.value })}
+                  className="w-full px-3.5 py-2 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none"
+                />
+              </div>
+
+              {/* Kandungan Lengkap */}
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">Kandungan Penuh Berita / Hebahan *</label>
+                <textarea
+                  rows={5}
+                  required
+                  placeholder="Tulis maklumat terperinci mengenai pengumuman rasmi ini..."
+                  value={editingNews.content}
+                  onChange={(e) => setEditingNews({ ...editingNews, content: e.target.value })}
+                  className="w-full px-3.5 py-2 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 outline-none leading-relaxed"
+                />
+              </div>
+
+              {/* URL Gambar & Pilihan Pantas */}
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">Pautan Gambar (Image URL)</label>
+                <input
+                  type="text"
+                  placeholder="https://..."
+                  value={editingNews.imageUrl}
+                  onChange={(e) => setEditingNews({ ...editingNews, imageUrl: e.target.value })}
+                  className="w-full px-3.5 py-2 bg-white/5 border border-white/10 rounded-xl text-white outline-none"
+                />
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] text-slate-400">Pilihan Gambar Contoh:</span>
+                  {[
+                    { label: 'Perhimpunan', url: 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&q=80&w=800' },
+                    { label: 'Akademik', url: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&q=80&w=800' },
+                    { label: 'Pendidikan', url: 'https://images.unsplash.com/photo-1588072432836-e10032774350?auto=format&fit=crop&q=80&w=800' },
+                    { label: 'Surat / Pekeliling', url: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&q=80&w=800' }
+                  ].map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setEditingNews({ ...editingNews, imageUrl: preset.url })}
+                      className="text-[10px] px-2 py-0.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-yellow-300 transition cursor-pointer"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Checkbox Sematkan (Pin) */}
+              <div className="pt-1">
+                <label className="flex items-center gap-2 cursor-pointer select-none text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={editingNews.isPinned}
+                    onChange={(e) => setEditingNews({ ...editingNews, isPinned: e.target.checked })}
+                    className="w-4 h-4 rounded text-amber-500 accent-amber-500 cursor-pointer"
+                  />
+                  <span className="font-bold">Sematkan ke Teratas (Pin Pengumuman)</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Footer Modal Actions */}
+            <div className="p-4 sm:p-5 border-t border-white/10 bg-slate-950 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsNewsModalOpen(false);
+                  setEditingNews(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 transition cursor-pointer font-bold"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={!editingNews.title.trim()}
+                onClick={() => handleSaveNewsItem(editingNews)}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-400 to-amber-400 hover:from-yellow-300 hover:to-amber-300 text-slate-950 font-black shadow-lg shadow-yellow-950/40 transition cursor-pointer flex items-center gap-2 disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                <span>{isNewNews ? 'Terbitkan Sekarang' : 'Simpan Perubahan'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PENGESAHAN PADAM PENGUMUMAN */}
+      {deleteConfirmNewsId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border border-rose-500/40 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-400">
+              <div className="w-10 h-10 rounded-2xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-black text-white text-base">Padam Pengumuman Rasmi?</h4>
+                <p className="text-xs text-rose-300">Tindakan ini tidak boleh dikembalikan.</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Adakah anda pasti ingin memadam hebahan rasmi ini daripada pangkalan data sekolah?
+            </p>
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmNewsId(null)}
+                className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteNewsItem(deleteConfirmNewsId)}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black transition cursor-pointer flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Padam Pengumuman</span>
+              </button>
             </div>
           </div>
         </div>

@@ -62,7 +62,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   const displayBadge = profile.principalBadge || 'Perutusan & Kata Alu-Aluan';
   const pinnedNews = latestNews.filter((n) => n.isPinned)[0] || latestNews[0];
 
-  const [homeFilter, setHomeFilter] = useState<'semua' | 'kurikulum' | 'hem' | 'kokurikulum'>('semua');
+  const [homeFilter, setHomeFilter] = useState<'semua' | 'sekolah' | 'kurikulum' | 'hem' | 'kokurikulum'>('semua');
 
   // Filter news that have showOnHome !== false (ticked by Admin/PK/SU)
   const displayedHomeNews = useMemo(() => {
@@ -307,6 +307,17 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               }`}
             >
               Semua
+            </button>
+            <button
+              type="button"
+              onClick={() => setHomeFilter('sekolah')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                homeFilter === 'sekolah'
+                  ? 'bg-purple-600 text-white font-black shadow-md shadow-purple-500/30'
+                  : 'bg-white/5 hover:bg-white/10 text-purple-300 border border-purple-500/20'
+              }`}
+            >
+              Sekolah
             </button>
             <button
               type="button"
