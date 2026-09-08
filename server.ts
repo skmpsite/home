@@ -146,6 +146,17 @@ async function startServer() {
   app.use(express.json({ limit: "20mb" }));
   app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 
+  // Enable CORS for all incoming requests (supports preview iframe and cross-device clients)
+  app.use((req, res, next) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control");
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(200);
+    }
+    next();
+  });
+
   const DATA_DIR = path.join(process.cwd(), "data");
   const SIGNAGE_FILE = path.join(DATA_DIR, "signage-live.json");
   const ICT_BOOKINGS_FILE = path.join(DATA_DIR, "ict-bookings-live.json");

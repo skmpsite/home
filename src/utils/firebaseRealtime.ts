@@ -3,6 +3,7 @@ import {
   isFirebaseEnabled,
   doc,
   setDoc,
+  getDoc,
   onSnapshot
 } from './firebaseSync';
 import {
@@ -23,7 +24,8 @@ import {
   NavigationMenuItem,
   TeacherLinkItem,
   StudentRecord,
-  StudentAbsenceRecord
+  StudentAbsenceRecord,
+  IctBookingRecord
 } from '../types';
 
 /**
@@ -152,6 +154,7 @@ export function setupFirestoreRealtimeSync(callbacks: {
   onNavigationMenuChange?: (menu: NavigationMenuItem[]) => void;
   onTeacherLinksChange?: (links: TeacherLinkItem[]) => void;
   onAbsenceRecordsChange?: (records: StudentAbsenceRecord[]) => void;
+  onIctBookingsChange?: (bookings: IctBookingRecord[]) => void;
 }): () => void {
   if (!isFirebaseEnabled()) return () => {};
   const db = getFirebaseDb();
@@ -309,6 +312,20 @@ export function setupFirestoreRealtimeSync(callbacks: {
       unsubscribers.push(unsub);
     }
 
+    // 12. Tempahan Makmal ICT (ICT Room Bookings - Live Cloud Sync across all devices)
+    if (callbacks.onIctBookingsChange) {
+      const unsub = onSnapshot(doc(db, 'school_data', 'ict_bookings'), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data && Array.isArray(data.items)) {
+            console.log('[FIRESTORE] ICT Bookings synced from cloud:', data.items.length);
+            callbacks.onIctBookingsChange!(data.items as IctBookingRecord[]);
+          }
+        }
+      }, (err) => console.warn('[FIRESTORE] ICT bookings sync listener:', err));
+      unsubscribers.push(unsub);
+    }
+
   } catch (err) {
     console.error('Error attaching Firestore listeners:', err);
   }
@@ -323,3 +340,76 @@ export function setupFirestoreRealtimeSync(callbacks: {
     });
   };
 }
+
+/**
+ * Tolak kemaskini Tempahan Bilik ICT terus ke Firebase Firestore
+ */
+export async function pushIctBookingsToFirestore(bookings: IctBookingRecord[]): Promise<boolean> {
+  if (!isFirebaseEnabled()) return false;
+  const db = getFirebaseDb();
+  if (!db) return false;
+
+  try {
+    const docRef = doc(db, 'school_data', 'ict_bookings');
+    await setDoc(docRef, {
+      items: bookings,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+    console.log(`[FIRESTORE] Successfully pushed ${bookings.length} ICT bookings to cloud`);
+    return true;
+  } catch (err) {
+    console.warn('[FIRESTORE ERROR] Gagal menyimpan tempahan ICT ke cloud:', err);
+    return false;
+  }
+}
+
+/**
+ * Dapatkan data terkini Tempahan Makmal ICT terus daripada Firestore
+ */
+export async function fetchIctBookingsFromFirestore(): Promise<IctBookingRecord[] | null> {
+  if (!isFirebaseEnabled()) return null;
+  const db = getFirebaseDb();
+  if (!db) return null;
+
+  try {
+    const docRef = doc(db, 'school_data', 'ict_bookings');
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      if (data && Array.isArray(data.items)) {
+        return data.items as IctBookingRecord[];
+      }
+    }
+  } catch (err) {
+    console.warn('[FIRESTORE] Failed to fetch ICT bookings:', err);
+  }
+  return null;
+}
+
+/**
+ * Langganan masa nyata terus untuk Tempahan Makmal ICT
+ */
+export function subscribeToIctBookings(callback: (bookings: IctBookingRecord[]) => void): () => void {
+  if (!isFirebaseEnabled()) return () => {};
+  const db = getFirebaseDb();
+  if (!db) return () => {};
+
+  try {
+    const docRef = doc(db, 'school_data', 'ict_bookings');
+    const unsub = onSnapshot(docRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data && Array.isArray(data.items)) {
+          callback(data.items as IctBookingRecord[]);
+        }
+      }
+    }, (err) => {
+      console.warn('[FIRESTORE] Direct ICT bookings subscription error:', err);
+    });
+    return unsub;
+  } catch (err) {
+    console.warn('[FIRESTORE] Unable to set up ICT bookings listener:', err);
+    return () => {};
+  }
+}
+

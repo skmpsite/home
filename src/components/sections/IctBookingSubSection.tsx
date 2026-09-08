@@ -43,6 +43,7 @@ import {
   saveIctBookings,
   fetchLiveIctBookings,
   syncIctBookingsToServer,
+  subscribeToIctBookings,
   ICT_BOOKINGS_SYNCED_EVENT,
   RECESS_DAY_LETTERS,
   isSlotCurrentTime
@@ -141,27 +142,40 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
     syncIctBookingsToServer(newBookings);
   };
 
-  // Live polling and listener for cross-device updates
+  // Live synchronization: Firebase Firestore Cloud + BroadcastChannel + Server Polling
   useEffect(() => {
     let isMounted = true;
 
-    // 1. Initial fetch from server
-    fetchLiveIctBookings().then((serverData) => {
-      if (isMounted && serverData !== null) {
-        setBookings(serverData);
+    // 1. Initial fetch from Cloud Firestore / Server
+    fetchLiveIctBookings().then((res) => {
+      if (isMounted && res && Array.isArray(res.bookings)) {
+        setBookings(res.bookings);
       }
     });
 
-    // 2. Poll server every 5 seconds so deletions on other devices reflect immediately
-    const pollInterval = setInterval(() => {
-      fetchLiveIctBookings().then((serverData) => {
-        if (isMounted && serverData !== null) {
-          setBookings(serverData);
-        }
-      });
-    }, 5000);
+    // 2. Real-time Cloud Listener via Firebase Firestore (Sub-second cross-device sync)
+    const unsubCloud = subscribeToIctBookings((cloudBookings) => {
+      if (isMounted && Array.isArray(cloudBookings)) {
+        setBookings(cloudBookings);
+      }
+    });
 
-    // 3. Listen to local custom event for cross-tab synchronization
+    // 3. Native BroadcastChannel for instant cross-tab / cross-window sync
+    let bc: BroadcastChannel | null = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        bc = new BroadcastChannel('skmp_ict_bookings_broadcast');
+        bc.onmessage = (event) => {
+          if (isMounted && event.data?.type === 'ICT_BOOKINGS_UPDATED' && Array.isArray(event.data.bookings)) {
+            setBookings(event.data.bookings);
+          }
+        };
+      }
+    } catch {
+      // ignore
+    }
+
+    // 4. Listen to local custom event for same-window component synchronization
     const handleLocalSync = (e: any) => {
       if (isMounted && e.detail && Array.isArray(e.detail)) {
         setBookings(e.detail);
@@ -169,9 +183,20 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
     };
     window.addEventListener(ICT_BOOKINGS_SYNCED_EVENT, handleLocalSync);
 
+    // 5. Periodic polling (every 3 seconds) as backup check
+    const pollInterval = setInterval(() => {
+      fetchLiveIctBookings().then((res) => {
+        if (isMounted && res && Array.isArray(res.bookings)) {
+          setBookings(res.bookings);
+        }
+      });
+    }, 3000);
+
     return () => {
       isMounted = false;
       clearInterval(pollInterval);
+      if (unsubCloud) unsubCloud();
+      if (bc) bc.close();
       window.removeEventListener(ICT_BOOKINGS_SYNCED_EVENT, handleLocalSync);
     };
   }, []);
@@ -645,19 +670,24 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
             <span>Makmal ICT</span>
           </div>
 
-          {/* Real-time Server Sync Refresh Button */}
+          {/* Real-time Multi-Channel Sync Refresh Button */}
           <button
             type="button"
             onClick={async () => {
-              const live = await fetchLiveIctBookings();
-              if (live !== null) {
-                setBookings(live);
-                setToastMessage('Data tempahan Makmal ICT berjaya diselaraskan dengan pelayan pusat!');
+              const res = await fetchLiveIctBookings();
+              if (res && Array.isArray(res.bookings)) {
+                setBookings(res.bookings);
+                const sourceText = res.source === 'firestore'
+                  ? 'Awan Firebase'
+                  : res.source === 'server'
+                  ? 'Pelayan Pusat'
+                  : 'Simpanan Tempatan';
+                setToastMessage(`Data tempahan Makmal ICT berjaya diselaraskan (${sourceText})!`);
               } else {
-                setToastMessage('Segerak gagal atau tiada sambungan pelayan.');
+                setToastMessage('Data tempahan Makmal ICT sedang dikemas kini.');
               }
             }}
-            title="Segerak Terkini dari Pelayan Pusat (Semua Peranti)"
+            title="Segerak Terkini dari Awan Firebase & Pelayan Pusat (Semua Peranti)"
             className="p-2 sm:px-2.5 sm:py-2 bg-white/10 hover:bg-white/20 text-cyan-300 rounded-xl text-xs font-bold border border-cyan-400/30 flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
           >
             <RefreshCw className="w-3.5 h-3.5" />

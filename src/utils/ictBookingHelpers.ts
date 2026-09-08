@@ -1,4 +1,9 @@
 import { IctBookingRecord } from '../types';
+import {
+  pushIctBookingsToFirestore,
+  fetchIctBookingsFromFirestore,
+  subscribeToIctBookings
+} from './firebaseRealtime';
 
 export interface TimeSlotDef {
   index: number;
@@ -245,8 +250,20 @@ export function getInitialIctBookings(): IctBookingRecord[] {
   ];
 }
 
-// Custom Event for cross-component sync
+// Custom Event & BroadcastChannel for cross-component and cross-tab sync
 export const ICT_BOOKINGS_SYNCED_EVENT = 'skmp_ict_bookings_synced';
+const BROADCAST_CHANNEL_NAME = 'skmp_ict_bookings_broadcast';
+
+function getBroadcastChannel(): BroadcastChannel | null {
+  try {
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      return new BroadcastChannel(BROADCAST_CHANNEL_NAME);
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
 
 // Load bookings from LocalStorage (instant cache)
 export function loadIctBookings(): IctBookingRecord[] {
@@ -266,55 +283,100 @@ export function loadIctBookings(): IctBookingRecord[] {
   return [];
 }
 
-// Save bookings to LocalStorage and trigger local event
+// Save bookings to LocalStorage and trigger local events
 export function saveIctBookings(bookings: IctBookingRecord[]): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_KEY_ICT_BOOKINGS, JSON.stringify(bookings));
     window.dispatchEvent(new CustomEvent(ICT_BOOKINGS_SYNCED_EVENT, { detail: bookings }));
+    const bc = getBroadcastChannel();
+    if (bc) {
+      bc.postMessage({ type: 'ICT_BOOKINGS_UPDATED', bookings });
+    }
   } catch (err) {
     console.error('Error saving ICT bookings to cache:', err);
   }
 }
 
-// Fetch live bookings from server
-export async function fetchLiveIctBookings(): Promise<IctBookingRecord[] | null> {
+// Re-export subscribeToIctBookings for real-time cloud listening
+export { subscribeToIctBookings };
+
+// Fetch live bookings from Cloud Firestore (primary) and Server API (secondary)
+export async function fetchLiveIctBookings(): Promise<{ bookings: IctBookingRecord[]; source: 'firestore' | 'server' | 'cache' } | null> {
+  // 1. Try Firebase Firestore (Cloud Database - Shared across ALL devices & networks)
+  try {
+    const cloudBookings = await fetchIctBookingsFromFirestore();
+    if (cloudBookings !== null && Array.isArray(cloudBookings)) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY_ICT_BOOKINGS, JSON.stringify(cloudBookings));
+      }
+      return { bookings: cloudBookings, source: 'firestore' };
+    }
+  } catch (cloudErr) {
+    console.warn('[SYNC] Firestore fetch error, falling back to server API:', cloudErr);
+  }
+
+  // 2. Try Server API (/api/ict-bookings)
   try {
     const res = await fetch('/api/ict-bookings', {
-      headers: { 'Cache-Control': 'no-cache' }
+      headers: { 'Accept': 'application/json' }
     });
-    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-    const data = await res.json();
-    if (data && data.success && Array.isArray(data.bookings)) {
-      // Update local storage cache
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(STORAGE_KEY_ICT_BOOKINGS, JSON.stringify(data.bookings));
+    const contentType = res.headers.get('content-type') || '';
+    if (res.ok && contentType.includes('application/json')) {
+      const data = await res.json();
+      if (data && data.success && Array.isArray(data.bookings)) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(STORAGE_KEY_ICT_BOOKINGS, JSON.stringify(data.bookings));
+        }
+        return { bookings: data.bookings, source: 'server' };
       }
-      return data.bookings;
     }
-  } catch (err) {
-    console.warn('Unable to fetch live ICT bookings from server, using local cache:', err);
+  } catch (serverErr) {
+    console.warn('[SYNC] Server API fetch error, falling back to local cache:', serverErr);
   }
-  return null;
+
+  // 3. Fallback to local storage cache if available
+  const cached = loadIctBookings();
+  return { bookings: cached, source: 'cache' };
 }
 
-// Push bookings to server for cross-device synchronization
+// Push bookings to Firestore Cloud and Server for cross-device synchronization
 export async function syncIctBookingsToServer(bookings: IctBookingRecord[]): Promise<boolean> {
+  // Save locally first
   saveIctBookings(bookings);
+
+  let success = false;
+
+  // 1. Push to Firebase Firestore (Instant sub-second cloud sync across all devices)
+  try {
+    const firestoreOk = await pushIctBookingsToFirestore(bookings);
+    if (firestoreOk) {
+      success = true;
+    }
+  } catch (err) {
+    console.warn('[SYNC] Failed to push to Firestore:', err);
+  }
+
+  // 2. Push to Express server endpoint as secondary persistence
   try {
     const res = await fetch('/api/ict-bookings', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
       },
       body: JSON.stringify({ bookings })
     });
     if (res.ok) {
-      const result = await res.json();
-      return result.success === true;
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const result = await res.json();
+        if (result.success) success = true;
+      }
     }
   } catch (err) {
-    console.error('Failed to sync ICT bookings to server:', err);
+    console.warn('[SYNC] Failed to push to server API:', err);
   }
-  return false;
+
+  return success;
 }

@@ -78,6 +78,7 @@ import {
 } from './utils/googleSheetsSync';
 import { isFirebaseEnabled } from './utils/firebaseSync';
 import { pushToFirestore, setupFirestoreRealtimeSync } from './utils/firebaseRealtime';
+import { saveIctBookings } from './utils/ictBookingHelpers';
 import { broadcastLiveSignage, fetchLiveSignageFromServer } from './utils/liveSignageSync';
 import { Header } from './components/Header';
 import { Navbar, TabType } from './components/Navbar';
@@ -444,6 +445,11 @@ export default function App() {
         if (Array.isArray(records)) {
           setAbsenceRecords(records);
           saveAbsenceRecords(records);
+        }
+      },
+      onIctBookingsChange: (bookings) => {
+        if (Array.isArray(bookings)) {
+          saveIctBookings(bookings);
         }
       }
     });
