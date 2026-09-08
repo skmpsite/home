@@ -42,9 +42,19 @@ import {
   Copy,
   ExternalLink,
   Link,
-  CalendarCheck2
+  CalendarCheck2,
+  RefreshCw
 } from 'lucide-react';
 import { StudentRecord, StudentAbsenceRecord, SchoolHoliday, UserRole, isTeacherRole } from '../../types';
+import {
+  fetchAbsenceRecordsFromFirestore,
+  subscribeToAbsenceRecords
+} from '../../utils/firebaseRealtime';
+import {
+  saveAbsenceRecords,
+  BROADCAST_CHANNEL_ATTENDANCE,
+  ATTENDANCE_SYNCED_EVENT
+} from '../../utils/storage';
 import {
   sortYears,
   sortClasses,
@@ -98,6 +108,8 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
 
   // Auto-hide info penerangan selepas 5 saat
   const [showPortalInfo, setShowPortalInfo] = useState<boolean>(true);
+  const [isSyncingCloud, setIsSyncingCloud] = useState<boolean>(false);
+  const [cloudToast, setCloudToast] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -105,6 +117,55 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     }, 5000);
     return () => clearTimeout(timer);
   }, []);
+
+  // Real-time Firestore sync & Broadcast listener for e-kehadiran
+  useEffect(() => {
+    // 1. Direct Firestore snapshot listener
+    const unsub = subscribeToAbsenceRecords((records) => {
+      if (Array.isArray(records)) {
+        saveAbsenceRecords(records, true);
+      }
+    });
+
+    // 2. BroadcastChannel listener
+    let bc: BroadcastChannel | null = null;
+    try {
+      if ('BroadcastChannel' in window) {
+        bc = new BroadcastChannel(BROADCAST_CHANNEL_ATTENDANCE);
+        bc.onmessage = (evt) => {
+          if (evt.data?.type === 'ATTENDANCE_UPDATED' && Array.isArray(evt.data?.records)) {
+            // Already synced in memory
+          }
+        };
+      }
+    } catch {
+      // ignore
+    }
+
+    return () => {
+      unsub();
+      if (bc) bc.close();
+    };
+  }, []);
+
+  const handleManualCloudSync = async () => {
+    setIsSyncingCloud(true);
+    try {
+      const records = await fetchAbsenceRecordsFromFirestore();
+      if (Array.isArray(records)) {
+        saveAbsenceRecords(records, true);
+        setCloudToast(`Penyegerakan Awan Berjaya! (${records.length} rekod ketidakhadiran)`);
+      } else {
+        setCloudToast('Penyegerakan Awan selesai.');
+      }
+    } catch (err) {
+      console.warn('Manual cloud sync failed:', err);
+      setCloudToast('Sambungan Awan gagal, menggunakan data setempat.');
+    } finally {
+      setIsSyncingCloud(false);
+      setTimeout(() => setCloudToast(null), 3000);
+    }
+  };
 
   // Active view tab inside Attendance portal
   const [attendanceViewTab, setAttendanceViewTab] = useState<'borang' | 'analisis' | 'senarai'>('borang');
@@ -1118,24 +1179,45 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
           )}
         </div>
 
-        {/* Akses Status Badge */}
-        {isAuthorized ? (
-          <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-[11px] font-bold text-emerald-300">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Akses Guru & Pentadbir</span>
-          </div>
-        ) : isAttendanceAuthorized ? (
-          <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-[11px] font-bold text-emerald-300">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>{currentLoggedInLabel}</span>
-          </div>
-        ) : (
-          <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-[11px] font-bold text-yellow-300">
-            <Lock className="w-3.5 h-3.5 text-yellow-400" />
-            <span>Log Masuk Diperlukan</span>
-          </div>
-        )}
+        {/* Butang Segerak Awan & Akses Status Badge */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleManualCloudSync}
+            disabled={isSyncingCloud}
+            className="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-bold text-xs flex items-center gap-1.5 border border-emerald-400/40 transition cursor-pointer shadow-sm hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+            title="Segerakkan rekod e-kehadiran terus daripada Awan Firebase Firestore"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncingCloud ? 'animate-spin text-emerald-400' : 'text-emerald-300'}`} />
+            <span>{isSyncingCloud ? 'Menyegerak...' : 'Segerak Awan'}</span>
+          </button>
+
+          {isAuthorized ? (
+            <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-[11px] font-bold text-emerald-300">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Akses Guru & Pentadbir</span>
+            </div>
+          ) : isAttendanceAuthorized ? (
+            <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-[11px] font-bold text-emerald-300">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{currentLoggedInLabel}</span>
+            </div>
+          ) : (
+            <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-[11px] font-bold text-yellow-300">
+              <Lock className="w-3.5 h-3.5 text-yellow-400" />
+              <span>Log Masuk Diperlukan</span>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Cloud Sync Toast Notification */}
+      {cloudToast && (
+        <div className="p-3 bg-emerald-950/80 border border-emerald-500/50 rounded-2xl flex items-center gap-2 text-xs sm:text-sm font-bold text-emerald-200 animate-fadeIn">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+          <span>{cloudToast}</span>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* TAB 1: BORANG E-KEHADIRAN WARIS                                           */}

@@ -3,7 +3,12 @@ import { FullStudentRecord } from '../../types';
 import {
   fetchGoogleSheetStudents,
   GOOGLE_SHEET_STUDENTS_EDIT_URL,
-  getLastSyncTimestamp
+  getLastSyncTimestamp,
+  subscribeToStudentPhotos,
+  subscribeToStudents,
+  syncCloudPhotosToLocal,
+  BROADCAST_CHANNEL_STUDENT_PHOTOS,
+  STUDENT_PHOTOS_SYNCED_EVENT
 } from '../../utils/googleSheetsStudentSync';
 import {
   Search,
@@ -78,6 +83,88 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
   useEffect(() => {
     if (isOpen) {
       loadData(false);
+
+      // Background sync photos from Firestore to local
+      syncCloudPhotosToLocal().then((cloudPhotos) => {
+        if (cloudPhotos && Object.keys(cloudPhotos).length > 0) {
+          setStudents((prev) =>
+            prev.map((s) => {
+              const key = s.studentId || s.ic || s.id;
+              const photo = cloudPhotos[key] || (s.studentId ? cloudPhotos[s.studentId] : undefined) || (s.ic ? cloudPhotos[s.ic] : undefined);
+              return photo ? { ...s, photoUrl: photo } : s;
+            })
+          );
+        }
+      });
+
+      // 1. Direct Firestore onSnapshot listener for student photos (Cross-device auto-sync)
+      const unsubPhotos = subscribeToStudentPhotos((photosMap) => {
+        setStudents((prev) =>
+          prev.map((s) => {
+            const key = s.studentId || s.ic || s.id;
+            const photo = photosMap[key] || (s.studentId ? photosMap[s.studentId] : undefined) || (s.ic ? photosMap[s.ic] : undefined);
+            return photo ? { ...s, photoUrl: photo } : s;
+          })
+        );
+        setSelectedStudent((prev) => {
+          if (!prev) return null;
+          const key = prev.studentId || prev.ic || prev.id;
+          const photo = photosMap[key] || (prev.studentId ? photosMap[prev.studentId] : undefined) || (prev.ic ? photosMap[prev.ic] : undefined);
+          return photo ? { ...prev, photoUrl: photo } : prev;
+        });
+      });
+
+      // 2. Direct Firestore onSnapshot listener for student list
+      const unsubStudents = subscribeToStudents((cloudStudents) => {
+        if (Array.isArray(cloudStudents) && cloudStudents.length > 0) {
+          setStudents(cloudStudents as FullStudentRecord[]);
+        }
+      });
+
+      // 3. BroadcastChannel listener for instant cross-tab sync on this device
+      let bc: BroadcastChannel | null = null;
+      try {
+        if ('BroadcastChannel' in window) {
+          bc = new BroadcastChannel(BROADCAST_CHANNEL_STUDENT_PHOTOS);
+          bc.onmessage = (evt) => {
+            if (evt.data?.type === 'STUDENT_PHOTO_UPDATED' && evt.data?.studentKey && evt.data?.photoUrl) {
+              const { studentKey, photoUrl } = evt.data;
+              setStudents((prev) =>
+                prev.map((s) =>
+                  s.id === studentKey || s.studentId === studentKey || s.ic === studentKey
+                    ? { ...s, photoUrl }
+                    : s
+                )
+              );
+            }
+          };
+        }
+      } catch {
+        // ignore
+      }
+
+      // 4. Custom local event listener
+      const handleLocalPhotoEvent = (evt: Event) => {
+        const customEvt = evt as CustomEvent<{ studentKey: string; photoUrl: string }>;
+        if (customEvt.detail) {
+          const { studentKey, photoUrl } = customEvt.detail;
+          setStudents((prev) =>
+            prev.map((s) =>
+              s.id === studentKey || s.studentId === studentKey || s.ic === studentKey
+                ? { ...s, photoUrl }
+                : s
+            )
+          );
+        }
+      };
+      window.addEventListener(STUDENT_PHOTOS_SYNCED_EVENT, handleLocalPhotoEvent);
+
+      return () => {
+        unsubPhotos();
+        unsubStudents();
+        if (bc) bc.close();
+        window.removeEventListener(STUDENT_PHOTOS_SYNCED_EVENT, handleLocalPhotoEvent);
+      };
     }
   }, [isOpen]);
 

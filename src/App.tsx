@@ -79,6 +79,7 @@ import {
 import { isFirebaseEnabled } from './utils/firebaseSync';
 import { pushToFirestore, setupFirestoreRealtimeSync } from './utils/firebaseRealtime';
 import { saveIctBookings } from './utils/ictBookingHelpers';
+import { saveIctCashFlow } from './utils/ictFinanceHelpers';
 import { broadcastLiveSignage, fetchLiveSignageFromServer } from './utils/liveSignageSync';
 import { Header } from './components/Header';
 import { Navbar, TabType } from './components/Navbar';
@@ -444,12 +445,34 @@ export default function App() {
       onAbsenceRecordsChange: (records) => {
         if (Array.isArray(records)) {
           setAbsenceRecords(records);
-          saveAbsenceRecords(records);
+          saveAbsenceRecords(records, true);
         }
       },
       onIctBookingsChange: (bookings) => {
         if (Array.isArray(bookings)) {
           saveIctBookings(bookings);
+        }
+      },
+      onIctFinanceChange: (financeRecords) => {
+        if (Array.isArray(financeRecords)) {
+          saveIctCashFlow(financeRecords);
+        }
+      },
+      onStudentsChange: (students) => {
+        if (Array.isArray(students) && students.length > 0) {
+          setStudentsList(students);
+          saveStudentsList(students, true);
+        }
+      },
+      onStudentPhotosChange: (photos) => {
+        if (photos && typeof photos === 'object') {
+          try {
+            const existing = JSON.parse(localStorage.getItem('skmp_student_photos_v1') || '{}');
+            const merged = { ...existing, ...photos };
+            localStorage.setItem('skmp_student_photos_v1', JSON.stringify(merged));
+          } catch {
+            // ignore
+          }
         }
       }
     });
@@ -529,6 +552,7 @@ export default function App() {
     teacherLinks?: TeacherLinkItem[];
     absenceRecords?: StudentAbsenceRecord[];
     schoolHolidays?: SchoolHoliday[];
+    studentsList?: StudentRecord[];
   }) => {
     // 1. Push to Google Sheets
     syncBulkDataToGoogleSheets({
@@ -551,8 +575,21 @@ export default function App() {
     if (partialUpdate.events) pushToFirestore('school_data', 'events', { items: partialUpdate.events });
     if (partialUpdate.hemData) pushToFirestore('school_data', 'hem', partialUpdate.hemData);
     if (partialUpdate.teacherLinks) pushToFirestore('school_data', 'teacher_links', { items: partialUpdate.teacherLinks });
-    if (partialUpdate.absenceRecords) pushToFirestore('school_data', 'attendance_absence', { records: partialUpdate.absenceRecords });
+    if (partialUpdate.absenceRecords) {
+      pushToFirestore('school_data', 'attendance_absence', {
+        items: partialUpdate.absenceRecords,
+        records: partialUpdate.absenceRecords,
+        updatedAt: new Date().toISOString()
+      });
+    }
     if (partialUpdate.schoolHolidays) pushToFirestore('school_data', 'school_holidays', { items: partialUpdate.schoolHolidays });
+    if (partialUpdate.studentsList) {
+      pushToFirestore('school_data', 'students', {
+        items: partialUpdate.studentsList,
+        students: partialUpdate.studentsList,
+        updatedAt: new Date().toISOString()
+      });
+    }
     if (partialUpdate.signageSlides || partialUpdate.signageConfig) {
       pushToFirestore('school_data', 'signage', {
         slides: partialUpdate.signageSlides || signageSlides,

@@ -1,6 +1,19 @@
 import { IctCashFlowRecord } from '../types';
+import {
+  pushIctFinanceToFirestore,
+  fetchIctFinanceFromFirestore,
+  subscribeToIctFinance
+} from './firebaseRealtime';
 
 export const STORAGE_KEY_ICT_CASHFLOW = 'skmp_ict_cashflow_records_v1';
+export const ICT_FINANCE_SYNCED_EVENT = 'skmp_ict_finance_synced';
+export const BROADCAST_CHANNEL_ICT_FINANCE = 'skmp_ict_finance_broadcast';
+
+export {
+  pushIctFinanceToFirestore,
+  fetchIctFinanceFromFirestore,
+  subscribeToIctFinance
+};
 
 function escapeXml(unsafe: string): string {
   return (unsafe || '').replace(/[<>&'"]/g, (c) => {
@@ -438,9 +451,49 @@ export function saveIctCashFlow(records: IctCashFlowRecord[]): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_KEY_ICT_CASHFLOW, JSON.stringify(records));
+
+    // 1. Broadcast to other tabs immediately
+    try {
+      if ('BroadcastChannel' in window) {
+        const bc = new BroadcastChannel(BROADCAST_CHANNEL_ICT_FINANCE);
+        bc.postMessage({ type: 'ICT_FINANCE_UPDATED', records });
+        bc.close();
+      }
+    } catch {
+      // ignore
+    }
+
+    // 2. Dispatch local event for same-window components
+    window.dispatchEvent(new CustomEvent(ICT_FINANCE_SYNCED_EVENT, { detail: records }));
+
+    // 3. Push to Firestore Cloud asynchronously (Cross-device auto sync)
+    pushIctFinanceToFirestore(records).catch((err) => {
+      console.warn('Failed to push ICT finance to Firestore cloud:', err);
+    });
   } catch (err) {
     console.error('Failed to save ICT cash flow to storage:', err);
   }
+}
+
+/**
+ * Dapatkan data kewangan ICT terkini dengan sokongan Awan Firebase Firestore
+ */
+export async function fetchLiveIctCashFlow(): Promise<{ records: IctCashFlowRecord[]; source: 'firestore' | 'cache' }> {
+  try {
+    const cloudRecords = await fetchIctFinanceFromFirestore();
+    if (cloudRecords && Array.isArray(cloudRecords)) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY_ICT_CASHFLOW, JSON.stringify(cloudRecords));
+        window.dispatchEvent(new CustomEvent(ICT_FINANCE_SYNCED_EVENT, { detail: cloudRecords }));
+      }
+      return { records: cloudRecords, source: 'firestore' };
+    }
+  } catch (err) {
+    console.warn('Unable to fetch live ICT cashflow from Firestore:', err);
+  }
+
+  const cached = loadIctCashFlow();
+  return { records: cached, source: 'cache' };
 }
 
 export function formatCurrencyRM(val: number): string {

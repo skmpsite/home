@@ -1,5 +1,13 @@
 import { FullStudentRecord } from '../types';
 import { initialStudentsData } from '../data/studentsData';
+import {
+  pushStudentsToFirestore,
+  fetchStudentsFromFirestore,
+  subscribeToStudents,
+  saveSingleStudentPhotoToFirestore,
+  fetchStudentPhotosFromFirestore,
+  subscribeToStudentPhotos
+} from './firebaseRealtime';
 
 export const GOOGLE_SHEET_STUDENTS_CSV_URL =
   'https://docs.google.com/spreadsheets/d/1eODYEpiGFEVRe6RjoxZrPX3bPXpGYOR7l9PaGi8EKEo/gviz/tq?tqx=out:csv';
@@ -10,6 +18,20 @@ export const GOOGLE_SHEET_STUDENTS_EDIT_URL =
 const CACHE_KEY_STUDENTS = 'skmp_sheet_students_detailed_v1';
 const CACHE_KEY_TIME = 'skmp_sheet_students_timestamp_v1';
 const CACHE_KEY_PHOTOS = 'skmp_student_photos_v1';
+
+export const BROADCAST_CHANNEL_STUDENT_PHOTOS = 'skmp_student_photos_broadcast';
+export const STUDENT_PHOTOS_SYNCED_EVENT = 'skmp_student_photos_synced';
+export const BROADCAST_CHANNEL_STUDENTS = 'skmp_students_broadcast';
+export const STUDENTS_SYNCED_EVENT = 'skmp_students_synced';
+
+export {
+  pushStudentsToFirestore,
+  fetchStudentsFromFirestore,
+  subscribeToStudents,
+  saveSingleStudentPhotoToFirestore,
+  fetchStudentPhotosFromFirestore,
+  subscribeToStudentPhotos
+};
 
 export function getLocalStudentPhotos(): Record<string, string> {
   try {
@@ -38,6 +60,27 @@ export function saveLocalStudentPhoto(studentKey: string, photoUrl: string): voi
       return s;
     });
     localStorage.setItem(CACHE_KEY_STUDENTS, JSON.stringify(updated));
+
+    // 1. Broadcast to other open tabs on this device
+    try {
+      if ('BroadcastChannel' in window) {
+        const bc = new BroadcastChannel(BROADCAST_CHANNEL_STUDENT_PHOTOS);
+        bc.postMessage({ type: 'STUDENT_PHOTO_UPDATED', studentKey, photoUrl });
+        bc.close();
+      }
+    } catch {
+      // ignore
+    }
+
+    // 2. Dispatch local event
+    window.dispatchEvent(
+      new CustomEvent(STUDENT_PHOTOS_SYNCED_EVENT, { detail: { studentKey, photoUrl } })
+    );
+
+    // 3. Push to Firebase Firestore cloud (Cross-device auto sync)
+    saveSingleStudentPhotoToFirestore(studentKey, photoUrl).catch((err) => {
+      console.warn('Failed to push student photo to Firestore cloud:', err);
+    });
   } catch (err) {
     console.error('Failed to save local student photo', err);
   }
@@ -414,6 +457,11 @@ export async function fetchGoogleSheetStudents(
         console.warn('Unable to store full student list in localStorage', saveErr);
       }
 
+      // Auto-push to Firestore cloud in background
+      pushStudentsToFirestore(mapped as any).catch((err) => {
+        console.warn('Auto push students to Firestore cloud failed:', err);
+      });
+
       return {
         students: mapped,
         fromCache: false,
@@ -424,10 +472,53 @@ export async function fetchGoogleSheetStudents(
     }
   } catch (err: any) {
     console.error('Error fetching Google Sheets students:', err);
+
+    // Fallback to Firestore cloud students if available
+    try {
+      const firestoreStudents = await fetchStudentsFromFirestore();
+      if (firestoreStudents && firestoreStudents.length > 0) {
+        const localPhotos = getLocalStudentPhotos();
+        const merged = firestoreStudents.map((s) => {
+          const key = (s as any).studentId || s.id || s.ic;
+          const photo = (s as any).photoUrl || localPhotos[key] || (s.ic ? localPhotos[s.ic] : undefined);
+          return {
+            ...s,
+            photoUrl: photo,
+            fullAddress: (s as any).fullAddress || `${(s as any).parent1Name ? 'Keluarga ' + (s as any).parent1Name : 'SK Merbau Pulas'}, 09300 Kuala Ketil, Kedah`
+          } as FullStudentRecord;
+        });
+        return {
+          students: merged,
+          fromCache: false,
+          lastUpdated: 'Disegerak daripada Firebase Firestore'
+        };
+      }
+    } catch (fsErr) {
+      console.warn('Failed to fallback to Firestore students:', fsErr);
+    }
+
     return {
       students: cached.length > 0 ? cached : (initialStudentsData as FullStudentRecord[]),
       fromCache: true,
       lastUpdated: lastTime || 'Data Sandaran Tempatan'
     };
   }
+}
+
+/**
+ * Segerakkan kamus gambar murid daripada Firebase Firestore ke storan tempatan
+ */
+export async function syncCloudPhotosToLocal(): Promise<Record<string, string>> {
+  try {
+    const cloudPhotos = await fetchStudentPhotosFromFirestore();
+    if (cloudPhotos && Object.keys(cloudPhotos).length > 0) {
+      const localPhotos = getLocalStudentPhotos();
+      const merged = { ...localPhotos, ...cloudPhotos };
+      localStorage.setItem(CACHE_KEY_PHOTOS, JSON.stringify(merged));
+      return merged;
+    }
+  } catch (err) {
+    console.warn('Failed to sync cloud photos to local:', err);
+  }
+  return getLocalStudentPhotos();
 }

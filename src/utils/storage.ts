@@ -22,6 +22,7 @@ import {
   AcademicSubject,
   AcademicProgram
 } from '../types';
+import { pushAbsenceRecordsToFirestore, pushStudentsToFirestore } from './firebaseRealtime';
 import {
   initialSchoolProfile,
   initialStaffList,
@@ -594,8 +595,30 @@ export function getStudentsList(): StudentRecord[] {
   return list;
 }
 
-export function saveStudentsList(students: StudentRecord[]): void {
+export const BROADCAST_CHANNEL_ATTENDANCE = 'skmp_attendance_broadcast';
+export const ATTENDANCE_SYNCED_EVENT = 'skmp_attendance_synced';
+export const BROADCAST_CHANNEL_STUDENTS_BASE = 'skmp_students_base_broadcast';
+
+export function saveStudentsList(students: StudentRecord[], skipCloudPush = false): void {
   setStored(KEYS.STUDENTS, students);
+  try {
+    if (typeof window !== 'undefined') {
+      if ('BroadcastChannel' in window) {
+        const bc = new BroadcastChannel(BROADCAST_CHANNEL_STUDENTS_BASE);
+        bc.postMessage({ type: 'STUDENTS_UPDATED', students });
+        bc.close();
+      }
+      window.dispatchEvent(new CustomEvent('skmp_students_list_updated', { detail: students }));
+    }
+  } catch {
+    // ignore
+  }
+
+  if (!skipCloudPush) {
+    pushStudentsToFirestore(students).catch((err) => {
+      console.warn('Auto push students list to Firestore failed:', err);
+    });
+  }
 }
 
 export function getAbsenceRecords(): StudentAbsenceRecord[] {
@@ -611,8 +634,26 @@ export function getAbsenceRecords(): StudentAbsenceRecord[] {
   return cleaned;
 }
 
-export function saveAbsenceRecords(records: StudentAbsenceRecord[]): void {
+export function saveAbsenceRecords(records: StudentAbsenceRecord[], skipCloudPush = false): void {
   setStored(KEYS.ABSENCE_RECORDS, records);
+  try {
+    if (typeof window !== 'undefined') {
+      if ('BroadcastChannel' in window) {
+        const bc = new BroadcastChannel(BROADCAST_CHANNEL_ATTENDANCE);
+        bc.postMessage({ type: 'ATTENDANCE_UPDATED', records });
+        bc.close();
+      }
+      window.dispatchEvent(new CustomEvent(ATTENDANCE_SYNCED_EVENT, { detail: records }));
+    }
+  } catch {
+    // ignore
+  }
+
+  if (!skipCloudPush) {
+    pushAbsenceRecordsToFirestore(records).catch((err) => {
+      console.warn('Auto push absence records to Firestore failed:', err);
+    });
+  }
 }
 
 export function loadSchoolHolidays(): SchoolHoliday[] {

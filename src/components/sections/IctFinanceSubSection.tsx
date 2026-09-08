@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   DollarSign,
   TrendingUp,
@@ -35,6 +35,11 @@ import { IctCashFlowRecord, SchoolProfile, Staff, UserRole } from '../../types';
 import {
   loadIctCashFlow,
   saveIctCashFlow,
+  fetchLiveIctCashFlow,
+  subscribeToIctFinance,
+  pushIctFinanceToFirestore,
+  ICT_FINANCE_SYNCED_EVENT,
+  BROADCAST_CHANNEL_ICT_FINANCE,
   formatCurrencyRM,
   calculateCashFlowTotals,
   computeRunningBalances,
@@ -71,6 +76,68 @@ export const IctFinanceSubSection: React.FC<IctFinanceSubSectionProps> = ({
   const [filterCategory, setFilterCategory] = useState<string>('semua');
   const [filterReceipt, setFilterReceipt] = useState<'semua' | 'dengan_resit' | 'tanpa_resit'>('semua');
   const [mobileDisplayMode, setMobileDisplayMode] = useState<'kompak' | 'jadual'>('kompak');
+  const [isSyncingCloud, setIsSyncingCloud] = useState<boolean>(false);
+
+  // Real-time Cloud Sync (Firebase Firestore + BroadcastChannel + Event)
+  useEffect(() => {
+    // 1. Initial background fetch from Firestore cloud
+    fetchLiveIctCashFlow().then((res) => {
+      if (res.records && res.records.length > 0) {
+        setRecords(res.records);
+      }
+    });
+
+    // 2. Direct Firestore onSnapshot real-time listener (Cross-device auto-sync)
+    const unsubFirestore = subscribeToIctFinance((cloudRecords) => {
+      if (Array.isArray(cloudRecords)) {
+        setRecords(cloudRecords);
+      }
+    });
+
+    // 3. BroadcastChannel listener (Cross-tab instant sync on same browser)
+    let bc: BroadcastChannel | null = null;
+    try {
+      if ('BroadcastChannel' in window) {
+        bc = new BroadcastChannel(BROADCAST_CHANNEL_ICT_FINANCE);
+        bc.onmessage = (evt) => {
+          if (evt.data?.type === 'ICT_FINANCE_UPDATED' && Array.isArray(evt.data?.records)) {
+            setRecords(evt.data.records);
+          }
+        };
+      }
+    } catch {
+      // ignore
+    }
+
+    // 4. Local custom event listener
+    const handleLocalSync = (evt: Event) => {
+      const customEvt = evt as CustomEvent<IctCashFlowRecord[]>;
+      if (customEvt.detail && Array.isArray(customEvt.detail)) {
+        setRecords(customEvt.detail);
+      }
+    };
+    window.addEventListener(ICT_FINANCE_SYNCED_EVENT, handleLocalSync);
+
+    return () => {
+      unsubFirestore();
+      if (bc) bc.close();
+      window.removeEventListener(ICT_FINANCE_SYNCED_EVENT, handleLocalSync);
+    };
+  }, []);
+
+  // Manual cloud refresh / sync handler
+  const handleManualCloudSync = async () => {
+    setIsSyncingCloud(true);
+    try {
+      const res = await fetchLiveIctCashFlow();
+      setRecords(res.records);
+      triggerToast(`Penyegerakan Awan Berjaya! (${res.records.length} rekod ${res.source === 'firestore' ? 'daripada Firestore' : 'tempatan'})`);
+    } catch (err) {
+      triggerToast('Gagal berhubung dengan pelayan Firestore awan.');
+    } finally {
+      setIsSyncingCloud(false);
+    }
+  };
 
   // Modal states
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -402,6 +469,17 @@ export const IctFinanceSubSection: React.FC<IctFinanceSubSectionProps> = ({
 
           {/* Action buttons */}
           <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={handleManualCloudSync}
+              disabled={isSyncingCloud}
+              className="px-4 py-2.5 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-bold text-xs flex items-center gap-2 border border-emerald-400/40 transition cursor-pointer shadow-sm hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+              title="Segerakkan data secara terus dengan Awan Firebase Firestore"
+            >
+              <RefreshCw className={`w-4 h-4 ${isSyncingCloud ? 'animate-spin text-emerald-400' : 'text-emerald-300'}`} />
+              <span>{isSyncingCloud ? 'Menyegerak...' : 'Segerak Awan'}</span>
+            </button>
+
             <button
               type="button"
               onClick={() => exportIctFinanceCsv(records)}

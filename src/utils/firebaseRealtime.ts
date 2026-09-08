@@ -25,7 +25,8 @@ import {
   TeacherLinkItem,
   StudentRecord,
   StudentAbsenceRecord,
-  IctBookingRecord
+  IctBookingRecord,
+  IctCashFlowRecord
 } from '../types';
 
 /**
@@ -67,6 +68,8 @@ export async function syncAllDataToFirestore(data: {
   navigationMenu?: NavigationMenuItem[];
   teacherLinks?: TeacherLinkItem[];
   absenceRecords?: StudentAbsenceRecord[];
+  ictCashFlow?: IctCashFlowRecord[];
+  students?: StudentRecord[];
 }): Promise<boolean> {
   if (!isFirebaseEnabled()) return false;
   const db = getFirebaseDb();
@@ -121,6 +124,20 @@ export async function syncAllDataToFirestore(data: {
     if (data.absenceRecords) {
       promises.push(setDoc(doc(db, 'school_data', 'attendance_absence'), {
         items: data.absenceRecords,
+        records: data.absenceRecords,
+        updatedAt: new Date().toISOString()
+      }, { merge: true }));
+    }
+    if (data.ictCashFlow) {
+      promises.push(setDoc(doc(db, 'school_data', 'ict_finance'), {
+        items: data.ictCashFlow,
+        records: data.ictCashFlow,
+        updatedAt: new Date().toISOString()
+      }, { merge: true }));
+    }
+    if (data.students) {
+      promises.push(setDoc(doc(db, 'school_data', 'students'), {
+        items: data.students,
         updatedAt: new Date().toISOString()
       }, { merge: true }));
     }
@@ -155,6 +172,9 @@ export function setupFirestoreRealtimeSync(callbacks: {
   onTeacherLinksChange?: (links: TeacherLinkItem[]) => void;
   onAbsenceRecordsChange?: (records: StudentAbsenceRecord[]) => void;
   onIctBookingsChange?: (bookings: IctBookingRecord[]) => void;
+  onIctFinanceChange?: (records: IctCashFlowRecord[]) => void;
+  onStudentsChange?: (students: StudentRecord[]) => void;
+  onStudentPhotosChange?: (photos: Record<string, string>) => void;
 }): () => void {
   if (!isFirebaseEnabled()) return () => {};
   const db = getFirebaseDb();
@@ -299,13 +319,14 @@ export function setupFirestoreRealtimeSync(callbacks: {
       unsubscribers.push(unsub);
     }
 
-    // 11. Rekod Ketidakhadiran Murid (Attendance Absence)
+    // 11. Rekod Ketidakhadiran Murid (Attendance Absence / e-Kehadiran - Live Cloud Sync)
     if (callbacks.onAbsenceRecordsChange) {
       const unsub = onSnapshot(doc(db, 'school_data', 'attendance_absence'), (snap) => {
         if (snap.exists()) {
           const data = snap.data();
-          if (data && Array.isArray(data.items)) {
-            callbacks.onAbsenceRecordsChange!(data.items as StudentAbsenceRecord[]);
+          const list = (data.items || data.records) as StudentAbsenceRecord[];
+          if (Array.isArray(list)) {
+            callbacks.onAbsenceRecordsChange!(list);
           }
         }
       }, (err) => console.warn('[FIRESTORE] Attendance Absence sync listener:', err));
@@ -323,6 +344,50 @@ export function setupFirestoreRealtimeSync(callbacks: {
           }
         }
       }, (err) => console.warn('[FIRESTORE] ICT bookings sync listener:', err));
+      unsubscribers.push(unsub);
+    }
+
+    // 13. Kewangan & Aliran Tunai ICT (ICT Finance - Live Cloud Sync across all devices)
+    if (callbacks.onIctFinanceChange) {
+      const unsub = onSnapshot(doc(db, 'school_data', 'ict_finance'), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          const list = (data.items || data.records) as IctCashFlowRecord[];
+          if (Array.isArray(list)) {
+            console.log('[FIRESTORE] ICT Finance synced from cloud:', list.length);
+            callbacks.onIctFinanceChange!(list);
+          }
+        }
+      }, (err) => console.warn('[FIRESTORE] ICT Finance sync listener:', err));
+      unsubscribers.push(unsub);
+    }
+
+    // 14. Pangkalan Data Carian Murid (Student Database - Live Cloud Sync)
+    if (callbacks.onStudentsChange) {
+      const unsub = onSnapshot(doc(db, 'school_data', 'students'), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          const list = (data.items || data.students) as StudentRecord[];
+          if (Array.isArray(list)) {
+            console.log('[FIRESTORE] Students database synced from cloud:', list.length);
+            callbacks.onStudentsChange!(list);
+          }
+        }
+      }, (err) => console.warn('[FIRESTORE] Students database sync listener:', err));
+      unsubscribers.push(unsub);
+    }
+
+    // 15. Gambar Murid Carian Murid (Student Photos Map - Live Cloud Sync)
+    if (callbacks.onStudentPhotosChange) {
+      const unsub = onSnapshot(doc(db, 'school_data', 'student_photos'), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data && data.photos && typeof data.photos === 'object') {
+            console.log('[FIRESTORE] Student photos map synced from cloud');
+            callbacks.onStudentPhotosChange!(data.photos as Record<string, string>);
+          }
+        }
+      }, (err) => console.warn('[FIRESTORE] Student photos sync listener:', err));
       unsubscribers.push(unsub);
     }
 
@@ -412,4 +477,319 @@ export function subscribeToIctBookings(callback: (bookings: IctBookingRecord[]) 
     return () => {};
   }
 }
+
+// ==========================================
+// 1. KEWANGAN ICT (ICT Finance & Cash Flow Cloud Sync)
+// ==========================================
+
+/**
+ * Tolak kemaskini Penyata & Aliran Tunai ICT terus ke Firebase Firestore
+ */
+export async function pushIctFinanceToFirestore(records: IctCashFlowRecord[]): Promise<boolean> {
+  if (!isFirebaseEnabled()) return false;
+  const db = getFirebaseDb();
+  if (!db) return false;
+
+  try {
+    const docRef = doc(db, 'school_data', 'ict_finance');
+    await setDoc(docRef, {
+      items: records,
+      records: records,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+    console.log(`[FIRESTORE] Successfully pushed ${records.length} ICT finance records to cloud`);
+    return true;
+  } catch (err) {
+    console.warn('[FIRESTORE ERROR] Gagal menyimpan kewangan ICT ke cloud:', err);
+    return false;
+  }
+}
+
+/**
+ * Dapatkan rekod kewangan ICT terkini terus daripada Firebase Firestore
+ */
+export async function fetchIctFinanceFromFirestore(): Promise<IctCashFlowRecord[] | null> {
+  if (!isFirebaseEnabled()) return null;
+  const db = getFirebaseDb();
+  if (!db) return null;
+
+  try {
+    const docRef = doc(db, 'school_data', 'ict_finance');
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      const list = (data.items || data.records) as IctCashFlowRecord[];
+      if (Array.isArray(list)) {
+        return list;
+      }
+    }
+  } catch (err) {
+    console.warn('[FIRESTORE] Failed to fetch ICT finance:', err);
+  }
+  return null;
+}
+
+/**
+ * Langganan masa nyata (Real-time listener) terus untuk Kewangan ICT
+ */
+export function subscribeToIctFinance(callback: (records: IctCashFlowRecord[]) => void): () => void {
+  if (!isFirebaseEnabled()) return () => {};
+  const db = getFirebaseDb();
+  if (!db) return () => {};
+
+  try {
+    const docRef = doc(db, 'school_data', 'ict_finance');
+    const unsub = onSnapshot(docRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        const list = (data.items || data.records) as IctCashFlowRecord[];
+        if (Array.isArray(list)) {
+          callback(list);
+        }
+      }
+    }, (err) => {
+      console.warn('[FIRESTORE] Direct ICT finance subscription error:', err);
+    });
+    return unsub;
+  } catch (err) {
+    console.warn('[FIRESTORE] Unable to set up ICT finance listener:', err);
+    return () => {};
+  }
+}
+
+// ==========================================
+// 2. e-KEHADIRAN (Attendance & Absence Records Cloud Sync)
+// ==========================================
+
+/**
+ * Tolak kemaskini rekod e-Kehadiran / Ketidakhadiran Murid terus ke Firebase Firestore
+ */
+export async function pushAbsenceRecordsToFirestore(records: StudentAbsenceRecord[]): Promise<boolean> {
+  if (!isFirebaseEnabled()) return false;
+  const db = getFirebaseDb();
+  if (!db) return false;
+
+  try {
+    const docRef = doc(db, 'school_data', 'attendance_absence');
+    await setDoc(docRef, {
+      items: records,
+      records: records,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+    console.log(`[FIRESTORE] Successfully pushed ${records.length} e-kehadiran absence records to cloud`);
+    return true;
+  } catch (err) {
+    console.warn('[FIRESTORE ERROR] Gagal menyimpan e-kehadiran ke cloud:', err);
+    return false;
+  }
+}
+
+/**
+ * Dapatkan rekod e-kehadiran terkini terus daripada Firebase Firestore
+ */
+export async function fetchAbsenceRecordsFromFirestore(): Promise<StudentAbsenceRecord[] | null> {
+  if (!isFirebaseEnabled()) return null;
+  const db = getFirebaseDb();
+  if (!db) return null;
+
+  try {
+    const docRef = doc(db, 'school_data', 'attendance_absence');
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      const list = (data.items || data.records) as StudentAbsenceRecord[];
+      if (Array.isArray(list)) {
+        return list;
+      }
+    }
+  } catch (err) {
+    console.warn('[FIRESTORE] Failed to fetch absence records:', err);
+  }
+  return null;
+}
+
+/**
+ * Langganan masa nyata (Real-time listener) terus untuk e-Kehadiran
+ */
+export function subscribeToAbsenceRecords(callback: (records: StudentAbsenceRecord[]) => void): () => void {
+  if (!isFirebaseEnabled()) return () => {};
+  const db = getFirebaseDb();
+  if (!db) return () => {};
+
+  try {
+    const docRef = doc(db, 'school_data', 'attendance_absence');
+    const unsub = onSnapshot(docRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        const list = (data.items || data.records) as StudentAbsenceRecord[];
+        if (Array.isArray(list)) {
+          callback(list);
+        }
+      }
+    }, (err) => {
+      console.warn('[FIRESTORE] Direct absence records subscription error:', err);
+    });
+    return unsub;
+  } catch (err) {
+    console.warn('[FIRESTORE] Unable to set up absence records listener:', err);
+    return () => {};
+  }
+}
+
+// ==========================================
+// 3. CARIAN MURID & GAMBAR MURID (Student Database & Photos Cloud Sync)
+// ==========================================
+
+/**
+ * Tolak kemaskini senarai murid terus ke Firebase Firestore
+ */
+export async function pushStudentsToFirestore(students: StudentRecord[]): Promise<boolean> {
+  if (!isFirebaseEnabled()) return false;
+  const db = getFirebaseDb();
+  if (!db) return false;
+
+  try {
+    const docRef = doc(db, 'school_data', 'students');
+    await setDoc(docRef, {
+      items: students,
+      students: students,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+    console.log(`[FIRESTORE] Successfully pushed ${students.length} students to cloud`);
+    return true;
+  } catch (err) {
+    console.warn('[FIRESTORE ERROR] Gagal menyimpan senarai murid ke cloud:', err);
+    return false;
+  }
+}
+
+/**
+ * Dapatkan data carian murid terkini terus daripada Firestore
+ */
+export async function fetchStudentsFromFirestore(): Promise<StudentRecord[] | null> {
+  if (!isFirebaseEnabled()) return null;
+  const db = getFirebaseDb();
+  if (!db) return null;
+
+  try {
+    const docRef = doc(db, 'school_data', 'students');
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      const list = (data.items || data.students) as StudentRecord[];
+      if (Array.isArray(list)) {
+        return list;
+      }
+    }
+  } catch (err) {
+    console.warn('[FIRESTORE] Failed to fetch students:', err);
+  }
+  return null;
+}
+
+/**
+ * Langganan masa nyata terus untuk Carian Murid
+ */
+export function subscribeToStudents(callback: (students: StudentRecord[]) => void): () => void {
+  if (!isFirebaseEnabled()) return () => {};
+  const db = getFirebaseDb();
+  if (!db) return () => {};
+
+  try {
+    const docRef = doc(db, 'school_data', 'students');
+    const unsub = onSnapshot(docRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        const list = (data.items || data.students) as StudentRecord[];
+        if (Array.isArray(list)) {
+          callback(list);
+        }
+      }
+    }, (err) => {
+      console.warn('[FIRESTORE] Direct students subscription error:', err);
+    });
+    return unsub;
+  } catch (err) {
+    console.warn('[FIRESTORE] Unable to set up students listener:', err);
+    return () => {};
+  }
+}
+
+/**
+ * Simpan satu gambar murid terus ke Awan Firestore (Kamus Gambar Murid Silang-Peranti)
+ */
+export async function saveSingleStudentPhotoToFirestore(studentKey: string, photoUrl: string): Promise<boolean> {
+  if (!isFirebaseEnabled()) return false;
+  const db = getFirebaseDb();
+  if (!db) return false;
+
+  try {
+    const docRef = doc(db, 'school_data', 'student_photos');
+    const snap = await getDoc(docRef);
+    const existingPhotos: Record<string, string> = snap.exists() && snap.data().photos ? { ...snap.data().photos } : {};
+    existingPhotos[studentKey] = photoUrl;
+
+    await setDoc(docRef, {
+      photos: existingPhotos,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+
+    console.log(`[FIRESTORE] Saved photo for student key ${studentKey} to cloud`);
+    return true;
+  } catch (err) {
+    console.warn('[FIRESTORE ERROR] Gagal menyimpan gambar murid ke cloud:', err);
+    return false;
+  }
+}
+
+/**
+ * Dapatkan kamus gambar murid daripada Firestore
+ */
+export async function fetchStudentPhotosFromFirestore(): Promise<Record<string, string> | null> {
+  if (!isFirebaseEnabled()) return null;
+  const db = getFirebaseDb();
+  if (!db) return null;
+
+  try {
+    const docRef = doc(db, 'school_data', 'student_photos');
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      if (data && data.photos && typeof data.photos === 'object') {
+        return data.photos as Record<string, string>;
+      }
+    }
+  } catch (err) {
+    console.warn('[FIRESTORE] Failed to fetch student photos map:', err);
+  }
+  return null;
+}
+
+/**
+ * Langganan masa nyata untuk kemaskini gambar murid (Auto-sync silang peranti)
+ */
+export function subscribeToStudentPhotos(callback: (photos: Record<string, string>) => void): () => void {
+  if (!isFirebaseEnabled()) return () => {};
+  const db = getFirebaseDb();
+  if (!db) return () => {};
+
+  try {
+    const docRef = doc(db, 'school_data', 'student_photos');
+    const unsub = onSnapshot(docRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data && data.photos && typeof data.photos === 'object') {
+          callback(data.photos as Record<string, string>);
+        }
+      }
+    }, (err) => {
+      console.warn('[FIRESTORE] Direct student photos subscription error:', err);
+    });
+    return unsub;
+  } catch (err) {
+    console.warn('[FIRESTORE] Unable to set up student photos listener:', err);
+    return () => {};
+  }
+}
+
 
