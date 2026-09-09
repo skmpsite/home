@@ -35,7 +35,7 @@ export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({ isOpen, onClos
         <div className="flex flex-col items-center text-center mb-6">
           <div className="relative w-20 h-20 rounded-2xl bg-slate-800 p-2 shadow-xl border-2 border-yellow-400/60 mb-3 flex items-center justify-center overflow-hidden">
             <img
-              src="/icon-192.png"
+              src="./icon-192.png"
               alt="Logo SK Merbau Pulas"
               className="w-full h-full object-contain"
             />

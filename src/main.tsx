@@ -6,8 +6,9 @@ import './index.css';
 // Register Service Worker for mobile PWA support & home screen icons
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
+    // Relative path ensures registration succeeds on GitHub Pages repo subpaths (e.g. /home/) and root domains
     navigator.serviceWorker
-      .register('/sw.js')
+      .register('./sw.js')
       .then((reg) => {
         console.log('SKMP PWA Service Worker registered:', reg.scope);
       })
