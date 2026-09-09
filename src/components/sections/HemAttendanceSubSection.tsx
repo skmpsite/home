@@ -48,7 +48,9 @@ import {
 import { StudentRecord, StudentAbsenceRecord, SchoolHoliday, UserRole, isTeacherRole } from '../../types';
 import {
   fetchAbsenceRecordsFromFirestore,
-  subscribeToAbsenceRecords
+  subscribeToAbsenceRecords,
+  pushAbsenceRecordsToFirestore,
+  pushSingleAbsenceRecordToFirestore
 } from '../../utils/firebaseRealtime';
 import {
   saveAbsenceRecords,
@@ -120,10 +122,19 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
 
   // Real-time Firestore sync & Broadcast listener for e-kehadiran
   useEffect(() => {
+    // 0. Fetch terkini serta-merta dari cloud semasa komponen dibuka
+    fetchAbsenceRecordsFromFirestore().then((records) => {
+      if (Array.isArray(records) && records.length > 0) {
+        saveAbsenceRecords(records, true);
+        window.dispatchEvent(new CustomEvent('skmp_attendance_synced', { detail: records }));
+      }
+    }).catch(() => {});
+
     // 1. Direct Firestore snapshot listener
     const unsub = subscribeToAbsenceRecords((records) => {
       if (Array.isArray(records)) {
         saveAbsenceRecords(records, true);
+        window.dispatchEvent(new CustomEvent('skmp_attendance_synced', { detail: records }));
       }
     });
 
@@ -134,7 +145,7 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
         bc = new BroadcastChannel(BROADCAST_CHANNEL_ATTENDANCE);
         bc.onmessage = (evt) => {
           if (evt.data?.type === 'ATTENDANCE_UPDATED' && Array.isArray(evt.data?.records)) {
-            // Already synced in memory
+            window.dispatchEvent(new CustomEvent('skmp_attendance_synced', { detail: evt.data.records }));
           }
         };
       }
@@ -154,6 +165,7 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
       const records = await fetchAbsenceRecordsFromFirestore();
       if (Array.isArray(records)) {
         saveAbsenceRecords(records, true);
+        window.dispatchEvent(new CustomEvent('skmp_attendance_synced', { detail: records }));
         setCloudToast(`Penyegerakan Awan Berjaya! (${records.length} rekod ketidakhadiran)`);
       } else {
         setCloudToast('Penyegerakan Awan selesai.');
@@ -457,24 +469,66 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     }
   };
 
-  // Handle File / Medical Slip Upload (Base64)
+  // Handle File / Medical Slip Upload (Base64 with Canvas Compression for Fast Cloud Sync)
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Saiz fail melebihi 5MB. Sila muat naik imej atau dokumen yang lebih kecil.');
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Saiz fail melebihi 10MB. Sila muat naik imej atau dokumen yang lebih kecil.');
       return;
     }
 
     setFormAttachmentName(file.name);
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setFormAttachmentUrl(reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
+
+    // If image, compress via canvas to ensure small payload (<60KB) for instant Firestore sync
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_DIM = 900;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+              if (width > MAX_DIM) {
+                height = Math.round((height * MAX_DIM) / width);
+                width = MAX_DIM;
+              }
+            } else {
+              if (height > MAX_DIM) {
+                width = Math.round((width * MAX_DIM) / height);
+                height = MAX_DIM;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, width, height);
+              const compressed = canvas.toDataURL('image/jpeg', 0.65);
+              setFormAttachmentUrl(compressed);
+            } else {
+              setFormAttachmentUrl(reader.result as string);
+            }
+          };
+          img.src = reader.result;
+        }
+      };
+      reader.readAsDataURL(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          setFormAttachmentUrl(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   // Calculate days difference
@@ -576,9 +630,9 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
         reasonDetails: formReasonDetails.trim(),
         parentName: formParentName.trim(),
         parentPhone: formParentPhone.trim(),
-        parentRelationship: formParentRel,
-        attachmentUrl: formAttachmentUrl || undefined,
-        attachmentName: formAttachmentName || undefined,
+        parentRelationship: formParentRel || 'Waris',
+        attachmentUrl: formAttachmentUrl || '',
+        attachmentName: formAttachmentName || '',
         status: 'disahkan',
         verifiedBy:
           attendanceAuthUser === 'skmp'
@@ -592,6 +646,16 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
             : 'Sistem e-Kehadiran Waris',
         verifiedAt: new Date().toISOString()
       });
+
+      // Segerak terus ke Firestore dan siarkan ke seluruh sistem serta-merta
+      const updatedList = [newRecord, ...absenceRecords];
+      pushSingleAbsenceRecordToFirestore(newRecord).catch((err) => {
+        console.warn('Direct single push error:', err);
+      });
+      pushAbsenceRecordsToFirestore(updatedList).catch((err) => {
+        console.warn('Direct bulk push error:', err);
+      });
+      window.dispatchEvent(new CustomEvent('skmp_attendance_synced', { detail: updatedList }));
 
       setSubmittedReceipt(newRecord);
 

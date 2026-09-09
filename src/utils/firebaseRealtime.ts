@@ -30,6 +30,20 @@ import {
 } from '../types';
 
 /**
+ * Membersihkan objek daripada nilai undefined dan rekursif menukar ke null / membuang
+ * agar Firebase Firestore tidak menolak simpanan dengan ralat:
+ * "Unsupported field value: undefined"
+ */
+export function cleanForFirestore<T>(data: T): T {
+  if (data === undefined) return null as unknown as T;
+  try {
+    return JSON.parse(JSON.stringify(data));
+  } catch {
+    return data;
+  }
+}
+
+/**
  * Tolak kemaskini ke Firestore (Real-time Cloud Sync)
  */
 export async function pushToFirestore(collectionName: string, docId: string, data: any): Promise<boolean> {
@@ -38,8 +52,9 @@ export async function pushToFirestore(collectionName: string, docId: string, dat
   if (!db) return false;
 
   try {
+    const cleanData = cleanForFirestore(data);
     const docRef = doc(db, collectionName, docId);
-    await setDoc(docRef, { ...data, updatedAt: new Date().toISOString() }, { merge: true });
+    await setDoc(docRef, { ...cleanData, updatedAt: new Date().toISOString() }, { merge: true });
     console.log(`[FIRESTORE] Saved ${collectionName}/${docId}`);
     return true;
   } catch (err) {
@@ -122,22 +137,25 @@ export async function syncAllDataToFirestore(data: {
       }, { merge: true }));
     }
     if (data.absenceRecords) {
+      const cleanAbsence = cleanForFirestore(data.absenceRecords);
       promises.push(setDoc(doc(db, 'school_data', 'attendance_absence'), {
-        items: data.absenceRecords,
-        records: data.absenceRecords,
+        items: cleanAbsence,
+        records: cleanAbsence,
         updatedAt: new Date().toISOString()
       }, { merge: true }));
     }
     if (data.ictCashFlow) {
+      const cleanFinance = cleanForFirestore(data.ictCashFlow);
       promises.push(setDoc(doc(db, 'school_data', 'ict_finance'), {
-        items: data.ictCashFlow,
-        records: data.ictCashFlow,
+        items: cleanFinance,
+        records: cleanFinance,
         updatedAt: new Date().toISOString()
       }, { merge: true }));
     }
     if (data.students) {
+      const cleanStudents = cleanForFirestore(data.students);
       promises.push(setDoc(doc(db, 'school_data', 'students'), {
-        items: data.students,
+        items: cleanStudents,
         updatedAt: new Date().toISOString()
       }, { merge: true }));
     }
@@ -415,9 +433,10 @@ export async function pushIctBookingsToFirestore(bookings: IctBookingRecord[]): 
   if (!db) return false;
 
   try {
+    const cleanBookings = cleanForFirestore(bookings);
     const docRef = doc(db, 'school_data', 'ict_bookings');
     await setDoc(docRef, {
-      items: bookings,
+      items: cleanBookings,
       updatedAt: new Date().toISOString()
     }, { merge: true });
     console.log(`[FIRESTORE] Successfully pushed ${bookings.length} ICT bookings to cloud`);
@@ -491,10 +510,11 @@ export async function pushIctFinanceToFirestore(records: IctCashFlowRecord[]): P
   if (!db) return false;
 
   try {
+    const cleanRecords = cleanForFirestore(records);
     const docRef = doc(db, 'school_data', 'ict_finance');
     await setDoc(docRef, {
-      items: records,
-      records: records,
+      items: cleanRecords,
+      records: cleanRecords,
       updatedAt: new Date().toISOString()
     }, { merge: true });
     console.log(`[FIRESTORE] Successfully pushed ${records.length} ICT finance records to cloud`);
@@ -562,6 +582,28 @@ export function subscribeToIctFinance(callback: (records: IctCashFlowRecord[]) =
 // ==========================================
 
 /**
+ * Tolak SATU rekod e-Kehadiran / Ketidakhadiran baru terus ke Firebase Firestore
+ */
+export async function pushSingleAbsenceRecordToFirestore(record: StudentAbsenceRecord): Promise<boolean> {
+  if (!isFirebaseEnabled()) return false;
+  const db = getFirebaseDb();
+  if (!db) return false;
+
+  try {
+    const cleanRecord = cleanForFirestore(record);
+    // Simpan ke dokumen individu jika ada id
+    if (cleanRecord && cleanRecord.id) {
+      const itemRef = doc(db, 'attendance_records', cleanRecord.id);
+      await setDoc(itemRef, { ...cleanRecord, updatedAt: new Date().toISOString() }, { merge: true });
+    }
+    return true;
+  } catch (err) {
+    console.warn('[FIRESTORE ERROR] Gagal menyimpan rekod individu e-kehadiran:', err);
+    return false;
+  }
+}
+
+/**
  * Tolak kemaskini rekod e-Kehadiran / Ketidakhadiran Murid terus ke Firebase Firestore
  */
 export async function pushAbsenceRecordsToFirestore(records: StudentAbsenceRecord[]): Promise<boolean> {
@@ -570,10 +612,11 @@ export async function pushAbsenceRecordsToFirestore(records: StudentAbsenceRecor
   if (!db) return false;
 
   try {
+    const cleanRecords = cleanForFirestore(records);
     const docRef = doc(db, 'school_data', 'attendance_absence');
     await setDoc(docRef, {
-      items: records,
-      records: records,
+      items: cleanRecords,
+      records: cleanRecords,
       updatedAt: new Date().toISOString()
     }, { merge: true });
     console.log(`[FIRESTORE] Successfully pushed ${records.length} e-kehadiran absence records to cloud`);
@@ -649,10 +692,11 @@ export async function pushStudentsToFirestore(students: StudentRecord[]): Promis
   if (!db) return false;
 
   try {
+    const cleanStudents = cleanForFirestore(students);
     const docRef = doc(db, 'school_data', 'students');
     await setDoc(docRef, {
-      items: students,
-      students: students,
+      items: cleanStudents,
+      students: cleanStudents,
       updatedAt: new Date().toISOString()
     }, { merge: true });
     console.log(`[FIRESTORE] Successfully pushed ${students.length} students to cloud`);
