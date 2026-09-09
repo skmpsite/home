@@ -40,7 +40,9 @@ import {
   SlidersHorizontal,
   ChevronDown,
   ChevronUp,
-  RotateCcw
+  RotateCcw,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { getYearSortRank, getClassSortRank, ORDERED_CLASS_PILLS, getStudentClassCode } from '../../utils/studentHelpers';
 import { StudentPhotoCaptureModal } from './StudentPhotoCaptureModal';
@@ -70,6 +72,7 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
   const [selectedStudent, setSelectedStudent] = useState<FullStudentRecord | null>(null);
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isFitScreen, setIsFitScreen] = useState<boolean>(true);
 
   // Photo Capture Modal State
   const [photoModalStudent, setPhotoModalStudent] = useState<FullStudentRecord | null>(null);
@@ -82,6 +85,7 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
   // Load students on open
   useEffect(() => {
     if (isOpen) {
+      setIsFitScreen(true);
       loadData(false);
 
       // Background sync photos from Firestore to local
@@ -358,7 +362,13 @@ Alamat: ${s.fullAddress || '-'}`;
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-0 sm:p-4 lg:p-6 animate-fadeIn">
+    <div
+      className={`fixed inset-0 z-50 overflow-hidden bg-slate-950 animate-fadeIn ${
+        isFitScreen
+          ? 'w-full h-full h-[100dvh] p-0 flex flex-col'
+          : 'bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-0 sm:p-4 lg:p-6'
+      }`}
+    >
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-4 right-4 sm:top-6 sm:right-6 z-[60] bg-emerald-600 text-white px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl shadow-2xl border border-emerald-400 flex items-center gap-2 text-xs sm:text-sm font-bold animate-fadeIn">
@@ -367,9 +377,15 @@ Alamat: ${s.fullAddress || '-'}`;
         </div>
       )}
 
-      <div className="bg-slate-900 border-0 sm:border sm:border-white/20 rounded-none sm:rounded-3xl w-full max-w-7xl h-[100dvh] sm:h-auto sm:max-h-[94vh] flex flex-col shadow-2xl overflow-hidden relative">
+      <div
+        className={`bg-slate-900 flex flex-col shadow-2xl overflow-hidden relative ${
+          isFitScreen
+            ? 'w-full h-full border-0 rounded-none'
+            : 'border-0 sm:border sm:border-white/20 rounded-none sm:rounded-3xl w-full max-w-7xl h-[100dvh] sm:h-auto sm:max-h-[94vh]'
+        }`}
+      >
         {/* Top Header Bar */}
-        <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 px-3 py-2.5 sm:p-5 border-b border-white/10 flex items-center justify-between gap-2 sm:gap-4 flex-shrink-0">
+        <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 px-3 py-2.5 sm:px-6 sm:py-4 border-b border-white/10 flex items-center justify-between gap-2 sm:gap-4 flex-shrink-0">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-md border border-emerald-400/40">
               <Users className="w-4 h-4 sm:w-6 sm:h-6" />
@@ -383,6 +399,12 @@ Alamat: ${s.fullAddress || '-'}`;
                 <span className="text-[10px] text-slate-300 font-mono hidden sm:inline">
                   {students.length > 0 ? `${students.length} Murid Terdaftar` : 'Memuat data...'}
                 </span>
+                {isFitScreen && (
+                  <span className="hidden lg:inline-flex px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 text-[10px] font-bold border border-blue-400/30 items-center gap-1">
+                    <Maximize2 className="w-2.5 h-2.5 text-blue-300" />
+                    <span>Paparan Penuh Fit Screen</span>
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <h2 className="text-sm sm:text-xl font-black text-white tracking-tight truncate">
@@ -403,7 +425,7 @@ Alamat: ${s.fullAddress || '-'}`;
             <button
               onClick={() => loadData(true)}
               disabled={refreshing}
-              className="p-2 sm:px-3 sm:py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 border border-emerald-400 shadow-md"
+              className="p-2 sm:px-3 sm:py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 border border-emerald-400 shadow-md cursor-pointer"
               title="Segar semula data terus daripada Google Sheets"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
@@ -421,12 +443,33 @@ Alamat: ${s.fullAddress || '-'}`;
               <span className="hidden sm:inline">Google Sheets</span>
             </a>
 
+            {/* Fit Screen Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setIsFitScreen((prev) => !prev)}
+              className="p-2 sm:px-3 sm:py-2 bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-white/20 cursor-pointer"
+              title={isFitScreen ? 'Tukar kepada Mod Tetingkap (Window)' : 'Penuhkan Saiz Skrin (Fit Screen)'}
+            >
+              {isFitScreen ? (
+                <>
+                  <Minimize2 className="w-3.5 h-3.5 text-yellow-300" />
+                  <span className="hidden md:inline">Fit Skrin</span>
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="w-3.5 h-3.5 text-yellow-300" />
+                  <span className="hidden md:inline">Penuh Skrin</span>
+                </>
+              )}
+            </button>
+
             <button
               onClick={onClose}
-              className="p-2 bg-white/10 hover:bg-red-600/80 text-slate-300 hover:text-white rounded-xl transition border border-white/10"
-              title="Tutup Portal"
+              className="p-2 sm:px-3 sm:py-2 bg-white/10 hover:bg-red-600 text-slate-300 hover:text-white rounded-xl transition border border-white/10 flex items-center gap-1.5 text-xs font-bold cursor-pointer"
+              title="Tutup Portal Carian Murid"
             >
-              <X className="w-4 h-4 sm:w-5 sm:h-5" />
+              <X className="w-4 h-4 sm:w-5 sm:h-5 text-rose-300 group-hover:text-white" />
+              <span className="hidden sm:inline">Tutup</span>
             </button>
           </div>
         </div>
@@ -718,7 +761,13 @@ Alamat: ${s.fullAddress || '-'}`;
               </div>
 
               {/* Student Cards Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              <div
+                className={`grid gap-3.5 sm:gap-4 ${
+                  isFitScreen
+                    ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
+                    : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+                }`}
+              >
                 {filteredStudents.map((student) => {
                   const isMale = student.gender === 'LELAKI';
                   const classCode = getStudentClassCode(student);
