@@ -160,6 +160,7 @@ async function startServer() {
   const DATA_DIR = path.join(process.cwd(), "data");
   const SIGNAGE_FILE = path.join(DATA_DIR, "signage-live.json");
   const ICT_BOOKINGS_FILE = path.join(DATA_DIR, "ict-bookings-live.json");
+  const ATTENDANCE_FILE = path.join(DATA_DIR, "attendance-live.json");
 
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -211,6 +212,32 @@ async function startServer() {
       );
     } catch (e) {
       console.error("Error saving initial ict-bookings file:", e);
+    }
+  }
+
+  // e-Kehadiran Server-Side Shared Storage (Shared across all devices/users)
+  let liveAttendanceRecords: any[] = [];
+  let attendanceLastUpdated = Date.now();
+
+  if (fs.existsSync(ATTENDANCE_FILE)) {
+    try {
+      const fileData = JSON.parse(fs.readFileSync(ATTENDANCE_FILE, "utf-8"));
+      if (fileData && Array.isArray(fileData.records)) {
+        liveAttendanceRecords = fileData.records;
+        attendanceLastUpdated = fileData.lastUpdated || Date.now();
+      }
+    } catch (e) {
+      console.error("Error reading attendance-live.json:", e);
+    }
+  } else {
+    try {
+      fs.writeFileSync(
+        ATTENDANCE_FILE,
+        JSON.stringify({ records: liveAttendanceRecords, lastUpdated: attendanceLastUpdated }, null, 2),
+        "utf-8"
+      );
+    } catch (e) {
+      console.error("Error saving initial attendance file:", e);
     }
   }
 
@@ -292,6 +319,90 @@ async function startServer() {
       }
 
       res.status(400).json({ success: false, error: "Format data tempahan tidak sah (array diperlukan)." });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // GET Live e-Kehadiran Records (Shared across all devices/users)
+  app.get("/api/attendance", (_req, res) => {
+    res.json({
+      success: true,
+      records: liveAttendanceRecords,
+      lastUpdated: attendanceLastUpdated
+    });
+  });
+
+  // POST Live e-Kehadiran Record(s) (Waris/Guru submits or updates, synced to all devices)
+  app.post("/api/attendance", (req, res) => {
+    try {
+      const { records, record } = req.body;
+      let hasChanges = false;
+      if (Array.isArray(records)) {
+        const map = new Map<string, any>();
+        liveAttendanceRecords.forEach((r: any) => { if (r && r.id) map.set(r.id, r); });
+        records.forEach((r: any) => { if (r && r.id) map.set(r.id, r); });
+        liveAttendanceRecords = Array.from(map.values()).sort((a: any, b: any) =>
+          (b.createdAt || "").localeCompare(a.createdAt || "")
+        );
+        hasChanges = true;
+      } else if (record && record.id) {
+        const idx = liveAttendanceRecords.findIndex((r: any) => r.id === record.id);
+        if (idx >= 0) {
+          liveAttendanceRecords[idx] = record;
+        } else {
+          liveAttendanceRecords.unshift(record);
+        }
+        hasChanges = true;
+      }
+
+      if (hasChanges) {
+        attendanceLastUpdated = Date.now();
+        try {
+          fs.writeFileSync(
+            ATTENDANCE_FILE,
+            JSON.stringify({ records: liveAttendanceRecords, lastUpdated: attendanceLastUpdated }, null, 2),
+            "utf-8"
+          );
+        } catch (saveErr) {
+          console.error("Failed to write to attendance-live.json:", saveErr);
+        }
+        console.log(`[LIVE ATTENDANCE] Synced ${liveAttendanceRecords.length} records across all devices at ${new Date().toISOString()}`);
+      }
+
+      return res.json({
+        success: true,
+        count: liveAttendanceRecords.length,
+        lastUpdated: attendanceLastUpdated
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // DELETE Live e-Kehadiran Record
+  app.delete("/api/attendance/:id", (req, res) => {
+    try {
+      const { id } = req.params;
+      const initialLen = liveAttendanceRecords.length;
+      liveAttendanceRecords = liveAttendanceRecords.filter((r: any) => r.id !== id);
+      if (liveAttendanceRecords.length !== initialLen) {
+        attendanceLastUpdated = Date.now();
+        try {
+          fs.writeFileSync(
+            ATTENDANCE_FILE,
+            JSON.stringify({ records: liveAttendanceRecords, lastUpdated: attendanceLastUpdated }, null, 2),
+            "utf-8"
+          );
+        } catch (saveErr) {
+          console.error("Failed to write to attendance-live.json:", saveErr);
+        }
+      }
+      return res.json({
+        success: true,
+        count: liveAttendanceRecords.length,
+        lastUpdated: attendanceLastUpdated
+      });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }

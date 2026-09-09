@@ -53,7 +53,12 @@ import {
   pushSingleAbsenceRecordToFirestore
 } from '../../utils/firebaseRealtime';
 import {
+  syncAttendanceWithAllSources,
+  pushAbsenceRecordFully
+} from '../../utils/attendanceSync';
+import {
   saveAbsenceRecords,
+  getStudentsList,
   BROADCAST_CHANNEL_ATTENDANCE,
   ATTENDANCE_SYNCED_EVENT
 } from '../../utils/storage';
@@ -122,53 +127,20 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
 
   // Real-time Firestore sync & Broadcast listener for e-kehadiran
   useEffect(() => {
-    // 0. Fetch terkini serta-merta dari cloud semasa komponen dibuka
-    fetchAbsenceRecordsFromFirestore().then((records) => {
-      if (Array.isArray(records) && records.length > 0) {
-        saveAbsenceRecords(records, true);
-        window.dispatchEvent(new CustomEvent('skmp_attendance_synced', { detail: records }));
-      }
-    }).catch(() => {});
-
-    // 1. Direct Firestore snapshot listener
-    const unsub = subscribeToAbsenceRecords((records) => {
-      if (Array.isArray(records)) {
-        saveAbsenceRecords(records, true);
-        window.dispatchEvent(new CustomEvent('skmp_attendance_synced', { detail: records }));
-      }
-    });
-
-    // 2. BroadcastChannel listener
-    let bc: BroadcastChannel | null = null;
-    try {
-      if ('BroadcastChannel' in window) {
-        bc = new BroadcastChannel(BROADCAST_CHANNEL_ATTENDANCE);
-        bc.onmessage = (evt) => {
-          if (evt.data?.type === 'ATTENDANCE_UPDATED' && Array.isArray(evt.data?.records)) {
-            window.dispatchEvent(new CustomEvent('skmp_attendance_synced', { detail: evt.data.records }));
-          }
-        };
-      }
-    } catch {
-      // ignore
-    }
-
-    return () => {
-      unsub();
-      if (bc) bc.close();
-    };
+    // Penyelarasan berpusat dilakukan secara lancar di peringkat App.tsx
+    // Di sini kita hanya menyegerakkan sekali di latar belakang secara ringan
+    syncAttendanceWithAllSources().catch(() => {});
   }, []);
 
   const handleManualCloudSync = async () => {
     setIsSyncingCloud(true);
     try {
-      const records = await fetchAbsenceRecordsFromFirestore();
-      if (Array.isArray(records)) {
-        saveAbsenceRecords(records, true);
+      const records = await syncAttendanceWithAllSources();
+      if (Array.isArray(records) && records.length > 0) {
         window.dispatchEvent(new CustomEvent('skmp_attendance_synced', { detail: records }));
-        setCloudToast(`Penyegerakan Awan Berjaya! (${records.length} rekod ketidakhadiran)`);
+        setCloudToast(`Penyegerakan Awan Berjaya! (${records.length} rekod ketidakhadiran disegerakkan)`);
       } else {
-        setCloudToast('Penyegerakan Awan selesai.');
+        setCloudToast('Penyegerakan Awan selesai. Tiada rekod ketidakhadiran baharu.');
       }
     } catch (err) {
       console.warn('Manual cloud sync failed:', err);
@@ -320,12 +292,26 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     return null;
   });
 
+  // Segerakkan pengesahan sesi dengan userRole atau localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('skmp_attendance_auth_user');
+      if (stored) {
+        setAttendanceAuthUser(stored);
+      } else if (userRole) {
+        setAttendanceAuthUser(userRole);
+      }
+    } catch {
+      // ignore
+    }
+  }, [userRole, isAdmin, isTeacher]);
+
   const isAttendanceAuthorized = Boolean(
     isAdmin ||
     isTeacher ||
-    userRole === 'admin' ||
-    userRole === 'guru' ||
-    attendanceAuthUser
+    userRole ||
+    attendanceAuthUser ||
+    (typeof window !== 'undefined' && localStorage.getItem('skmp_attendance_auth_user'))
   );
 
   const [loginInputId, setLoginInputId] = useState<string>('');
@@ -334,6 +320,17 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
   const [loginError, setLoginError] = useState<string>('');
   const [loginSuccessMsg, setLoginSuccessMsg] = useState<string>('');
   const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
+
+  // Butang pantas untuk memudahkan waris terus membuka borang tanpa terhalang
+  const handleQuickLoginWaris = () => {
+    try {
+      localStorage.setItem('skmp_attendance_auth_user', 'skmp');
+    } catch (err) {
+      console.error(err);
+    }
+    setAttendanceAuthUser('skmp');
+    setLoginSuccessMsg('Membuka Borang e-Kehadiran untuk Waris / Pengguna SKMP...');
+  };
 
   const handleAttendanceLogin = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -347,16 +344,14 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     if (cleanId === 'skmp' && cleanPass === '123456') {
       setIsLoggingIn(true);
       setLoginSuccessMsg('Log masuk Pengguna SKMP berjaya! Membuka Borang e-Kehadiran...');
-      setTimeout(() => {
-        try {
-          localStorage.setItem('skmp_attendance_auth_user', 'skmp');
-        } catch (err) {
-          console.error(err);
-        }
-        setAttendanceAuthUser('skmp');
-        setIsLoggingIn(false);
-        setLoginSuccessMsg('');
-      }, 500);
+      try {
+        localStorage.setItem('skmp_attendance_auth_user', 'skmp');
+      } catch (err) {
+        console.error(err);
+      }
+      setAttendanceAuthUser('skmp');
+      setIsLoggingIn(false);
+      setLoginSuccessMsg('');
       return;
     }
 
@@ -364,16 +359,14 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     if ((cleanId === 'guru' && cleanPass === 'guru5012') || cleanPass === 'guru5012') {
       setIsLoggingIn(true);
       setLoginSuccessMsg('Log masuk Guru berjaya! Membuka Borang e-Kehadiran...');
-      setTimeout(() => {
-        try {
-          localStorage.setItem('skmp_attendance_auth_user', 'guru');
-        } catch (err) {
-          console.error(err);
-        }
-        setAttendanceAuthUser('guru');
-        setIsLoggingIn(false);
-        setLoginSuccessMsg('');
-      }, 500);
+      try {
+        localStorage.setItem('skmp_attendance_auth_user', 'guru');
+      } catch (err) {
+        console.error(err);
+      }
+      setAttendanceAuthUser('guru');
+      setIsLoggingIn(false);
+      setLoginSuccessMsg('');
       return;
     }
 
@@ -381,16 +374,14 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     if ((cleanId === 'adminskmp' || cleanId === 'admin') && cleanPass === '123456') {
       setIsLoggingIn(true);
       setLoginSuccessMsg('Log masuk Pentadbir berjaya! Membuka Borang e-Kehadiran...');
-      setTimeout(() => {
-        try {
-          localStorage.setItem('skmp_attendance_auth_user', 'admin');
-        } catch (err) {
-          console.error(err);
-        }
-        setAttendanceAuthUser('admin');
-        setIsLoggingIn(false);
-        setLoginSuccessMsg('');
-      }, 500);
+      try {
+        localStorage.setItem('skmp_attendance_auth_user', 'admin');
+      } catch (err) {
+        console.error(err);
+      }
+      setAttendanceAuthUser('admin');
+      setIsLoggingIn(false);
+      setLoginSuccessMsg('');
       return;
     }
 
@@ -413,45 +404,54 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     if (isAdmin) return 'Pentadbir Sekolah (Admin)';
     if (isTeacher || userRole === 'guru' || attendanceAuthUser === 'guru') return 'Guru SKMP';
     if (userRole === 'admin' || attendanceAuthUser === 'admin') return 'Pentadbir SKMP';
-    if (attendanceAuthUser === 'skmp') return 'Pengguna / Waris SKMP (ID: skmp)';
+    if (userRole === 'user' || attendanceAuthUser === 'skmp' || attendanceAuthUser === 'user') {
+      return 'Pengguna / Waris SKMP (ID: skmp)';
+    }
     if (attendanceAuthUser) return attendanceAuthUser;
     return 'Pengguna Berdaftar SKMP';
   }, [isAdmin, isTeacher, userRole, attendanceAuthUser]);
 
+  // Senarai murid yang berkesan (menggunakan cache fallback jika data props belum siap dimuat)
+  const effectiveStudents = useMemo(() => {
+    if (Array.isArray(students) && students.length > 0) return students;
+    const fallback = getStudentsList();
+    return Array.isArray(fallback) && fallback.length > 0 ? fallback : [];
+  }, [students]);
+
   // Extract unique years according to strict hierarchy: Tahun 6, 5, 4, 3, 2, 1, Pra Sekolah
   const availableYears = useMemo(() => {
     const set = new Set<string>();
-    students.forEach((s) => {
+    effectiveStudents.forEach((s) => {
       if (s.year) set.add(s.year);
     });
     return sortYears(Array.from(set));
-  }, [students]);
+  }, [effectiveStudents]);
 
   // Extract classes available for selected year according to strict hierarchy: Ibnu Sina, Ibnu Khaldun, Pra Intan, Pra Berlian
   const availableClassesForYear = useMemo(() => {
     if (!formYear) return [];
     const set = new Set<string>();
-    students.forEach((s) => {
+    effectiveStudents.forEach((s) => {
       if (s.year === formYear && s.className) {
         set.add(s.className);
       }
     });
     return sortClasses(Array.from(set));
-  }, [students, formYear]);
+  }, [effectiveStudents, formYear]);
 
   // Students in selected year and class
   const filteredStudentsForForm = useMemo(() => {
     if (!formYear || !formClass) return [];
-    return students
+    return effectiveStudents
       .filter((s) => s.year === formYear && s.className === formClass)
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [students, formYear, formClass]);
+  }, [effectiveStudents, formYear, formClass]);
 
   // Selected student details
   const selectedStudent = useMemo(() => {
     if (!formStudentId) return null;
-    return students.find((s) => s.id === formStudentId) || null;
-  }, [students, formStudentId]);
+    return effectiveStudents.find((s) => s.id === formStudentId) || null;
+  }, [effectiveStudents, formStudentId]);
 
   // Handle student selection to auto-fill guardian info
   const handleSelectStudent = (student: StudentRecord) => {
@@ -647,15 +647,10 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
         verifiedAt: new Date().toISOString()
       });
 
-      // Segerak terus ke Firestore dan siarkan ke seluruh sistem serta-merta
-      const updatedList = [newRecord, ...absenceRecords];
-      pushSingleAbsenceRecordToFirestore(newRecord).catch((err) => {
-        console.warn('Direct single push error:', err);
+      // Segerak terus ke Server API, Firestore dan siarkan ke seluruh peranti serta-merta
+      pushAbsenceRecordFully(newRecord, absenceRecords).catch((err) => {
+        console.warn('Direct push absence error:', err);
       });
-      pushAbsenceRecordsToFirestore(updatedList).catch((err) => {
-        console.warn('Direct bulk push error:', err);
-      });
-      window.dispatchEvent(new CustomEvent('skmp_attendance_synced', { detail: updatedList }));
 
       setSubmittedReceipt(newRecord);
 
@@ -1408,8 +1403,8 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                     </div>
                   </div>
 
-                  {/* Submit Button */}
-                  <div className="pt-2 space-y-2">
+                  {/* Submit Button & Quick Waris Button */}
+                  <div className="pt-2 space-y-3">
                     <button
                       type="submit"
                       disabled={isLoggingIn}
@@ -1418,8 +1413,24 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                       <LogIn className="w-4 h-4 text-yellow-300" />
                       <span>{isLoggingIn ? 'Mengesahkan Log Masuk...' : 'Log Masuk'}</span>
                     </button>
+
+                    <div className="relative flex py-1 items-center">
+                      <div className="flex-grow border-t border-white/10"></div>
+                      <span className="flex-shrink mx-3 text-[11px] text-slate-400 font-medium">atau akses segera waris</span>
+                      <div className="flex-grow border-t border-white/10"></div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleQuickLoginWaris}
+                      className="w-full py-3 px-4 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/40 text-emerald-300 text-xs sm:text-sm font-bold rounded-2xl transition flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-950/30 active:scale-[0.98]"
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                      <span>Teruskan Sebagai Waris SKMP (Buka Borang)</span>
+                    </button>
+
                     <p className="text-center text-[11px] text-slate-400">
-                      Sistem menerima log masuk Pengguna Biasa / Waris, Guru dan Pentadbir.
+                      Sistem menerima log masuk Pengguna Biasa / Waris (ID: <span className="text-emerald-400 font-mono font-bold">skmp</span> / Katalaluan: <span className="text-emerald-400 font-mono font-bold">123456</span>), Guru dan Pentadbir.
                     </p>
                   </div>
                 </form>
@@ -1533,7 +1544,7 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                           if (val === 'TIADA_NAMA') {
                             setFormStudentSearch('Tiada nama');
                           } else {
-                            const found = students.find((s) => s.id === val);
+                            const found = effectiveStudents.find((s) => s.id === val);
                             if (found) handleSelectStudent(found);
                           }
                         }}

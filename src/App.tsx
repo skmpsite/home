@@ -87,6 +87,12 @@ import {
 import { saveIctBookings } from './utils/ictBookingHelpers';
 import { saveIctCashFlow } from './utils/ictFinanceHelpers';
 import { broadcastLiveSignage, fetchLiveSignageFromServer } from './utils/liveSignageSync';
+import {
+  startLiveAttendanceSync,
+  syncAttendanceWithAllSources,
+  pushAbsenceRecordFully,
+  deleteAbsenceRecordFully
+} from './utils/attendanceSync';
 import { Header } from './components/Header';
 import { Navbar, TabType } from './components/Navbar';
 import { HeroSection } from './components/sections/HeroSection';
@@ -486,15 +492,19 @@ export default function App() {
     // 4. Semak data serta-merta apabila pengguna membuka tab, fokus pelayar, atau peranti kembali aktif
     const handleImmediateSync = () => {
       refreshFromGoogleSheets();
-      fetchAbsenceRecordsFromFirestore().then((records) => {
+      syncAttendanceWithAllSources((records) => {
         if (Array.isArray(records) && records.length > 0) {
           setAbsenceRecords(records);
-          saveAbsenceRecords(records, true);
         }
       }).catch(() => {});
     };
 
-    // 5. Penyelarasan antara tab/tetingkap secara 0ms (segera)
+    // 5. Penyelarasan masa nyata pintar e-Kehadiran (Server API + Firestore + Cross-Device)
+    const unsubAttendanceSync = startLiveAttendanceSync((updatedRecords) => {
+      setAbsenceRecords(updatedRecords);
+    });
+
+    // 6. Penyelarasan antara tab/tetingkap secara 0ms (segera)
     const handleStorageEvent = (e: StorageEvent) => {
       if (e.key === 'skmp_staff_v1') setStaffList(loadStaff());
       if (e.key === 'skmp_profile_v1') setProfile(loadProfile());
@@ -514,8 +524,15 @@ export default function App() {
     const handleAttendanceSynced = (e: Event) => {
       const customEvt = e as CustomEvent<StudentAbsenceRecord[]>;
       if (Array.isArray(customEvt.detail)) {
-        setAbsenceRecords(customEvt.detail);
-        saveAbsenceRecords(customEvt.detail, true);
+        setAbsenceRecords((prev) => {
+          if (
+            prev.length === customEvt.detail.length &&
+            prev.every((p, idx) => p.id === customEvt.detail[idx]?.id && p.status === customEvt.detail[idx]?.status)
+          ) {
+            return prev;
+          }
+          return customEvt.detail;
+        });
       }
     };
 
@@ -549,6 +566,7 @@ export default function App() {
     return () => {
       clearInterval(interval);
       unsubFirestore();
+      unsubAttendanceSync();
       window.removeEventListener('visibilitychange', handleImmediateSync);
       window.removeEventListener('focus', handleImmediateSync);
       window.removeEventListener('online', handleImmediateSync);
@@ -754,28 +772,30 @@ export default function App() {
       createdAt: new Date().toISOString()
     };
 
-    const updated = [completeRecord, ...absenceRecords];
-    setAbsenceRecords(updated);
-    saveAbsenceRecords(updated);
-    pushSingleAbsenceRecordToFirestore(completeRecord).catch(() => {});
-    pushAbsenceRecordsToFirestore(updated).catch(() => {});
-    autoPushToCloud({ absenceRecords: updated });
+    const optimistic = [completeRecord, ...absenceRecords];
+    setAbsenceRecords(optimistic);
+    pushAbsenceRecordFully(completeRecord, absenceRecords).then((updated) => {
+      setAbsenceRecords(updated);
+    }).catch(() => {});
+    autoPushToCloud({ absenceRecords: optimistic });
     return completeRecord;
   };
 
   const handleUpdateAbsenceRecord = (updatedRecord: StudentAbsenceRecord) => {
     const updated = absenceRecords.map((r) => (r.id === updatedRecord.id ? updatedRecord : r));
     setAbsenceRecords(updated);
-    saveAbsenceRecords(updated);
-    pushAbsenceRecordsToFirestore(updated).catch(() => {});
+    pushAbsenceRecordFully(updatedRecord, updated).then((synced) => {
+      setAbsenceRecords(synced);
+    }).catch(() => {});
     autoPushToCloud({ absenceRecords: updated });
   };
 
   const handleDeleteAbsenceRecord = (id: string) => {
     const updated = absenceRecords.filter((r) => r.id !== id);
     setAbsenceRecords(updated);
-    saveAbsenceRecords(updated);
-    pushAbsenceRecordsToFirestore(updated).catch(() => {});
+    deleteAbsenceRecordFully(id, absenceRecords).then((synced) => {
+      setAbsenceRecords(synced);
+    }).catch(() => {});
     autoPushToCloud({ absenceRecords: updated });
   };
 

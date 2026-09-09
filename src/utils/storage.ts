@@ -634,19 +634,29 @@ export function getAbsenceRecords(): StudentAbsenceRecord[] {
   return cleaned;
 }
 
-export function saveAbsenceRecords(records: StudentAbsenceRecord[], skipCloudPush = false): void {
+let isDispatchingAttendance = false;
+
+export function saveAbsenceRecords(records: StudentAbsenceRecord[], skipCloudPush = false, notify = true): void {
   setStored(KEYS.ABSENCE_RECORDS, records);
-  try {
-    if (typeof window !== 'undefined') {
-      if ('BroadcastChannel' in window) {
-        const bc = new BroadcastChannel(BROADCAST_CHANNEL_ATTENDANCE);
-        bc.postMessage({ type: 'ATTENDANCE_UPDATED', records });
-        bc.close();
+  
+  if (notify && !isDispatchingAttendance) {
+    try {
+      if (typeof window !== 'undefined') {
+        isDispatchingAttendance = true;
+        window.dispatchEvent(new CustomEvent(ATTENDANCE_SYNCED_EVENT, { detail: records }));
+        if ('BroadcastChannel' in window) {
+          try {
+            const bc = new BroadcastChannel(BROADCAST_CHANNEL_ATTENDANCE);
+            bc.postMessage({ type: 'ATTENDANCE_UPDATED', records });
+            bc.close();
+          } catch {}
+        }
       }
-      window.dispatchEvent(new CustomEvent(ATTENDANCE_SYNCED_EVENT, { detail: records }));
+    } catch {
+      // ignore
+    } finally {
+      isDispatchingAttendance = false;
     }
-  } catch {
-    // ignore
   }
 
   if (!skipCloudPush) {
