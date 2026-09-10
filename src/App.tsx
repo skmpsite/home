@@ -115,6 +115,7 @@ import { SweetbotWidget } from './components/chat/SweetbotWidget';
 import { StudentSearchPortalModal } from './components/sections/StudentSearchPortalModal';
 import { TeacherRmtSubSection } from './components/sections/TeacherRmtSubSection';
 import { IctBookingModal } from './components/sections/IctBookingModal';
+import { PWAInstallModal } from './components/PWAInstallModal';
 import { Utensils, X as CloseIcon } from 'lucide-react';
 import { Footer } from './components/Footer';
 import TvApp from './TvApp';
@@ -338,6 +339,7 @@ export default function App() {
   const [isGlobalStudentPortalOpen, setIsGlobalStudentPortalOpen] = useState(false);
   const [isGlobalRmtPortalOpen, setIsGlobalRmtPortalOpen] = useState(false);
   const [isGlobalIctModalOpen, setIsGlobalIctModalOpen] = useState(false);
+  const [isPWAInstallOpen, setIsPWAInstallOpen] = useState(false);
 
   // Ref to prevent overlapping in-flight fetch requests
   const isSyncingRef = useRef(false);
@@ -1002,6 +1004,7 @@ export default function App() {
           onOpenAdminDashboard={() => setActiveTab('admin_cms')}
           onOpenTeacherPortal={() => setActiveTab('guru')}
           onOpenStudentPortal={() => setIsGlobalStudentPortalOpen(true)}
+          onOpenPWAInstall={() => setIsPWAInstallOpen(true)}
           isMobileMenuOpen={mobileMenuOpen}
           onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
         />
@@ -1346,6 +1349,12 @@ export default function App() {
       <IctBookingModal
         isOpen={isGlobalIctModalOpen}
         onClose={() => setIsGlobalIctModalOpen(false)}
+      />
+
+      {/* Global PWA Install & Shortcut Modal */}
+      <PWAInstallModal
+        isOpen={isPWAInstallOpen}
+        onClose={() => setIsPWAInstallOpen(false)}
       />
 
       {/* Sweetbot AI Robot Assistant (Peeking on the screen edge) */}

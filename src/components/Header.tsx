@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { SchoolProfile, SearchResultItem, UserRole } from '../types';
 import { Search, Lock, UserCheck, MapPin, Phone, Mail, LogOut, ChevronRight, X, ShieldAlert, Menu, Users, Utensils, Smartphone, Crown } from 'lucide-react';
 import { PWAInstallModal } from './PWAInstallModal';
+import { usePWAInstall } from '../hooks/usePWAInstall';
 
 interface HeaderProps {
   profile: SchoolProfile;
@@ -16,6 +17,7 @@ interface HeaderProps {
   onOpenAdminDashboard: () => void;
   onOpenTeacherPortal?: () => void;
   onOpenStudentPortal?: () => void;
+  onOpenPWAInstall?: () => void;
   isMobileMenuOpen?: boolean;
   onToggleMobileMenu?: () => void;
 }
@@ -33,12 +35,26 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAdminDashboard,
   onOpenTeacherPortal,
   onOpenStudentPortal,
+  onOpenPWAInstall,
   isMobileMenuOpen,
   onToggleMobileMenu
 }) => {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isPWAInstallOpen, setIsPWAInstallOpen] = useState(false);
+  const { canInstall, installPWA } = usePWAInstall();
+
+  const handleInstallButtonClick = async () => {
+    if (canInstall) {
+      const installed = await installPWA();
+      if (installed) return;
+    }
+    if (onOpenPWAInstall) {
+      onOpenPWAInstall();
+    } else {
+      setIsPWAInstallOpen(true);
+    }
+  };
 
   return (
     <header className="bg-white/10 backdrop-blur-lg border-b border-white/10 text-white shadow-md">
@@ -210,7 +226,7 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Butang Pasang Aplikasi di Telefon Pintar (PWA / Shortcut) */}
             <button
-              onClick={() => setIsPWAInstallOpen(true)}
+              onClick={handleInstallButtonClick}
               className="p-1.5 sm:px-2.5 sm:py-1 rounded-lg text-emerald-300 hover:text-emerald-200 hover:bg-emerald-500/20 border border-emerald-400/40 transition inline-flex items-center justify-center gap-1.5 shadow-sm cursor-pointer text-xs font-bold"
               title="Pasang Pintasan Aplikasi di Telefon Pintar"
               aria-label="Pasang Aplikasi"
@@ -435,11 +451,13 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* PWA / Shortcut Install Modal */}
-      <PWAInstallModal
-        isOpen={isPWAInstallOpen}
-        onClose={() => setIsPWAInstallOpen(false)}
-      />
+      {/* PWA / Shortcut Install Modal fallback */}
+      {!onOpenPWAInstall && (
+        <PWAInstallModal
+          isOpen={isPWAInstallOpen}
+          onClose={() => setIsPWAInstallOpen(false)}
+        />
+      )}
     </header>
   );
 };

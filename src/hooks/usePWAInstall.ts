@@ -1,71 +1,69 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
-interface BeforeInstallPromptEvent extends Event {
+export interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 }
 
+let globalDeferredPrompt: BeforeInstallPromptEvent | null = null;
+const listeners = new Set<() => void>();
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeinstallprompt', (e: Event) => {
+    // Prevent default mini-infobar and save prompt event
+    e.preventDefault();
+    globalDeferredPrompt = e as BeforeInstallPromptEvent;
+    listeners.forEach((listener) => listener());
+  });
+
+  window.addEventListener('appinstalled', () => {
+    globalDeferredPrompt = null;
+    listeners.forEach((listener) => listener());
+  });
+}
+
 export function usePWAInstall() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
-  const [canInstall, setCanInstall] = useState(false);
+  const [, setTick] = useState(0);
 
   useEffect(() => {
-    // Check if running in standalone mode (already installed)
-    const isStandalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as unknown as { standalone?: boolean }).standalone === true;
-    setIsInstalled(isStandalone);
-
-    // Detect iOS devices
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    const isIOSDevice = /iphone|ipad|ipod/.test(userAgent);
-    setIsIOS(isIOSDevice);
-
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setCanInstall(true);
-    };
-
-    const handleAppInstalled = () => {
-      setIsInstalled(true);
-      setDeferredPrompt(null);
-      setCanInstall(false);
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    window.addEventListener('appinstalled', handleAppInstalled);
-
+    const update = () => setTick((t) => t + 1);
+    listeners.add(update);
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', handleAppInstalled);
+      listeners.delete(update);
     };
   }, []);
 
-  const installPWA = async () => {
-    if (!deferredPrompt) return false;
+  const isStandalone =
+    typeof window !== 'undefined' &&
+    (window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as unknown as { standalone?: boolean }).standalone === true);
+
+  const userAgent = typeof window !== 'undefined' ? window.navigator.userAgent.toLowerCase() : '';
+  const isIOS = /iphone|ipad|ipod/.test(userAgent);
+  const canInstall = !!globalDeferredPrompt;
+
+  const installPWA = useCallback(async () => {
+    if (!globalDeferredPrompt) return false;
     try {
-      await deferredPrompt.prompt();
-      const choice = await deferredPrompt.userChoice;
+      const promptEvent = globalDeferredPrompt;
+      await promptEvent.prompt();
+      const choice = await promptEvent.userChoice;
       if (choice.outcome === 'accepted') {
-        setIsInstalled(true);
-        setDeferredPrompt(null);
-        setCanInstall(false);
+        globalDeferredPrompt = null;
+        listeners.forEach((listener) => listener());
         return true;
       }
     } catch (err) {
       console.error('PWA install error:', err);
     }
     return false;
-  };
+  }, []);
 
   return {
-    isInstalled,
+    isInstalled: isStandalone,
     canInstall,
     isIOS,
     installPWA,
-    deferredPrompt
+    deferredPrompt: globalDeferredPrompt
   };
 }
