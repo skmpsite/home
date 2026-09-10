@@ -42,10 +42,12 @@ import {
   ChevronUp,
   RotateCcw,
   Maximize2,
-  Minimize2
+  Minimize2,
+  ZoomIn
 } from 'lucide-react';
 import { getYearSortRank, getClassSortRank, ORDERED_CLASS_PILLS, getStudentClassCode } from '../../utils/studentHelpers';
 import { StudentPhotoCaptureModal } from './StudentPhotoCaptureModal';
+import { StudentPhotoLightboxModal } from './StudentPhotoLightboxModal';
 
 interface StudentSearchPortalModalProps {
   isOpen: boolean;
@@ -77,6 +79,15 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
   // Photo Capture Modal State
   const [photoModalStudent, setPhotoModalStudent] = useState<FullStudentRecord | null>(null);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+
+  // Photo Lightbox Zoom Modal State
+  const [zoomedStudent, setZoomedStudent] = useState<FullStudentRecord | null>(null);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+
+  const handleOpenPhotoZoom = (student: FullStudentRecord) => {
+    setZoomedStudent(student);
+    setIsLightboxOpen(true);
+  };
 
   // Contact Action Modal (WhatsApp / Call Selection for Bapa, Ibu, Penjaga)
   const [contactModalStudent, setContactModalStudent] = useState<FullStudentRecord | null>(null);
@@ -195,6 +206,14 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
         selectedStudent.ic === studentKey)
     ) {
       setSelectedStudent((prev) => (prev ? { ...prev, photoUrl: newPhotoUrl } : null));
+    }
+    if (
+      zoomedStudent &&
+      (zoomedStudent.id === studentKey ||
+        zoomedStudent.studentId === studentKey ||
+        zoomedStudent.ic === studentKey)
+    ) {
+      setZoomedStudent((prev) => (prev ? { ...prev, photoUrl: newPhotoUrl } : null));
     }
     showToast('Gambar murid berjaya disimpan & disegerakkan ke Google Sheets!');
   };
@@ -815,11 +834,23 @@ Alamat: ${s.fullAddress || '-'}`;
                           {/* Student Photo or Gender Avatar */}
                           <div className="relative group/avatar flex-shrink-0">
                             {student.photoUrl ? (
-                              <img
-                                src={student.photoUrl}
-                                alt={student.name}
-                                className="w-12 h-14 sm:w-16 sm:h-18 rounded-xl sm:rounded-2xl object-cover border-2 border-emerald-400/60 shadow-md shadow-emerald-950/40 bg-slate-950"
-                              />
+                              <div
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenPhotoZoom(student);
+                                }}
+                                className="relative cursor-zoom-in group/photo"
+                                title="Ketik untuk besarkan gambar murid (Zoom)"
+                              >
+                                <img
+                                  src={student.photoUrl}
+                                  alt={student.name}
+                                  className="w-12 h-14 sm:w-16 sm:h-18 rounded-xl sm:rounded-2xl object-cover border-2 border-emerald-400/60 group-hover/photo:border-emerald-300 shadow-md shadow-emerald-950/40 bg-slate-950 transition-all duration-200 group-hover/photo:scale-105"
+                                />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/photo:opacity-100 transition-opacity rounded-xl sm:rounded-2xl flex items-center justify-center">
+                                  <ZoomIn className="w-4 h-4 sm:w-5 sm:h-5 text-white drop-shadow" />
+                                </div>
+                              </div>
                             ) : (
                               <div
                                 className={`w-12 h-14 sm:w-16 sm:h-18 rounded-xl sm:rounded-2xl border flex flex-col items-center justify-center shadow-inner transition ${
@@ -1230,11 +1261,24 @@ Alamat: ${s.fullAddress || '-'}`;
                 {/* Large Portrait Photo or Gender Avatar */}
                 <div className="relative flex-shrink-0 flex flex-col items-center">
                   {selectedStudent.photoUrl ? (
-                    <img
-                      src={selectedStudent.photoUrl}
-                      alt={selectedStudent.name}
-                      className="w-16 h-20 sm:w-24 sm:h-28 rounded-2xl object-cover border-2 border-emerald-400 shadow-2xl shadow-emerald-950/60 bg-slate-950"
-                    />
+                    <div
+                      onClick={() => handleOpenPhotoZoom(selectedStudent)}
+                      className="relative cursor-zoom-in group/zoomPhoto"
+                      title="Ketik untuk besarkan gambar murid (Zoom)"
+                    >
+                      <img
+                        src={selectedStudent.photoUrl}
+                        alt={selectedStudent.name}
+                        className="w-16 h-20 sm:w-24 sm:h-28 rounded-2xl object-cover border-2 border-emerald-400 group-hover/zoomPhoto:border-emerald-300 shadow-2xl shadow-emerald-950/60 bg-slate-950 transition-all duration-200 group-hover/zoomPhoto:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/zoomPhoto:opacity-100 transition-opacity rounded-2xl flex flex-col items-center justify-center text-white p-1 text-center">
+                        <ZoomIn className="w-5 h-5 drop-shadow text-emerald-300" />
+                        <span className="text-[9px] font-black mt-0.5 drop-shadow">Besarkan</span>
+                      </div>
+                      <div className="absolute -top-1 -right-1 bg-emerald-600 text-white rounded-full p-1 shadow border border-white/30 sm:hidden">
+                        <ZoomIn className="w-2.5 h-2.5" />
+                      </div>
+                    </div>
                   ) : (
                     <div
                       className={`w-20 h-24 sm:w-24 sm:h-28 rounded-2xl flex flex-col items-center justify-center flex-shrink-0 shadow-lg border ${
@@ -1656,6 +1700,20 @@ Alamat: ${s.fullAddress || '-'}`;
           setPhotoModalStudent(null);
         }}
         onPhotoSaved={handlePhotoSaved}
+      />
+
+      {/* Student Photo Lightbox Modal for Zooming / Enlarging */}
+      <StudentPhotoLightboxModal
+        isOpen={isLightboxOpen}
+        student={zoomedStudent}
+        onClose={() => {
+          setIsLightboxOpen(false);
+          setZoomedStudent(null);
+        }}
+        onOpenPhotoCapture={(s) => {
+          setPhotoModalStudent(s);
+          setIsPhotoModalOpen(true);
+        }}
       />
     </div>
   );
