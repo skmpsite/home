@@ -523,33 +523,109 @@ export const initialPibgActivities: PibgActivity[] = [
 
 export const initialPibgCommittee: PibgCommittee[] = [
   {
-    id: "pibg-c-1",
-    name: "Dato' Hj. Ismail bin Abdullah",
-    position: "Yang Dipertua (YDP) PIBG",
-    category: "ibu_bapa",
-    phone: "012-400 1122",
-    photoUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=300"
-  },
-  {
-    id: "pibg-c-2",
-    name: "Puan Norhafiza Binti Dolah",
+    id: "pibg-c-penasihat",
+    name: "Pn. Norhafiza binti Dolah",
     position: "Penasihat (Guru Besar)",
     category: "guru",
     photoUrl: ""
   },
   {
-    id: "pibg-c-3",
-    name: "Puan Zubaidah binti Hassan",
-    position: "Naib Yang Dipertua (NYDP) PIBG",
+    id: "pibg-c-ydp",
+    name: "En. Asmadi bin Musa",
+    position: "Yang Dipertua (YDP) PIBG",
     category: "ibu_bapa",
-    photoUrl: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&q=80&w=300"
+    photoUrl: ""
   },
   {
-    id: "pibg-c-4",
-    name: "Cikgu Khairul Anuar bin Sulaiman",
+    id: "pibg-c-nydp",
+    name: "En. Jamaludin bin Ismail",
+    position: "Naib Yang Dipertua (NYDP) PIBG",
+    category: "ibu_bapa",
+    photoUrl: ""
+  },
+  {
+    id: "pibg-c-su",
+    name: "En. Mohamad Aizat bin Ahmad Sofi",
     position: "Setiausaha PIBG",
     category: "guru",
-    photoUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=300"
+    photoUrl: ""
+  },
+  {
+    id: "pibg-c-bendahari",
+    name: "Pn. Nor Zamizi bt Sulong",
+    position: "Bendahari PIBG",
+    category: "guru",
+    photoUrl: ""
+  },
+  {
+    id: "pibg-c-ajk-g1",
+    name: "En. Muaz bin Ali",
+    position: "Ahli Jawatankuasa (Guru)",
+    category: "guru",
+    photoUrl: ""
+  },
+  {
+    id: "pibg-c-ajk-g2",
+    name: "En. Ahmad Zawawi bin Kamal",
+    position: "Ahli Jawatankuasa (Guru)",
+    category: "guru",
+    photoUrl: ""
+  },
+  {
+    id: "pibg-c-ajk-g3",
+    name: "Cik Salnatasha binti Mohamad Sabri",
+    position: "Ahli Jawatankuasa (Guru)",
+    category: "guru",
+    photoUrl: ""
+  },
+  {
+    id: "pibg-c-ajk-g4",
+    name: "Pn. Nurul Izzatul Iffah binti Azizan",
+    position: "Ahli Jawatankuasa (Guru)",
+    category: "guru",
+    photoUrl: ""
+  },
+  {
+    id: "pibg-c-ajk-w1",
+    name: "En. Wan Mohd Nassir bin Wan Mohamad",
+    position: "Ahli Jawatankuasa (Waris)",
+    category: "ibu_bapa",
+    photoUrl: ""
+  },
+  {
+    id: "pibg-c-ajk-w2",
+    name: "Pn. Maria binti Mustafa",
+    position: "Ahli Jawatankuasa (Waris)",
+    category: "ibu_bapa",
+    photoUrl: ""
+  },
+  {
+    id: "pibg-c-ajk-w3",
+    name: "Pn. Norhafiza binti Mohd Fazli",
+    position: "Ahli Jawatankuasa (Waris)",
+    category: "ibu_bapa",
+    photoUrl: ""
+  },
+  {
+    id: "pibg-c-ajk-w4",
+    name: "Pn. Siti Syafinaz binti Yusof",
+    position: "Ahli Jawatankuasa (Waris)",
+    category: "ibu_bapa",
+    photoUrl: ""
+  },
+  {
+    id: "pibg-c-audit-g",
+    name: "Pn. Rohaidah bt Abu Bakar",
+    position: "Juruaudit (Guru)",
+    category: "guru",
+    photoUrl: ""
+  },
+  {
+    id: "pibg-c-audit-w",
+    name: "Pn. Sharifatul Nur Amira binti Anuor",
+    position: "Juruaudit (Waris)",
+    category: "ibu_bapa",
+    photoUrl: ""
   }
 ];
 

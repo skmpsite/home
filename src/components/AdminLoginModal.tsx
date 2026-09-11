@@ -216,6 +216,28 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
       return;
     }
 
+    // 7.5 Semak SETIAUSAHA PIBG / SU PIBG (ID: SUPIBG, Katalaluan: SUPIBG5012)
+    if (
+      ((cleanUser === 'supibg' || cleanUser === 'su_pibg' || cleanUser === 'pibg') &&
+        (cleanPass === 'SUPIBG5012' || cleanPassLower === 'supibg5012')) ||
+      (cleanPass === 'SUPIBG5012' || (cleanUser === '' && cleanPassLower === 'supibg5012'))
+    ) {
+      setIsSubmitting(true);
+      try {
+        localStorage.setItem('skmp_attendance_auth_user', 'su_pibg');
+      } catch (e) {
+        console.error(e);
+      }
+      setSuccessMsg('Log masuk S/U PIBG Berjaya! Membuka akses pengurusan laman PIBG & capaian Portal Guru...');
+      setTimeout(() => {
+        setIsSubmitting(false);
+        onLoginSuccess('su_pibg');
+        onClose();
+        setSuccessMsg('');
+      }, 500);
+      return;
+    }
+
     // 8. Semak akaun PENGGUNA / WARIS SKMP (skmp / 123456)
     if (cleanUser === 'skmp' && cleanPass === '123456') {
       setIsSubmitting(true);
@@ -371,7 +393,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                 <span>{isSubmitting ? 'Mengesahkan Log Masuk...' : 'Log Masuk'}</span>
               </button>
               <p className="text-center text-[11px] text-slate-400">
-                Sistem menyokong log masuk Guru Besar (ID: GB), Guru & Kaunselor UBK (ID: UBK / GURU), Pentadbir, PK & SU (Kurikulum, HEM, Kokurikulum) serta Pengguna SKMP.
+                Sistem menyokong log masuk Guru Besar (ID: GB), Guru & Kaunselor UBK (ID: UBK / GURU), S/U PIBG (ID: SUPIBG), Pentadbir, PK & SU (Kurikulum, HEM, Kokurikulum) serta Pengguna SKMP.
               </p>
             </div>
           </form>

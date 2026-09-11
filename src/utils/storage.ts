@@ -372,7 +372,7 @@ export function savePibgActivities(list: PibgActivity[]): void {
 
 export function loadPibgCommittee(): PibgCommittee[] {
   const comm = getStored<PibgCommittee[]>(KEYS.PIBG_COMM, initialPibgCommittee);
-  if (Array.isArray(comm) && comm.length > 0) {
+  if (Array.isArray(comm) && comm.length >= 10 && comm.some((c) => c.name.toLowerCase().includes('asmadi'))) {
     const updated = comm.map((c) => {
       if (c.position.toLowerCase().includes('guru besar') || c.name.toLowerCase().includes('norhafiza')) {
         const isOldAsset =

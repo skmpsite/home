@@ -50,13 +50,15 @@ import {
   HemRuleItem,
   HemOfficer,
   HemRmtMenuItem,
-  NewsItem
+  NewsItem,
+  PibgCommittee
 } from '../../types';
 import { initialHemData, initialSchoolHolidays } from '../../data/initialData';
 import { initialStudentsList } from '../../data/studentsData';
 import { initialAbsenceRecords } from '../../data/initialAttendance';
 import { HemAttendanceSubSection } from './HemAttendanceSubSection';
 import { HemUbkSubSection } from './HemUbkSubSection';
+import { HemPibgSubSection } from './HemPibgSubSection';
 import { TeacherRmtSubSection } from './TeacherRmtSubSection';
 import { UnitNewsSection } from '../common/UnitNewsSection';
 import { formatGoogleDriveUrl } from '../../utils/imageHelpers';
@@ -66,7 +68,7 @@ import {
   findPkKokurikulumStaff
 } from '../../utils/staffHelpers';
 import { getActiveSchoolHoliday } from '../../utils/studentHelpers';
-import { loadHemData, saveHemData } from '../../utils/storage';
+import { loadHemData, saveHemData, loadPibgCommittee } from '../../utils/storage';
 import {
   EditStatsModal,
   EditSpeechModal,
@@ -91,8 +93,10 @@ interface HemSectionProps {
   ) => StudentAbsenceRecord;
   onUpdateAbsenceRecord?: (record: StudentAbsenceRecord) => void;
   onDeleteAbsenceRecord?: (id: string) => void;
-  initialSubTab?: 'semua' | 'kehadiran' | 'ubk' | 'disiplin' | 'kebajikan' | '3k';
+  initialSubTab?: 'semua' | 'kehadiran' | 'ubk' | 'pibg' | 'disiplin' | 'kebajikan' | '3k';
   newsList?: NewsItem[];
+  pibgCommittee?: PibgCommittee[];
+  onSavePibgCommittee?: (committee: PibgCommittee[]) => void;
   onSaveNews?: (news: NewsItem[]) => void;
   isAdmin?: boolean;
   isTeacher?: boolean;
@@ -115,6 +119,8 @@ export const HemSection: React.FC<HemSectionProps> = ({
   onUpdateAbsenceRecord,
   onDeleteAbsenceRecord,
   newsList = [],
+  pibgCommittee,
+  onSavePibgCommittee,
   onSaveNews = () => {},
   initialSubTab = 'semua',
   isAdmin = false,
@@ -131,6 +137,11 @@ export const HemSection: React.FC<HemSectionProps> = ({
     return hemData || loadHemData();
   });
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
+
+  const effectivePibgCommittee = useMemo(() => {
+    if (pibgCommittee && pibgCommittee.length > 0) return pibgCommittee;
+    return loadPibgCommittee();
+  }, [pibgCommittee]);
 
   // Sync if hemData prop changes
   useEffect(() => {
@@ -154,7 +165,7 @@ export const HemSection: React.FC<HemSectionProps> = ({
   };
 
   const data = currentHemData;
-  const [activeSubTab, setActiveSubTab] = useState<'semua' | 'kehadiran' | 'ubk' | 'disiplin' | 'kebajikan' | '3k'>(initialSubTab);
+  const [activeSubTab, setActiveSubTab] = useState<'semua' | 'kehadiran' | 'ubk' | 'pibg' | 'disiplin' | 'kebajikan' | '3k'>(initialSubTab);
   const [isRmtModalOpen, setIsRmtModalOpen] = useState(false);
 
   // Edit Modals State
@@ -427,6 +438,15 @@ export const HemSection: React.FC<HemSectionProps> = ({
     };
     window.addEventListener('skmp-navigate-ubk', handleNavUbk);
     return () => window.removeEventListener('skmp-navigate-ubk', handleNavUbk);
+  }, []);
+
+  // Listener capaian pantas terus ke sub-menu PIBG
+  useEffect(() => {
+    const handleNavPibg = () => {
+      setActiveSubTab('pibg');
+    };
+    window.addEventListener('skmp-navigate-pibg', handleNavPibg);
+    return () => window.removeEventListener('skmp-navigate-pibg', handleNavPibg);
   }, []);
   const [selectedDetailModal, setSelectedDetailModal] = useState<{
     title: string;
@@ -795,6 +815,28 @@ export const HemSection: React.FC<HemSectionProps> = ({
             </span>
           </button>
 
+          {/* 4. Menu PIBG (Persatuan Ibu Bapa dan Guru) */}
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('pibg')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition cursor-pointer ${
+              activeSubTab === 'pibg'
+                ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30 border border-amber-300'
+                : 'bg-amber-950/40 hover:bg-amber-900/60 text-amber-200 border border-amber-500/40'
+            }`}
+            title="Persatuan Ibu Bapa dan Guru (PIBG) SK Merbau Pulas"
+          >
+            <Users className={`w-3.5 h-3.5 ${activeSubTab !== 'pibg' ? 'text-amber-300' : ''}`} />
+            <span>PIBG</span>
+            <span
+              className={`text-[10px] px-1.5 py-0.2 rounded font-black ${
+                activeSubTab === 'pibg' ? 'bg-slate-950 text-amber-300' : 'bg-amber-500/30 text-amber-200'
+              }`}
+            >
+              2026/2027
+            </span>
+          </button>
+
           {/* 3. Menu Carian Murid (Hanya muncul untuk pengguna log masuk Guru & Admin) */}
           {isAuthorized && onOpenStudentPortal && (
             <button
@@ -845,6 +887,18 @@ export const HemSection: React.FC<HemSectionProps> = ({
       {activeSubTab === 'ubk' && (
         <HemUbkSubSection
           isAdmin={isAdmin}
+          userRole={userRole}
+          onOpenLogin={onOpenLogin}
+        />
+      )}
+
+      {/* RENDER SPECIFIC SUB-TAB: PIBG (PERSATUAN IBU BAPA & GURU) */}
+      {activeSubTab === 'pibg' && (
+        <HemPibgSubSection
+          committee={effectivePibgCommittee}
+          onSaveCommittee={onSavePibgCommittee}
+          isAdmin={isAdmin}
+          isTeacher={isTeacher}
           userRole={userRole}
           onOpenLogin={onOpenLogin}
         />

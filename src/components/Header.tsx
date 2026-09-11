@@ -232,6 +232,25 @@ export const Header: React.FC<HeaderProps> = ({
                   <span className="hidden sm:inline">Keluar</span>
                 </button>
               </div>
+            ) : userRole === 'su_pibg' ? (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={onOpenTeacherPortal}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-slate-950 hover:bg-amber-400 bg-amber-500 px-3 py-0.5 rounded-full border border-amber-300 shadow-md transition cursor-pointer"
+                  title="S/U PIBG SKMP Aktif - Akses Penuh Laman PIBG & Capaian Guru"
+                >
+                  <UserCheck className="w-3.5 h-3.5 text-slate-950" />
+                  <span>S/U PIBG Active</span>
+                </button>
+                <button
+                  onClick={onLogout}
+                  className="text-xs text-rose-300 hover:text-rose-100 flex items-center gap-1 ml-1 font-semibold cursor-pointer"
+                  title="Log Keluar"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Keluar</span>
+                </button>
+              </div>
             ) : userRole === 'user' ? (
               <div className="flex items-center gap-2">
                 <div

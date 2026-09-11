@@ -758,7 +758,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
         fallbackText = `🎵 **Lagu Rasmi Sekolah: "${profile?.songTitle || 'SKMP MAJU'}"**\n\n**Penghargaan & Maklumat Lagu:**\n• **Pencipta Lirik**: ${profile?.songLyricist || 'Tn Hj Shukeri bin Hj Ibrahim'}\n• **Pencipta Lagu**: ${profile?.songComposer || 'Tn Hj Shukeri bin Hj Ibrahim'}\n• **Gubahan Muzik**: ${profile?.songArranger || 'En Anuar bin Mohd Nor'}\n• **Tarikh Ciptaan**: ${profile?.songCreatedDate || '18 Mei 2024 (12.30 Malam)'}\n• **Pautan Video YouTube**: ${profile?.songAudioUrl || 'https://www.youtube.com/watch?v=dNCLSPCYAtc'}\n\n**Seni Kata / Lirik:**\n${lyrics}`;
       } else if (lower.includes('ydp') || lower.includes('yang dipertua')) {
         const ydp = pibgCommittee.find((p) => p.position.toLowerCase().includes('ydp') || p.position.toLowerCase().includes('yang dipertua'));
-        fallbackText = `Yang Dipertua (YDP) PIBG ${currentSchoolName} ialah **${ydp ? ydp.name : 'Tuan Haji Azmi bin Ahmad'}** 🤝✨.`;
+        fallbackText = `Yang Dipertua (YDP) PIBG ${currentSchoolName} bagi sesi 2026/2027 ialah **${ydp ? ydp.name : 'En. Asmadi bin Musa'}** 🤝✨. Sila layari sub menu **HEM > PIBG** untuk melihat carta organisasi dan portal rasmi PIBG!`;
       } else if (lower.includes('takwim') || lower.includes('acara') || lower.includes('program') || lower.includes('tarikh') || lower.includes('aktiviti') || lower.includes('cuti')) {
         if (events.length > 0) {
           const evStr = events.slice(0, 6).map((e) => `• **${e.date}**: ${e.title} (${e.location || 'SKMP'})`).join('\n');
@@ -771,7 +771,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
         }
       } else if (lower.includes('pibg') || lower.includes('persatuan ibu bapa')) {
         const ydp = pibgCommittee.find((p) => p.position.toLowerCase().includes('ydp') || p.position.toLowerCase().includes('yang dipertua'));
-        fallbackText = `🤝 **Persatuan Ibu Bapa & Guru (PIBG) SKMP:**\n\n• **Penasihat:** ${currentGb} (Guru Besar)\n• **Yang Dipertua (YDP) PIBG:** ${ydp ? ydp.name : 'Tuan Haji Azmi bin Ahmad'}\n\nUntuk senarai penuh AJK dan aktiviti PIBG, sila layari tab **Warga Sekolah** bahagian PIBG!`;
+        fallbackText = `🤝 **Persatuan Ibu Bapa & Guru (PIBG) SKMP (Sesi 2026/2027):**\n\n• **Penasihat:** Pn. Norhafiza binti Dolah (Guru Besar)\n• **Yang Dipertua (YDP):** ${ydp ? ydp.name : 'En. Asmadi bin Musa'}\n• **Naib Yang Dipertua (NYDP):** En. Jamaludin bin Ismail\n• **Setiausaha:** En. Mohamad Aizat bin Ahmad Sofi\n• **Bendahari:** Pn. Nor Zamizi bt Sulong\n\nSila layari sub menu **HEM > PIBG** untuk melihat carta organisasi penuh, saluran sumbangan, takwim aktiviti, dan e-usul waris!`;
       } else if (lower.includes('anugerah') || lower.includes('pencapaian') || lower.includes('kejayaan') || lower.includes('johan')) {
         if (awards.length > 0) {
           const awStr = awards.slice(0, 4).map((a) => `🏆 **${a.achievement}** - ${a.title} (${a.recipient})`).join('\n');
@@ -826,7 +826,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
   };
 
   const isTeacherOrAdmin = Boolean(
-    isAdmin || userRole === 'guru' || userRole === 'kaunselor' || userRole === 'guru_besar' || userRole === 'admin'
+    isAdmin || userRole === 'guru' || userRole === 'kaunselor' || userRole === 'su_pibg' || userRole === 'guru_besar' || userRole === 'admin'
   );
 
   const handleQuickPortalAction = (type: 'carian_murid' | 'kehadiran_rmt' | 'tempahan_ict') => {
@@ -1133,53 +1133,52 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
             }}
             exit={{ opacity: 0, scale: 0.85, y: 50, x: 20 }}
             transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-            className={`fixed bottom-2 right-2 sm:bottom-4 sm:right-4 z-[200] w-[94vw] sm:w-[420px] max-w-[440px] bg-slate-900/95 backdrop-blur-2xl border-2 border-blue-400/50 rounded-2xl sm:rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.7)] flex flex-col overflow-hidden text-slate-100 font-sans transition-all duration-300`}
+            className={`fixed bottom-2 right-2 sm:bottom-4 sm:right-4 z-[200] w-[95vw] sm:w-[440px] max-w-[460px] bg-slate-900/95 backdrop-blur-2xl border-2 border-blue-400/50 rounded-2xl sm:rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.7)] flex flex-col overflow-hidden text-slate-100 font-sans transition-all duration-300`}
             style={{ maxHeight: '86vh' }}
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 p-3 sm:p-4 border-b border-blue-500/30 flex items-center justify-between relative select-none">
-              <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 p-2.5 sm:p-3.5 border-b border-blue-500/30 flex items-center justify-between gap-1.5 sm:gap-2 relative select-none">
+              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
                 {/* Robot Avatar Mini with Status Ping */}
-                <div className="relative">
-                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-600 to-yellow-400 p-0.5 shadow-lg flex items-center justify-center">
+                <div className="relative shrink-0">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-600 to-yellow-400 p-0.5 shadow-lg flex items-center justify-center">
                     <div className="w-full h-full bg-slate-950 rounded-[10px] sm:rounded-[14px] flex items-center justify-center relative overflow-hidden">
-                      <Bot className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-300 animate-bounce" />
+                      <Bot className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-300 animate-bounce" />
                     </div>
                   </div>
-                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 sm:w-3.5 sm:h-3.5 bg-emerald-500 border-2 border-slate-900 rounded-full flex items-center justify-center">
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-emerald-500 border-2 border-slate-900 rounded-full flex items-center justify-center">
                     <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-white rounded-full animate-ping" />
                   </span>
                 </div>
 
-                <div>
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <h4 className="text-sm sm:text-base font-black text-white tracking-wide">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="text-xs sm:text-sm font-black text-white tracking-wide truncate">
                       Sweetbot AI
                     </h4>
-                    <span className="px-1.5 sm:px-2 py-0.5 bg-yellow-400/20 text-yellow-300 border border-yellow-400/40 text-[9px] sm:text-[10px] font-black rounded-full uppercase tracking-wider">
+                    <span className="px-1.5 py-0.5 bg-yellow-400/20 text-yellow-300 border border-yellow-400/40 text-[8px] sm:text-[9px] font-black rounded-full uppercase tracking-wider shrink-0">
                       SKMP
                     </span>
                   </div>
-                  <p className="text-[10px] sm:text-[11px] text-blue-200 flex items-center gap-1 sm:gap-1.5">
-                    <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400 inline-block animate-pulse" />
-                    Pembantu Maya SK Merbau Pulas
+                  <p className="text-[10px] sm:text-[11px] text-blue-200 flex items-center gap-1 truncate">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse shrink-0" />
+                    <span className="truncate">Pembantu Maya SKMP</span>
                   </p>
                 </div>
               </div>
 
               {/* Action Icons */}
-              <div className="flex items-center gap-1 sm:gap-1.5">
+              <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                 {/* Uji Sebutan Suara Rasmi Melayu Malaysia */}
                 {speechEnabled && (
                   <button
                     type="button"
                     onClick={testMalayVoice}
-                    className="px-2 py-1 bg-yellow-400/20 hover:bg-yellow-400/30 text-yellow-300 border border-yellow-400/40 rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition shadow-sm active:scale-95"
+                    className="px-1.5 py-1 sm:px-2 sm:py-1.5 bg-yellow-400/20 hover:bg-yellow-400/30 text-yellow-300 border border-yellow-400/40 rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition shadow-sm active:scale-95 shrink-0 whitespace-nowrap"
                     title="Klik untuk dengar ujian sebutan Bahasa Melayu Malaysia (ms-MY)"
                   >
-                    <Volume2 className="w-3 h-3 text-yellow-300 animate-pulse" />
-                    <span className="hidden sm:inline">Uji Suara Melayu</span>
-                    <span className="sm:hidden">Uji Suara</span>
+                    <Volume2 className="w-3 h-3 text-yellow-300 animate-pulse shrink-0" />
+                    <span className="text-[10px]">Uji</span>
                   </button>
                 )}
 
@@ -1187,44 +1186,45 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
                 <button
                   type="button"
                   onClick={() => setSpeechEnabled(!speechEnabled)}
-                  className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition ${
+                  className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition shrink-0 ${
                     speechEnabled
                       ? 'bg-blue-600/60 text-yellow-300 hover:bg-blue-500/80'
                       : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                   }`}
                   title={speechEnabled ? 'Suara Aktif: Bahasa Melayu Malaysia (Klik untuk Matikan)' : 'Suara Dimatikan (Klik untuk Aktifkan)'}
                 >
-                  {speechEnabled ? <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                  {speechEnabled ? <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" /> : <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />}
                 </button>
 
                 {/* Reset Chat */}
                 <button
                   type="button"
                   onClick={handleResetChat}
-                  className="p-1.5 sm:p-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg sm:rounded-xl transition"
+                  className="p-1.5 sm:p-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg sm:rounded-xl transition shrink-0"
                   title="Kosongkan Perbualan"
                 >
-                  <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                 </button>
 
                 {/* Minimize Toggle */}
                 <button
                   type="button"
                   onClick={() => setIsMinimized(!isMinimized)}
-                  className="p-1.5 sm:p-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg sm:rounded-xl transition"
+                  className="p-1.5 sm:p-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg sm:rounded-xl transition shrink-0"
                   title={isMinimized ? 'Besarkan' : 'Kecilkan'}
                 >
-                  {isMinimized ? <Maximize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Minimize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                  {isMinimized ? <Maximize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" /> : <Minimize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />}
                 </button>
 
                 {/* Close Button */}
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="p-1.5 sm:p-2 bg-rose-600/80 hover:bg-rose-500 text-white rounded-lg sm:rounded-xl transition ml-0.5 sm:ml-1"
+                  className="p-1.5 sm:p-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg sm:rounded-xl transition shrink-0 shadow-md ml-0.5"
                   title="Tutup Sweetbot"
+                  aria-label="Tutup Sweetbot"
                 >
-                  <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                 </button>
               </div>
             </div>

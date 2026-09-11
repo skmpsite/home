@@ -187,7 +187,7 @@ export default function App() {
     return 'utama';
   });
 
-  const [hemSubTab, setHemSubTab] = useState<'semua' | 'kehadiran' | 'ubk' | 'disiplin' | 'kebajikan' | '3k'>(() => {
+  const [hemSubTab, setHemSubTab] = useState<'semua' | 'kehadiran' | 'ubk' | 'pibg' | 'disiplin' | 'kebajikan' | '3k'>(() => {
     if (typeof window === 'undefined') return 'semua';
     const search = (window.location.search || '').toLowerCase();
     const hash = (window.location.hash || '').toLowerCase();
@@ -209,6 +209,14 @@ export default function App() {
       hash.includes('kaunseling')
     ) {
       return 'ubk';
+    }
+    if (
+      search.includes('subtab=pibg') ||
+      search.includes('tab=pibg') ||
+      search.includes('view=pibg') ||
+      hash.includes('pibg')
+    ) {
+      return 'pibg';
     }
     return 'semua';
   });
@@ -567,6 +575,11 @@ export default function App() {
       }
     };
 
+    const handleNavPibg = () => {
+      setActiveTab('hem');
+      setHemSubTab('pibg');
+    };
+
     window.addEventListener('visibilitychange', handleImmediateSync);
     window.addEventListener('focus', handleImmediateSync);
     window.addEventListener('online', handleImmediateSync);
@@ -574,6 +587,7 @@ export default function App() {
     window.addEventListener('skmp_attendance_synced', handleAttendanceSynced);
     window.addEventListener('skmp_teacher_links_updated', handleTeacherLinksUpdated);
     window.addEventListener('skmp_switch_tab', handleCustomTabSwitch);
+    window.addEventListener('skmp-navigate-pibg', handleNavPibg);
 
     return () => {
       clearInterval(interval);
@@ -586,6 +600,7 @@ export default function App() {
       window.removeEventListener('skmp_attendance_synced', handleAttendanceSynced);
       window.removeEventListener('skmp_teacher_links_updated', handleTeacherLinksUpdated);
       window.removeEventListener('skmp_switch_tab', handleCustomTabSwitch);
+      window.removeEventListener('skmp-navigate-pibg', handleNavPibg);
     };
   }, []);
 
@@ -1149,6 +1164,8 @@ export default function App() {
             onUpdateAbsenceRecord={handleUpdateAbsenceRecord}
             onDeleteAbsenceRecord={handleDeleteAbsenceRecord}
             newsList={newsList}
+            pibgCommittee={pibgCommittee}
+            onSavePibgCommittee={handleUpdatePibgCommittee}
             onSaveNews={handleUpdateNews}
             initialSubTab={hemSubTab}
             isAdmin={isAdmin}
@@ -1351,6 +1368,15 @@ export default function App() {
               setActiveTab('hem');
               setTimeout(() => {
                 window.dispatchEvent(new CustomEvent('skmp-navigate-ubk'));
+              }, 100);
+            }
+          } else if (role === 'su_pibg') {
+            setIsAdmin(false);
+            if (activeTab !== 'hem' && activeTab !== 'guru' && activeTab !== 'akademik' && activeTab !== 'kokurikulum') {
+              setActiveTab('hem');
+              setHemSubTab('pibg');
+              setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('skmp-navigate-pibg'));
               }, 100);
             }
           } else {

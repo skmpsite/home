@@ -174,6 +174,30 @@ export interface PibgCommittee {
   photoUrl: string;
 }
 
+export interface PibgUsul {
+  id: string;
+  parentName: string;
+  phone: string;
+  studentName: string;
+  studentClass: string;
+  category: 'prasarana' | 'akademik' | 'kebajikan' | 'keselamatan' | 'kokurikulum' | 'lain';
+  title: string;
+  description: string;
+  submittedAt: string;
+  status: 'diterima' | 'pertimbangan' | 'diluluskan' | 'selesai';
+  adminFeedback?: string;
+}
+
+export interface PibgKsibVolunteer {
+  id: string;
+  parentName: string;
+  phone: string;
+  email?: string;
+  occupation: string;
+  skills: string[];
+  registeredAt: string;
+}
+
 export interface CoCurriculumUnit {
   id: string;
   name: string;
@@ -502,7 +526,8 @@ export type UserRole =
   | 'su_hem'
   | 'pk_kokurikulum'
   | 'su_kokurikulum'
-  | 'kaunselor';
+  | 'kaunselor'
+  | 'su_pibg';
 
 export const isTeacherRole = (role: UserRole | null | undefined): boolean => {
   return (
@@ -515,7 +540,8 @@ export const isTeacherRole = (role: UserRole | null | undefined): boolean => {
     role === 'su_hem' ||
     role === 'pk_kokurikulum' ||
     role === 'su_kokurikulum' ||
-    role === 'kaunselor'
+    role === 'kaunselor' ||
+    role === 'su_pibg'
   );
 };
 
@@ -543,6 +569,16 @@ export const canEditUbk = (role: UserRole | null | undefined, isAdmin?: boolean)
     role === 'admin' ||
     role === 'guru_besar' ||
     role === 'kaunselor'
+  );
+};
+
+export const canEditPibg = (role: UserRole | null | undefined, isAdmin?: boolean): boolean => {
+  // Hanya Log in SU PIBG dan admin sahaja boleh mengedit laman PIBG (serta Guru Besar/Penasihat)
+  return Boolean(
+    isAdmin ||
+    role === 'admin' ||
+    role === 'guru_besar' ||
+    role === 'su_pibg'
   );
 };
 
