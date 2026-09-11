@@ -1432,7 +1432,16 @@ export default function App() {
         userRole={userRole}
         onOpenStudentPortal={() => setIsGlobalStudentPortalOpen(true)}
         onOpenRmtPortal={() => setIsGlobalRmtPortalOpen(true)}
-        onOpenIctBooking={() => setIsGlobalIctModalOpen(true)}
+        onOpenIctBooking={() => {
+          setActiveTab('akademik');
+          setKurikulumSubTab('ict');
+          setIctSubTab('jadual');
+          if (typeof window !== 'undefined') {
+            window.location.hash = '#ict';
+            window.dispatchEvent(new CustomEvent('skmp-navigate-ict'));
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        }}
         onNavigateSection={(sectionId) => {
           setActiveTab(sectionId as any);
           window.scrollTo({ top: 0, behavior: 'smooth' });

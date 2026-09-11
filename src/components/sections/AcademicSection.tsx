@@ -128,6 +128,16 @@ export const AcademicSection: React.FC<AcademicSectionProps> = ({
     }
   }, [initialIctSubTab, canAccessFinance]);
 
+  // Listener capaian pantas terus ke tab ICT (contoh: dari butang ICT Sweetbot)
+  useEffect(() => {
+    const handleNavIct = () => {
+      setActiveSubTab('ict');
+      setActiveIctSubTab('jadual');
+    };
+    window.addEventListener('skmp-navigate-ict', handleNavIct);
+    return () => window.removeEventListener('skmp-navigate-ict', handleNavIct);
+  }, []);
+
   const [selectedCategory, setSelectedCategory] = useState<'semua' | 'peperiksaan' | 'cuti' | 'acara' | 'pibg'>('semua');
   const [selectedEventModal, setSelectedEventModal] = useState<CalendarEvent | null>(null);
   const [showDesc, setShowDesc] = useState<boolean>(true);

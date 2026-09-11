@@ -877,12 +877,12 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
       const botMsg: Message = {
         id: 'bot-' + (Date.now() + 1),
         sender: 'bot',
-        text: `Berikut ialah capaian pantas ke **Sistem Tempahan Bilik Khas & Alatan ICT SK Merbau Pulas**.\n\nKemudahan yang boleh ditempah meliputi:\n• **Makmal Komputer Komprehensif** (30 unit PC & Smart TV)\n• **Bilik Akses Digital & Media**\n• **Peminjaman Projektor LCD Bergerak & Skrin Layar**\n• **Dewan Terbuka (Siaraya & Sistem Audio)**\n\nSila klik butang di bawah untuk membuka borang tempahan bilik ICT:`,
+        text: `Membawa anda ke **Halaman ICT di Menu Kurikulum SK Merbau Pulas**.\n\nDi halaman ICT Kurikulum ini, anda boleh mengakses:\n• **Jadual & Tempahan Makmal Komputer** (30 unit PC & Smart TV)\n• **Gerbang Semakan ID DELIMa KPM**\n• **Penyata Aliran Kewangan Makmal ICT** (Akses Khas Guru & Pentadbir)\n\nSila klik butang di bawah untuk membuka halaman ICT Kurikulum:`,
         timestamp: new Date().toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' }),
         actionType: 'tempahan_ict'
       };
       setMessages((prev) => [...prev, userMsg, botMsg]);
-      speakText('Berikut ialah capaian pantas ke sistem tempahan bilik ICT dan peralatan sekolah.', botMsg.id);
+      speakText('Membawa anda terus ke halaman ICT di menu kurikulum sekolah.', botMsg.id);
       if (onOpenIctBooking) {
         onOpenIctBooking();
       }
@@ -1264,6 +1264,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
                           type="button"
                           onClick={() => handleQuickPortalAction('tempahan_ict')}
                           className="p-2 bg-blue-950/80 hover:bg-blue-850 active:scale-95 border border-blue-400/40 rounded-xl text-[11px] font-bold text-blue-200 hover:text-white transition flex flex-col items-center justify-center gap-1 text-center shadow-sm cursor-pointer"
+                          title="Halaman ICT di Menu Kurikulum (Jadual Makmal • DELIMa • Kewangan)"
                         >
                           <Laptop className="w-4 h-4 text-blue-300" />
                           <span className="leading-tight">ICT</span>
@@ -1402,7 +1403,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
                                   <span>Buka Portal Kehadiran RMT</span>
                                 </button>
                               )}
-                              {(msg.actionType === 'tempahan_ict' || msg.text.toLowerCase().includes('tempahan bilik ict') || msg.text.toLowerCase().includes('tempahan bilik khas') || msg.text.toLowerCase().includes('borang tempahan bilik ict')) && onOpenIctBooking && (
+                              {(msg.actionType === 'tempahan_ict' || msg.text.toLowerCase().includes('tempahan bilik ict') || msg.text.toLowerCase().includes('tempahan bilik khas') || msg.text.toLowerCase().includes('borang tempahan bilik ict') || msg.text.toLowerCase().includes('halaman ict')) && onOpenIctBooking && (
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -1412,7 +1413,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
                                   className="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white rounded-lg text-[11px] font-bold flex items-center gap-1.5 shadow-md shadow-blue-950/40 cursor-pointer transition"
                                 >
                                   <Laptop className="w-3.5 h-3.5 text-blue-200" />
-                                  <span>Buka Borang Tempahan Bilik ICT</span>
+                                  <span>Buka Halaman ICT (Kurikulum)</span>
                                 </button>
                               )}
                             </div>
@@ -1516,7 +1517,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
                         type="button"
                         onClick={() => handleQuickPortalAction('tempahan_ict')}
                         className="px-2.5 py-1 bg-blue-950/90 hover:bg-blue-850 active:scale-95 border border-blue-400/40 rounded-lg text-[11px] font-bold text-blue-200 hover:text-white transition flex items-center gap-1.5 flex-shrink-0 shadow-sm cursor-pointer"
-                        title="Tempahan Bilik Khas & Alatan ICT Sekolah"
+                        title="Buka Halaman ICT di Menu Kurikulum (Jadual • DELIMa • Kewangan)"
                       >
                         <Laptop className="w-3 h-3 text-blue-300" />
                         <span>ICT</span>
