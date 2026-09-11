@@ -39,7 +39,8 @@ import {
   CoCurriculumUnit,
   DownloadDocument,
   SystemLink,
-  HemData
+  HemData,
+  UserRole
 } from '../../types';
 
 interface Message {
@@ -65,7 +66,7 @@ interface SweetbotWidgetProps {
   hemData?: HemData;
   onNavigateSection?: (sectionId: string) => void;
   isAdmin?: boolean;
-  userRole?: 'admin' | 'guru' | null;
+  userRole?: UserRole | null;
   onOpenStudentPortal?: () => void;
   onOpenRmtPortal?: () => void;
   onOpenIctBooking?: () => void;

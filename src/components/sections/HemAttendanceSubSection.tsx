@@ -952,10 +952,10 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
       }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const matchName = rec.studentName.toLowerCase().includes(q);
-        const matchRef = rec.refNo.toLowerCase().includes(q);
-        const matchParent = rec.parentName.toLowerCase().includes(q);
-        const matchClass = `${rec.year} ${rec.className}`.toLowerCase().includes(q);
+        const matchName = (rec.studentName || '').toLowerCase().includes(q);
+        const matchRef = (rec.refNo || '').toLowerCase().includes(q);
+        const matchParent = (rec.parentName || '').toLowerCase().includes(q);
+        const matchClass = `${rec.year || ''} ${rec.className || ''}`.toLowerCase().includes(q);
         if (!matchName && !matchRef && !matchParent && !matchClass) return false;
       }
       return true;
@@ -2602,7 +2602,7 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                   const key = `${c.year}:::${c.className}`;
                   return (
                     <option key={key} value={key}>
-                      🏫 {c.year} - {c.className} ({c.totalStudents} Murid)
+                      🏫 {c.year} - {c.className} ({c.total} Murid)
                     </option>
                   );
                 })}

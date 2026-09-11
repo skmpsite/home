@@ -44,13 +44,16 @@ export interface SchoolProfile {
     lng: number;
     googleMapsEmbedUrl: string;
   };
+  hemCoordinator?: string;
+  schoolName?: string;
+  schoolCode?: string;
 }
 
 export interface Staff {
   id: string;
   name: string;
   position: string;
-  category: 'pentadbir' | 'guru' | 'staf';
+  category: 'pentadbir' | 'guru' | 'staf' | 'akp';
   grade: string;
   subject?: string;
   email: string;
@@ -93,6 +96,7 @@ export interface GalleryItem {
   type: 'photo' | 'video';
   url: string;
   caption: string;
+  description?: string;
 }
 
 export interface AwardItem {
@@ -321,6 +325,7 @@ export interface StudentRecord {
   bil: number;
   name: string;
   ic: string;
+  icNumber?: string;
   gender: 'LELAKI' | 'PEREMPUAN';
   photoUrl?: string;
   year: string;

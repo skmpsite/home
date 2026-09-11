@@ -333,10 +333,11 @@ export const TeacherRmtSubSection: React.FC<TeacherRmtSubSectionProps> = ({
   // Senarai Murid RMT Ditapis untuk Tab 1 (Senarai 89)
   const filteredStudents = useMemo(() => {
     const list = initialRmtStudentsList.filter((student) => {
+      const q = (searchQuery || '').toLowerCase();
       const matchesSearch =
-        student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        student.ic.includes(searchQuery) ||
-        student.address.toLowerCase().includes(searchQuery.toLowerCase());
+        (student.name || '').toLowerCase().includes(q) ||
+        (student.ic || '').includes(searchQuery) ||
+        (student.address || '').toLowerCase().includes(q);
 
       const matchesYear = selectedYear === 'semua' || student.year === selectedYear;
       const matchesClass = selectedClass === 'semua' || student.className === selectedClass;

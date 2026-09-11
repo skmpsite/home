@@ -562,11 +562,11 @@ export const EditOfficerModal: React.FC<EditOfficerModalProps> = ({
   onClose,
   onSave
 }) => {
-  const current = officer || initialOfficer || { role: '', name: '', unit: '', phone: '' };
+  const current: HemOfficer = officer || initialOfficer || { id: `hem-off-${Date.now()}`, role: '', name: '', unit: '', phone: '' };
   const [formData, setFormData] = useState<HemOfficer>({ ...current });
 
   React.useEffect(() => {
-    const off = officer || initialOfficer || { role: '', name: '', unit: '', phone: '' };
+    const off: HemOfficer = officer || initialOfficer || { id: `hem-off-${Date.now()}`, role: '', name: '', unit: '', phone: '' };
     setFormData({ ...off });
   }, [officer, initialOfficer, isOpen]);
 

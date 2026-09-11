@@ -53,13 +53,30 @@ interface StudentSearchPortalModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialSearchQuery?: string;
+  isAdmin?: boolean;
 }
 
 export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> = ({
   isOpen,
   onClose,
-  initialSearchQuery = ''
+  initialSearchQuery = '',
+  isAdmin
 }) => {
+  // Hanya admin sahaja yang dibenarkan melihat butang "Segar Semula" & "Google Sheets"
+  const effectiveIsAdmin = useMemo(() => {
+    if (typeof isAdmin === 'boolean') {
+      return isAdmin;
+    }
+    try {
+      if (typeof window !== 'undefined') {
+        return localStorage.getItem('skmp_attendance_auth_user') === 'admin';
+      }
+    } catch {
+      // ignore
+    }
+    return false;
+  }, [isAdmin, isOpen]);
+
   const [students, setStudents] = useState<FullStudentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -94,6 +111,12 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
   const [contactModalType, setContactModalType] = useState<'whatsapp' | 'call'>('whatsapp');
 
   // Load students on open
+  useEffect(() => {
+    if (initialSearchQuery !== undefined) {
+      setSearchQuery(initialSearchQuery);
+    }
+  }, [initialSearchQuery]);
+
   useEffect(() => {
     if (isOpen) {
       setIsFitScreen(true);
@@ -441,26 +464,31 @@ Alamat: ${s.fullAddress || '-'}`;
 
           {/* Action buttons */}
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-            <button
-              onClick={() => loadData(true)}
-              disabled={refreshing}
-              className="p-2 sm:px-3 sm:py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 border border-emerald-400 shadow-md cursor-pointer"
-              title="Segar semula data terus daripada Google Sheets"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">{refreshing ? 'Menyegerak...' : 'Segar Semula'}</span>
-            </button>
+            {/* Butang Segar Semula & Google Sheets khas untuk Admin sahaja */}
+            {effectiveIsAdmin && (
+              <>
+                <button
+                  onClick={() => loadData(true)}
+                  disabled={refreshing}
+                  className="p-2 sm:px-3 sm:py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 border border-emerald-400 shadow-md cursor-pointer"
+                  title="Segar semula data terus daripada Google Sheets"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">{refreshing ? 'Menyegerak...' : 'Segar Semula'}</span>
+                </button>
 
-            <a
-              href={GOOGLE_SHEET_STUDENTS_EDIT_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 sm:px-3 sm:py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-white/20"
-              title="Buka fail Google Sheets di tab baharu"
-            >
-              <ExternalLink className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="hidden sm:inline">Google Sheets</span>
-            </a>
+                <a
+                  href={GOOGLE_SHEET_STUDENTS_EDIT_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 sm:px-3 sm:py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-white/20"
+                  title="Buka fail Google Sheets di tab baharu"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="hidden sm:inline">Google Sheets</span>
+                </a>
+              </>
+            )}
 
             {/* Fit Screen Toggle Button */}
             <button

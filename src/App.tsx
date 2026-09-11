@@ -336,6 +336,7 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedNewsReader, setSelectedNewsReader] = useState<NewsItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [studentPortalInitialQuery, setStudentPortalInitialQuery] = useState('');
   const [isGlobalStudentPortalOpen, setIsGlobalStudentPortalOpen] = useState(false);
   const [isGlobalRmtPortalOpen, setIsGlobalRmtPortalOpen] = useState(false);
   const [isGlobalIctModalOpen, setIsGlobalIctModalOpen] = useState(false);
@@ -830,124 +831,167 @@ export default function App() {
 
   // Global Search Autocomplete Builder
   const searchResults = useMemo<SearchResultItem[]>(() => {
-    if (!searchQuery.trim()) return [];
-    const q = searchQuery.toLowerCase();
+    if (!searchQuery || !searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase().trim();
     const results: SearchResultItem[] = [];
 
-    // Search News
-    newsList.forEach((n) => {
-      if (n.title.toLowerCase().includes(q) || n.summary.toLowerCase().includes(q)) {
-        results.push({
-          type: 'berita',
-          title: n.title,
-          subtitle: `Berita (${n.date})`,
-          linkTab: 'berita',
-          id: n.id
+    try {
+      // Search News
+      if (Array.isArray(newsList)) {
+        newsList.forEach((n) => {
+          if (!n) return;
+          const title = (n.title || '').toLowerCase();
+          const summary = (n.summary || '').toLowerCase();
+          if (title.includes(q) || summary.includes(q)) {
+            results.push({
+              type: 'berita',
+              title: n.title || 'Berita',
+              subtitle: `Berita (${n.date || '-'})`,
+              linkTab: 'berita',
+              id: n.id
+            });
+          }
         });
       }
-    });
 
-    // Search Staff
-    staffList.forEach((s) => {
-      if (s.name.toLowerCase().includes(q) || s.position.toLowerCase().includes(q)) {
-        results.push({
-          type: 'staf',
-          title: s.name,
-          subtitle: `${s.position} (${s.grade})`,
-          linkTab: 'profil',
-          id: s.id
+      // Search Staff
+      if (Array.isArray(staffList)) {
+        staffList.forEach((s) => {
+          if (!s) return;
+          const name = (s.name || '').toLowerCase();
+          const position = (s.position || '').toLowerCase();
+          if (name.includes(q) || position.includes(q)) {
+            results.push({
+              type: 'staf',
+              title: s.name || 'Guru / Staf',
+              subtitle: `${s.position || ''} (${s.grade || ''})`,
+              linkTab: 'profil',
+              id: s.id
+            });
+          }
         });
       }
-    });
 
-    // Search Gallery Media
-    gallery.forEach((g) => {
-      if (g.title.toLowerCase().includes(q) || (g.description && g.description.toLowerCase().includes(q))) {
-        results.push({
-          type: 'galeri',
-          title: g.title,
-          subtitle: `Galeri (${g.category})`,
-          linkTab: 'berita',
-          id: g.id
+      // Search Gallery Media
+      if (Array.isArray(gallery)) {
+        gallery.forEach((g) => {
+          if (!g) return;
+          const title = (g.title || '').toLowerCase();
+          const desc = (g.description || '').toLowerCase();
+          if (title.includes(q) || desc.includes(q)) {
+            results.push({
+              type: 'galeri',
+              title: g.title || 'Galeri Foto',
+              subtitle: `Galeri (${g.category || '-'})`,
+              linkTab: 'berita',
+              id: g.id
+            });
+          }
         });
       }
-    });
 
-    // Search Documents
-    documents.forEach((d) => {
-      if (d.title.toLowerCase().includes(q) || d.description.toLowerCase().includes(q)) {
-        results.push({
-          type: 'dokumen',
-          title: d.title,
-          subtitle: `Dokumen (${d.fileType})`,
-          linkTab: 'portal',
-          id: d.id
+      // Search Documents
+      if (Array.isArray(documents)) {
+        documents.forEach((d) => {
+          if (!d) return;
+          const title = (d.title || '').toLowerCase();
+          const desc = (d.description || '').toLowerCase();
+          if (title.includes(q) || desc.includes(q)) {
+            results.push({
+              type: 'dokumen',
+              title: d.title || 'Dokumen',
+              subtitle: `Dokumen (${d.fileType || 'PDF'})`,
+              linkTab: 'portal',
+              id: d.id
+            });
+          }
         });
       }
-    });
 
-    // Search Calendar
-    events.forEach((e) => {
-      if (e.title.toLowerCase().includes(q) || e.description.toLowerCase().includes(q)) {
-        results.push({
-          type: 'acara',
-          title: e.title,
-          subtitle: `Takwim (${e.date})`,
-          linkTab: 'akademik',
-          id: e.id
+      // Search Calendar
+      if (Array.isArray(events)) {
+        events.forEach((e) => {
+          if (!e) return;
+          const title = (e.title || '').toLowerCase();
+          const desc = (e.description || '').toLowerCase();
+          if (title.includes(q) || desc.includes(q)) {
+            results.push({
+              type: 'acara',
+              title: e.title || 'Acara Takwim',
+              subtitle: `Takwim (${e.date || '-'})`,
+              linkTab: 'akademik',
+              id: e.id
+            });
+          }
         });
       }
-    });
 
-    // Search HEM
-    const hemKeywords = [
-      { key: 'murid', title: 'Portal Pangkalan Data Murid APDM', sub: 'Carian 375 orang murid SKMP & Maklumat Lengkap' },
-      { key: 'carian', title: 'Portal Senarai & Carian Murid', sub: 'Carian mengikut nama, kelas, no. KP & penjaga' },
-      { key: 'hem', title: 'Hal Ehwal Murid (HEM)', sub: 'Pengurusan Disiplin, Kebajikan & 3K' },
-      { key: 'disiplin', title: 'Disiplin & Peraturan Sekolah', sub: 'Kod Tatatertib & Etika Murid' },
-      { key: 'kaunseling', title: 'Unit Bimbingan & Kaunseling (UBK)', sub: 'Program Guru Penyayang & Minda Sihat' },
-      { key: 'ssdm', title: 'Sistem Sahsiah Diri Murid (SSDM)', sub: 'Rekod Amalan Baik & Intervensi' },
-      { key: 'spbt', title: 'Skim Pinjaman Buku Teks (SPBT)', sub: 'Pengagihan & Bilik BOSS' },
-      { key: 'rmt', title: 'Portal RMT & Program Susu Sekolah (89 Murid)', sub: 'Penerima RMT, Buku Rekod Makan & Jadual Menu Nutrisi' },
-      { key: 'susu', title: 'Program Susu Sekolah (PSS) & RMT', sub: 'Jadual Agihan Susu UHT & Kelayakan 89 Murid' },
-      { key: 'bap', title: 'Bantuan Awal Persekolahan (BAP)', sub: 'Bantuan Tunai RM150 & KWAPM' },
-      { key: 'keselamatan', title: 'Keselamatan Murid & 3K', sub: 'Kawalan Pagar, Pelawat & Latihan Kebakaran' },
-      { key: 'kesihatan', title: 'Kesihatan Murid & Rawatan Gigi', sub: 'Klinik Bergerak KKM & Imunisasi' },
-      { key: 'kebersihan', title: 'Kebersihan Kelas & 3K', sub: 'Pertandingan Kelas Terbersih & 3R' }
-    ];
-    hemKeywords.forEach((h, idx) => {
-      if (h.key.includes(q) || h.title.toLowerCase().includes(q) || h.sub.toLowerCase().includes(q)) {
-        let destinationTab: any = 'hem';
-        if (h.key === 'murid' || h.key === 'carian') destinationTab = 'carian_murid';
-        if (h.key === 'rmt' || h.key === 'susu') destinationTab = 'portal_rmt';
-        results.push({
-          type: 'pengumuman',
-          title: h.title,
-          subtitle: h.sub,
-          linkTab: destinationTab,
-          id: `hem-${idx}`
-        });
-      }
-    });
+      // Search HEM Keywords
+      const hemKeywords = [
+        { key: 'murid', title: 'Portal Pangkalan Data Murid APDM', sub: 'Carian 375 orang murid SKMP & Maklumat Lengkap' },
+        { key: 'carian', title: 'Portal Senarai & Carian Murid', sub: 'Carian mengikut nama, kelas, no. KP & penjaga' },
+        { key: 'hem', title: 'Hal Ehwal Murid (HEM)', sub: 'Pengurusan Disiplin, Kebajikan & 3K' },
+        { key: 'disiplin', title: 'Disiplin & Peraturan Sekolah', sub: 'Kod Tatatertib & Etika Murid' },
+        { key: 'kaunseling', title: 'Unit Bimbingan & Kaunseling (UBK)', sub: 'Program Guru Penyayang & Minda Sihat' },
+        { key: 'ssdm', title: 'Sistem Sahsiah Diri Murid (SSDM)', sub: 'Rekod Amalan Baik & Intervensi' },
+        { key: 'spbt', title: 'Skim Pinjaman Buku Teks (SPBT)', sub: 'Pengagihan & Bilik BOSS' },
+        { key: 'rmt', title: 'Portal RMT & Program Susu Sekolah (89 Murid)', sub: 'Penerima RMT, Buku Rekod Makan & Jadual Menu Nutrisi' },
+        { key: 'susu', title: 'Program Susu Sekolah (PSS) & RMT', sub: 'Jadual Agihan Susu UHT & Kelayakan 89 Murid' },
+        { key: 'bap', title: 'Bantuan Awal Persekolahan (BAP)', sub: 'Bantuan Tunai RM150 & KWAPM' },
+        { key: 'keselamatan', title: 'Keselamatan Murid & 3K', sub: 'Kawalan Pagar, Pelawat & Latihan Kebakaran' },
+        { key: 'kesihatan', title: 'Kesihatan Murid & Rawatan Gigi', sub: 'Klinik Bergerak KKM & Imunisasi' },
+        { key: 'kebersihan', title: 'Kebersihan Kelas & 3K', sub: 'Pertandingan Kelas Terbersih & 3R' }
+      ];
+      hemKeywords.forEach((h, idx) => {
+        if (h.key.includes(q) || h.title.toLowerCase().includes(q) || h.sub.toLowerCase().includes(q)) {
+          let destinationTab: any = 'hem';
+          if (h.key === 'murid' || h.key === 'carian') destinationTab = 'carian_murid';
+          if (h.key === 'rmt' || h.key === 'susu') destinationTab = 'portal_rmt';
+          results.push({
+            type: 'pengumuman',
+            title: h.title,
+            subtitle: h.sub,
+            linkTab: destinationTab,
+            id: `hem-${idx}`
+          });
+        }
+      });
 
-    // Search Students Database directly
-    studentsList.forEach((st) => {
-      if (st.name.toLowerCase().includes(q) || st.icNumber.includes(q) || st.className.toLowerCase().includes(q)) {
-        results.push({
-          type: 'pengumuman',
-          title: st.name,
-          subtitle: `Murid ${st.className} • No. KP: ${st.icNumber}`,
-          linkTab: 'carian_murid' as any,
-          id: st.id
+      // Search Students Database directly
+      if (Array.isArray(studentsList)) {
+        studentsList.forEach((st) => {
+          if (!st) return;
+          const name = (st.name || '').toLowerCase();
+          const ic = ((st.ic || (st as any).icNumber || '') + '').replace(/[^0-9]/g, '');
+          const cleanQ = q.replace(/[^0-9]/g, '');
+          const className = (st.className || '').toLowerCase();
+          const year = (st.year || '').toLowerCase();
+
+          const matchesName = name.includes(q);
+          const matchesIc = cleanQ.length > 0 && ic.includes(cleanQ);
+          const matchesClass = className.includes(q) || year.includes(q);
+
+          if (matchesName || matchesIc || matchesClass) {
+            results.push({
+              type: 'pengumuman',
+              title: st.name || 'Murid SKMP',
+              subtitle: `Murid ${st.className || ''} • No. KP: ${st.ic || (st as any).icNumber || '-'}`,
+              linkTab: 'carian_murid' as any,
+              id: st.id
+            });
+          }
         });
       }
-    });
+    } catch (err) {
+      console.error('Error computing search results:', err);
+    }
 
     return results.slice(0, 8);
-  }, [searchQuery, newsList, staffList, documents, events, studentsList]);
+  }, [searchQuery, newsList, staffList, gallery, documents, events, studentsList]);
 
   const handleSelectSearchResult = (item: SearchResultItem) => {
     if (item.linkTab === ('carian_murid' as any)) {
+      setStudentPortalInitialQuery(item.title && item.title !== 'Portal Senarai & Carian Murid' && item.title !== 'Portal Pangkalan Data Murid APDM' ? item.title : searchQuery);
       setIsGlobalStudentPortalOpen(true);
       return;
     }
@@ -1297,7 +1341,12 @@ export default function App() {
       {/* Student Database & Search Portal Modal (Carian Murid) */}
       <StudentSearchPortalModal
         isOpen={isGlobalStudentPortalOpen}
-        onClose={() => setIsGlobalStudentPortalOpen(false)}
+        onClose={() => {
+          setIsGlobalStudentPortalOpen(false);
+          setStudentPortalInitialQuery('');
+        }}
+        initialSearchQuery={studentPortalInitialQuery}
+        isAdmin={isAdmin}
       />
 
       {/* Global RMT Management Modal Popup (Kehadiran RMT Murid) */}
