@@ -363,54 +363,72 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
     }
   };
 
-  // Fungsi memainkan barisan audio Bahasa Melayu secara berturutan melalui Google TTS Stream Rasmi (ms-MY)
-  const playNextAudioChunk = (msgId?: string) => {
-    if (audioQueueRef.current.length === 0) {
-      isPlayingAudioRef.current = false;
-      setCurrentlySpeakingId(null);
+  // Uji sebutan suara rasmi Bahasa Melayu Malaysia
+  const testMalayVoice = () => {
+    unlockAudioContext();
+    speakText('Hai! Saya Sweetbot, pembantu maya rasmi Sekolah Kebangsaan Merbau Pulas. Suara saya kini bersedia dalam sebutan Bahasa Melayu Malaysia yang lancar, asli dan baku.');
+  };
+
+  // Text-To-Speech Rasmi Bahasa Melayu Malaysia (100% Sebutan Asli Malaysia Baku, Satu Aliran Audio Berterusan)
+  const speakText = (text: string, msgId?: string) => {
+    if (!speechEnabled) return;
+    
+    // Buka kunci audio untuk mobile / Safari
+    unlockAudioContext();
+
+    // Jika sedang memainkan mesej yang sama, klik ini berfungsi untuk berhenti
+    if (currentlySpeakingId === msgId && msgId) {
+      stopSpeaking();
       return;
     }
 
-    const nextChunk = audioQueueRef.current.shift();
-    if (!nextChunk || !nextChunk.trim()) {
-      playNextAudioChunk(msgId);
-      return;
-    }
+    // Hentikan sebarang pertuturan sebelumnya serta-merta
+    stopSpeaking();
+
+    const cleanText = cleanTextForMalaySpeech(text);
+    if (!cleanText) return;
+
+    // Hadkan teks kepada 650 aksara pertama bagi kelancaran audio masa nyata
+    const textToSpeak = cleanText.length > 650 ? cleanText.substring(0, 650) + '...' : cleanText;
 
     try {
-      const audioUrl = `/api/tts?text=${encodeURIComponent(nextChunk.trim())}`;
       let audio = sharedAudioRef.current;
       if (!audio) {
         audio = new Audio();
         sharedAudioRef.current = audio;
       }
       activeAudioRef.current = audio;
+
+      if (msgId) setCurrentlySpeakingId(msgId);
+      isPlayingAudioRef.current = true;
+
+      // Hantar teks ke pelayan yang akan mencantumkan semua segmen MP3 menjadi SATU fail audio lengkap
+      const audioUrl = `/api/tts?text=${encodeURIComponent(textToSpeak)}`;
       audio.src = audioUrl;
 
       audio.onended = () => {
-        playNextAudioChunk(msgId);
+        isPlayingAudioRef.current = false;
+        setCurrentlySpeakingId(null);
       };
 
       audio.onerror = (err) => {
-        console.warn('Audio stream error, memeriksa suara Bahasa Melayu tulen peranti:', err);
+        console.warn('Audio stream notice, memeriksa profil suara Melayu peranti:', err);
         const malayVoice = getBestMalayVoice();
-        // HANYA gunakan WebSpeech jika peranti disahkan mempunyai suara Bahasa Melayu tulen!
-        // DILARANG SAMA SEKALI jatuh ke suara Inggeris / slang peranti.
         if (malayVoice) {
-          speakWithWebSpeech(nextChunk, msgId);
+          speakWithWebSpeech(textToSpeak, msgId);
         } else {
-          // Teruskan ke ayat seterusnya tanpa suara Inggeris
-          playNextAudioChunk(msgId);
+          isPlayingAudioRef.current = false;
+          setCurrentlySpeakingId(null);
         }
       };
 
       const playPromise = audio.play();
       if (playPromise !== undefined) {
         playPromise.catch((playErr) => {
-          console.warn('Autoplay disekat oleh pelayar, memeriksa suara Melayu peranti:', playErr);
+          console.warn('Autoplay disekat oleh pelayar:', playErr);
           const malayVoice = getBestMalayVoice();
           if (malayVoice) {
-            speakWithWebSpeech(nextChunk, msgId);
+            speakWithWebSpeech(textToSpeak, msgId);
           } else {
             isPlayingAudioRef.current = false;
             setCurrentlySpeakingId(null);
@@ -419,72 +437,30 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
       }
     } catch (e) {
       console.warn('TTS playback error:', e);
-      playNextAudioChunk(msgId);
-    }
-  };
-
-  // Uji sebutan suara rasmi Bahasa Melayu Malaysia
-  const testMalayVoice = () => {
-    unlockAudioContext();
-    speakText('Hai! Saya Sweetbot, pembantu maya rasmi Sekolah Kebangsaan Merbau Pulas. Suara saya diselaraskan dalam sebutan Bahasa Melayu Malaysia yang asli dan baku.');
-  };
-
-  // Text-To-Speech Rasmi Bahasa Melayu Malaysia (100% Sebutan Asli Malaysia, Tiada Slang Inggeris/Indonesia)
-  const speakText = (text: string, msgId?: string) => {
-    if (!speechEnabled) return;
-    
-    // Buka kunci audio untuk mobile / Safari
-    unlockAudioContext();
-
-    // Hentikan sebarang pertuturan semasa serta-merta
-    stopSpeaking();
-
-    if (currentlySpeakingId === msgId && msgId) {
+      isPlayingAudioRef.current = false;
       setCurrentlySpeakingId(null);
-      return;
     }
-
-    const cleanText = cleanTextForMalaySpeech(text);
-    if (!cleanText) return;
-
-    // Pecahkan teks kepada klausa/ayat yang mesra sebutan audio rasmi Malaysia
-    const sentences = cleanText
-      .split(/(?<=[.?!;:\n])\s+/)
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
-
-    const chunks: string[] = [];
-    for (const sentence of sentences) {
-      if (sentence.length <= 140) {
-        chunks.push(sentence);
-      } else {
-        const subClauses = sentence.split(/,\s+/);
-        for (const sub of subClauses) {
-          if (sub.trim()) chunks.push(sub.trim());
-        }
-      }
-    }
-
-    if (chunks.length === 0) return;
-
-    audioQueueRef.current = chunks;
-    isPlayingAudioRef.current = true;
-    if (msgId) setCurrentlySpeakingId(msgId);
-
-    // Mainkan aliran audio rasmi Bahasa Melayu Malaysia (/api/tts)
-    playNextAudioChunk(msgId);
   };
 
   const stopSpeaking = () => {
     audioQueueRef.current = [];
     isPlayingAudioRef.current = false;
-    if (activeAudioRef.current) {
-      activeAudioRef.current.pause();
-      activeAudioRef.current.currentTime = 0;
-      activeAudioRef.current = null;
+    if (sharedAudioRef.current) {
+      try {
+        sharedAudioRef.current.pause();
+        sharedAudioRef.current.currentTime = 0;
+      } catch (e) {}
+    }
+    if (activeAudioRef.current && activeAudioRef.current !== sharedAudioRef.current) {
+      try {
+        activeAudioRef.current.pause();
+        activeAudioRef.current.currentTime = 0;
+      } catch (e) {}
     }
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
+      try {
+        window.speechSynthesis.cancel();
+      } catch (e) {}
     }
     setCurrentlySpeakingId(null);
   };

@@ -854,66 +854,115 @@ KEUPAYAAN ILMU & JAWAPAN MENYELURUH (GEMINI OMNISCIENCE):
     }
   });
 
-  // GET /api/tts: Native Bahasa Melayu Malaysia (ms) Audio Stream
-  app.get("/api/tts", async (req, res) => {
+  // GET & POST /api/tts: Native Bahasa Melayu Malaysia (ms) Audio Stream with Multi-Chunk Concatenation
+  const handleTtsRequest = async (req: express.Request, res: express.Response) => {
     try {
-      const text = req.query.text as string;
+      const text = (req.method === "POST" ? req.body?.text : req.query.text) as string;
       if (!text || typeof text !== "string") {
         return res.status(400).send("Teks diperlukan.");
       }
 
-      // Bersihkan teks daripada simbol dan hadkan aksara
+      // Bersihkan teks daripada markdown, emoji, dan simbol khas
       const cleanText = text
+        .replace(/\[(.*?)\]\(.*?\)/g, "$1")
         .replace(/[*#_`~>•]/g, " ")
         .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, "")
         .replace(/\s+/g, " ")
         .trim()
-        .substring(0, 300);
+        .substring(0, 800); // Had praktikal bacaan audio mesra pengguna
 
       if (!cleanText) {
         return res.status(400).send("Teks kosong.");
       }
 
-      // Sumber audio rasmi Bahasa Melayu Malaysia (ms-MY / ms)
-      const ttsUrls = [
-        `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=ms-MY&client=gtx&q=${encodeURIComponent(cleanText)}`,
-        `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=ms&client=gtx&q=${encodeURIComponent(cleanText)}`,
-        `https://translate.google.com/translate_tts?ie=UTF-8&tl=ms&client=tw-ob&q=${encodeURIComponent(cleanText)}`
-      ];
+      // Bahagikan teks kepada bahagian-bahagian pendek (<= 160 aksara) bagi memenuhi had Google TTS
+      const splitIntoTtsChunks = (str: string, maxLen = 160): string[] => {
+        // Bahagikan mengikut ayat terlebih dahulu
+        const sentences = str.split(/(?<=[.?!;:\n])\s+/).filter(s => s.trim().length > 0);
+        const chunks: string[] = [];
+        let current = "";
 
-      let audioBuffer: Buffer | null = null;
-      for (const ttsUrl of ttsUrls) {
-        try {
-          const response = await fetch(ttsUrl, {
-            headers: {
-              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-              "Referer": "https://translate.google.com/"
-            }
-          });
-          if (response.ok) {
-            const arrayBuffer = await response.arrayBuffer();
-            if (arrayBuffer.byteLength > 100) {
-              audioBuffer = Buffer.from(arrayBuffer);
-              break;
+        for (const s of sentences) {
+          if ((current + " " + s).trim().length <= maxLen) {
+            current = current ? current + " " + s : s;
+          } else {
+            if (current.trim()) chunks.push(current.trim());
+            if (s.length <= maxLen) {
+              current = s;
+            } else {
+              // Jika ayat terlalu panjang, pecahkan mengikut koma atau perkataan
+              const words = s.split(/\s+/);
+              let sub = "";
+              for (const w of words) {
+                if ((sub + " " + w).trim().length <= maxLen) {
+                  sub = sub ? sub + " " + w : w;
+                } else {
+                  if (sub.trim()) chunks.push(sub.trim());
+                  sub = w;
+                }
+              }
+              current = sub;
             }
           }
-        } catch (fetchErr) {
-          console.warn("[TTS FETCH RETRY]", fetchErr);
         }
-      }
+        if (current.trim()) chunks.push(current.trim());
+        return chunks.length > 0 ? chunks : [str.substring(0, maxLen)];
+      };
 
-      if (!audioBuffer) {
+      const chunks = splitIntoTtsChunks(cleanText);
+
+      // Fungsi mengambil audio MP3 untuk satu bahagian daripada Google TTS
+      const fetchTtsChunk = async (chunkText: string): Promise<Buffer | null> => {
+        const ttsUrls = [
+          `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=ms-MY&client=gtx&q=${encodeURIComponent(chunkText)}`,
+          `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=ms&client=gtx&q=${encodeURIComponent(chunkText)}`,
+          `https://translate.google.com/translate_tts?ie=UTF-8&tl=ms&client=tw-ob&q=${encodeURIComponent(chunkText)}`
+        ];
+
+        for (const url of ttsUrls) {
+          try {
+            const resp = await fetch(url, {
+              headers: {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+                "Referer": "https://translate.google.com/"
+              }
+            });
+            if (resp.ok) {
+              const ab = await resp.arrayBuffer();
+              if (ab.byteLength > 100) {
+                return Buffer.from(ab);
+              }
+            }
+          } catch (e) {
+            // Cuba URL seterusnya
+          }
+        }
+        return null;
+      };
+
+      // Dapatkan semua bahagian audio secara selari
+      const audioBuffers = await Promise.all(chunks.map(chunk => fetchTtsChunk(chunk)));
+      const validBuffers = audioBuffers.filter((b): b is Buffer => b !== null && b.length > 0);
+
+      if (validBuffers.length === 0) {
         return res.status(502).send("Gagal menjana audio Bahasa Melayu.");
       }
 
+      // Cantumkan semua bahagian audio MP3 menjadi satu aliran berterusan
+      const combinedAudio = Buffer.concat(validBuffers);
+
       res.setHeader("Content-Type", "audio/mpeg");
       res.setHeader("Cache-Control", "public, max-age=86400");
-      res.send(audioBuffer);
+      res.setHeader("Content-Length", combinedAudio.length.toString());
+      res.send(combinedAudio);
     } catch (err: any) {
       console.error("[TTS ERROR]", err);
       res.status(500).send("Ralat TTS.");
     }
-  });
+  };
+
+  app.get("/api/tts", handleTtsRequest);
+  app.post("/api/tts", handleTtsRequest);
 
   // Serve static public assets (icons, manifest, service worker)
   const publicPath = path.join(process.cwd(), "public");
