@@ -245,6 +245,34 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
       }
     }
 
+    const hasUbkPortal = list.some(
+      (l) =>
+        l.id === 'tlink-h-ubk' ||
+        l.url === '#ubk' ||
+        l.url.includes('#ubk') ||
+        l.title.toLowerCase().includes('kaunseling') ||
+        l.title.toLowerCase().includes('ubk') ||
+        Boolean(l.badge?.toLowerCase().includes('ubk'))
+    );
+    if (!hasUbkPortal) {
+      const defaultUbkLink: TeacherLinkItem = {
+        id: 'tlink-h-ubk',
+        title: 'Unit Bimbingan & Kaunseling (e-BRPBK)',
+        category: 'hem' as const,
+        url: '#ubk',
+        description: 'Buku Rekod Perkhidmatan Bimbingan & Kaunseling digital SKMP: e-RPH GBK, RPT, Sesi Kaunseling, Psikometrik & PBPPP.',
+        badge: 'UBK / e-BRPBK',
+        iconName: 'HeartHandshake',
+        order: 11
+      };
+      const hemIdx = list.findIndex((l) => l.category === 'hem');
+      if (hemIdx !== -1) {
+        list.splice(hemIdx + 2, 0, defaultUbkLink);
+      } else {
+        list.push(defaultUbkLink);
+      }
+    }
+
     return list;
   };
 
@@ -904,6 +932,24 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                     Boolean(link.badge?.toLowerCase().includes('rmt')) ||
                     link.description.toLowerCase().includes('makanan tambahan');
 
+                  const isUbkLink =
+                    link.id === 'tlink-h-ubk' ||
+                    link.url === '#ubk' ||
+                    link.url.includes('#ubk') ||
+                    link.title.toLowerCase().includes('kaunseling') ||
+                    link.title.toLowerCase().includes('ubk') ||
+                    Boolean(link.badge?.toLowerCase().includes('ubk'));
+
+                  const handleOpenUbk = () => {
+                    if (onNavigate) {
+                      onNavigate('hem');
+                    }
+                    if (typeof window !== 'undefined') {
+                      window.location.hash = '#ubk';
+                      window.dispatchEvent(new CustomEvent('skmp-navigate-ubk'));
+                    }
+                  };
+
                   return (
                     <div
                       key={link.id}
@@ -915,6 +961,7 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                       onClick={() => {
                         if (isStudentPortalLink) handleOpenStudent();
                         else if (isRmtPortalLink) handleOpenRmt();
+                        else if (isUbkLink) handleOpenUbk();
                         else {
                           const formatted = formatExternalUrl(link.url);
                           if (formatted && formatted !== '#') {
@@ -932,6 +979,7 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                           e.preventDefault();
                           if (isStudentPortalLink) handleOpenStudent();
                           else if (isRmtPortalLink) handleOpenRmt();
+                          else if (isUbkLink) handleOpenUbk();
                           else {
                             const formatted = formatExternalUrl(link.url);
                             if (formatted && formatted !== '#') {
@@ -949,6 +997,8 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                           ? 'border-emerald-500/40 hover:border-emerald-400 bg-gradient-to-b from-slate-900/95 via-emerald-950/20 to-slate-900/95'
                           : isRmtPortalLink
                           ? 'border-amber-500/40 hover:border-amber-400 bg-gradient-to-b from-slate-900/95 via-amber-950/20 to-slate-900/95'
+                          : isUbkLink
+                          ? 'border-teal-500/40 hover:border-teal-300 bg-gradient-to-b from-slate-900/95 via-teal-950/30 to-slate-900/95'
                           : 'border-white/15 hover:border-white/40'
                       }`}
                     >

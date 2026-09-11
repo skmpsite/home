@@ -419,6 +419,15 @@ export const HemSection: React.FC<HemSectionProps> = ({
       setActiveSubTab(initialSubTab);
     }
   }, [initialSubTab]);
+
+  // Listener capaian pantas terus ke tab UBK (dari Guru Portal, Sweetbot, atau pautan lain)
+  useEffect(() => {
+    const handleNavUbk = () => {
+      setActiveSubTab('ubk');
+    };
+    window.addEventListener('skmp-navigate-ubk', handleNavUbk);
+    return () => window.removeEventListener('skmp-navigate-ubk', handleNavUbk);
+  }, []);
   const [selectedDetailModal, setSelectedDetailModal] = useState<{
     title: string;
     category: string;

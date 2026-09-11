@@ -17,7 +17,8 @@ import {
   FileLock2,
   Layers,
   ChevronRight,
-  School
+  School,
+  Eye
 } from 'lucide-react';
 import {
   UbkDutyItem,
@@ -197,12 +198,17 @@ export const HemUbkSubSection: React.FC<HemUbkSubSectionProps> = ({
               {canEdit ? (
                 <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  Akses Edit Aktif: {userRole === 'kaunselor' ? 'Guru Kaunselor (UBK)' : 'Pentadbir Sekolah'}
+                  Akses Edit Aktif: {userRole === 'kaunselor' ? 'Guru Kaunselor (UBK)' : userRole === 'guru_besar' ? 'Guru Besar' : 'Pentadbir Sekolah'}
+                </span>
+              ) : userRole === 'guru' ? (
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-sky-500/15 text-sky-300 border border-sky-400/30">
+                  <Eye className="w-3.5 h-3.5 text-sky-400" />
+                  Mod Rujukan Guru (Paparan Sahaja — Hak Edit Khas Kaunselor UBK)
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-slate-300 border border-white/15">
                   <Lock className="w-3.5 h-3.5 text-amber-400" />
-                  Mod Rujukan Pentadbir & Guru (Paparan Sahaja)
+                  Mod Rujukan (Log Masuk Kaunselor UBK untuk Edit)
                 </span>
               )}
             </div>
@@ -225,9 +231,10 @@ export const HemUbkSubSection: React.FC<HemUbkSubSectionProps> = ({
                 type="button"
                 onClick={onOpenLogin}
                 className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-teal-500 to-indigo-600 hover:from-teal-400 hover:to-indigo-500 text-white text-xs font-black shadow-lg shadow-teal-950/60 border border-teal-300/40 flex items-center gap-2 transition active:scale-95 cursor-pointer"
+                title="Log masuk untuk Guru Kaunselor (UBK) atau Pentadbir"
               >
                 <Lock className="w-4 h-4 text-yellow-300" />
-                <span>Log Masuk Kaunselor / Admin</span>
+                <span>Log Masuk Kaunselor / Pentadbir</span>
               </button>
             </div>
           )}

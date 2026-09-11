@@ -1337,10 +1337,22 @@ export default function App() {
           setUserRole(role);
           if (role === 'admin') {
             setIsAdmin(true);
-            setActiveTab('admin_cms');
+            if (activeTab !== 'hem' && activeTab !== 'akademik' && activeTab !== 'kokurikulum') {
+              setActiveTab('admin_cms');
+            }
           } else if (role === 'guru' || role === 'guru_besar') {
             setIsAdmin(false);
-            setActiveTab('guru');
+            if (activeTab !== 'hem' && activeTab !== 'akademik' && activeTab !== 'kokurikulum') {
+              setActiveTab('guru');
+            }
+          } else if (role === 'kaunselor') {
+            setIsAdmin(false);
+            if (activeTab !== 'hem' && activeTab !== 'guru' && activeTab !== 'akademik' && activeTab !== 'kokurikulum') {
+              setActiveTab('hem');
+              setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('skmp-navigate-ubk'));
+              }, 100);
+            }
           } else {
             setIsAdmin(false);
           }

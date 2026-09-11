@@ -825,7 +825,9 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
     }
   };
 
-  const isTeacherOrAdmin = Boolean(isAdmin || userRole === 'guru' || userRole === 'admin');
+  const isTeacherOrAdmin = Boolean(
+    isAdmin || userRole === 'guru' || userRole === 'kaunselor' || userRole === 'guru_besar' || userRole === 'admin'
+  );
 
   const handleQuickPortalAction = (type: 'carian_murid' | 'kehadiran_rmt' | 'tempahan_ict') => {
     unlockAudioContext();

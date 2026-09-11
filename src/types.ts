@@ -536,7 +536,14 @@ export const canEditKokurikulum = (role: UserRole | null | undefined, isAdmin?: 
 };
 
 export const canEditUbk = (role: UserRole | null | undefined, isAdmin?: boolean): boolean => {
-  return Boolean(isAdmin || role === 'admin' || role === 'guru_besar' || role === 'kaunselor');
+  // Hanya Guru Kaunselor (UBK), Guru Besar, dan Admin mempunyai hak mengedit modul UBK
+  // Guru biasa hanya mempunyai mod rujukan/paparan dan tidak boleh mengedit
+  return Boolean(
+    isAdmin ||
+    role === 'admin' ||
+    role === 'guru_besar' ||
+    role === 'kaunselor'
+  );
 };
 
 export interface UbkDutyItem {

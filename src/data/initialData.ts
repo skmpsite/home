@@ -1130,6 +1130,16 @@ export const initialTeacherLinks: TeacherLinkItem[] = [
     order: 10
   },
   {
+    id: "tlink-h-ubk",
+    title: "Unit Bimbingan & Kaunseling (e-BRPBK)",
+    category: "hem",
+    url: "#ubk",
+    description: "Buku Rekod Perkhidmatan Bimbingan & Kaunseling digital SKMP: e-RPH GBK, RPT, Sesi Kaunseling, Psikometrik & PBPPP.",
+    badge: "UBK / e-BRPBK",
+    iconName: "HeartHandshake",
+    order: 11
+  },
+  {
     id: "tlink-h5",
     title: "e-Bantuan KPM (BAP & KWAPM)",
     category: "hem",

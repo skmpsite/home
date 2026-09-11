@@ -197,7 +197,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
 
     // 7. Semak GURU KAUNSELOR / UBK (ID: UBK, Katalaluan: UBK5012)
     if (
-      (cleanUser === 'ubk' && (cleanPass === 'UBK5012' || cleanPassLower === 'ubk5012')) ||
+      ((cleanUser === 'ubk' || cleanUser === 'kaunselor') && (cleanPass === 'UBK5012' || cleanPassLower === 'ubk5012')) ||
       (cleanPass === 'UBK5012' || (cleanUser === '' && cleanPassLower === 'ubk5012'))
     ) {
       setIsSubmitting(true);
@@ -206,7 +206,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
       } catch (e) {
         console.error(e);
       }
-      setSuccessMsg('Log masuk Guru Kaunselor / UBK Berjaya! Membuka akses Unit Bimbingan & Kaunseling...');
+      setSuccessMsg('Log masuk Guru Kaunselor (UBK) Berjaya! Membuka akses pengurusan UBK dan akses penuh portal guru...');
       setTimeout(() => {
         setIsSubmitting(false);
         onLoginSuccess('kaunselor');
@@ -234,8 +234,11 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
       return;
     }
 
-    // 8. Semak akaun GURU (guru / guru5012 atau kata laluan guru5012)
-    if (cleanPass === 'guru5012' || (cleanUser === 'guru' && cleanPass === 'guru5012')) {
+    // 9. Semak akaun GURU (guru / guru5012)
+    if (
+      cleanPass === 'guru5012' ||
+      (cleanUser === 'guru' && (cleanPass === 'guru5012' || cleanPassLower === 'guru5012'))
+    ) {
       setIsSubmitting(true);
       try {
         localStorage.setItem('skmp_attendance_auth_user', 'guru');
@@ -368,7 +371,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                 <span>{isSubmitting ? 'Mengesahkan Log Masuk...' : 'Log Masuk'}</span>
               </button>
               <p className="text-center text-[11px] text-slate-400">
-                Sistem menyokong log masuk Guru Besar (ID: GB), Guru Kaunselor (ID: UBK), Pentadbir, Guru, PK & SU (Kurikulum, HEM, Kokurikulum) serta Pengguna SKMP.
+                Sistem menyokong log masuk Guru Besar (ID: GB), Guru & Kaunselor UBK (ID: UBK / GURU), Pentadbir, PK & SU (Kurikulum, HEM, Kokurikulum) serta Pengguna SKMP.
               </p>
             </div>
           </form>
