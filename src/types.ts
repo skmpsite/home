@@ -501,7 +501,8 @@ export type UserRole =
   | 'pk_hem'
   | 'su_hem'
   | 'pk_kokurikulum'
-  | 'su_kokurikulum';
+  | 'su_kokurikulum'
+  | 'kaunselor';
 
 export const isTeacherRole = (role: UserRole | null | undefined): boolean => {
   return (
@@ -513,7 +514,8 @@ export const isTeacherRole = (role: UserRole | null | undefined): boolean => {
     role === 'pk_hem' ||
     role === 'su_hem' ||
     role === 'pk_kokurikulum' ||
-    role === 'su_kokurikulum'
+    role === 'su_kokurikulum' ||
+    role === 'kaunselor'
   );
 };
 
@@ -526,11 +528,121 @@ export const canEditKurikulum = (role: UserRole | null | undefined, isAdmin?: bo
 };
 
 export const canEditHem = (role: UserRole | null | undefined, isAdmin?: boolean): boolean => {
-  return Boolean(isAdmin || role === 'admin' || role === 'guru_besar' || role === 'pk_hem' || role === 'su_hem');
+  return Boolean(isAdmin || role === 'admin' || role === 'guru_besar' || role === 'pk_hem' || role === 'su_hem' || role === 'kaunselor');
 };
 
 export const canEditKokurikulum = (role: UserRole | null | undefined, isAdmin?: boolean): boolean => {
   return Boolean(isAdmin || role === 'admin' || role === 'guru_besar' || role === 'pk_kokurikulum' || role === 'su_kokurikulum');
 };
+
+export const canEditUbk = (role: UserRole | null | undefined, isAdmin?: boolean): boolean => {
+  return Boolean(isAdmin || role === 'admin' || role === 'guru_besar' || role === 'kaunselor');
+};
+
+export interface UbkDutyItem {
+  id: string;
+  focusNumber: number;
+  category: string;
+  title: string;
+  description: string;
+  highlights: string[];
+  colorTheme: string;
+}
+
+export interface UbkActivityItem {
+  id: string;
+  title: string;
+  focus: 'Pembangunan Sahsiah' | 'Peningkatan Disiplin' | 'Pendidikan Kerjaya' | 'Psikososial & Kesejahteraan' | 'Sesi Bimbingan & Kaunseling' | 'Pengurusan & Pentadbiran';
+  status: 'telah_laksana' | 'sedang_laksana' | 'akan_laksana';
+  date: string;
+  targetGroup: string;
+  venue: string;
+  objective: string;
+  outcome?: string;
+  counselorName: string;
+  lastUpdated?: string;
+}
+
+export interface UbkRphItem {
+  id: string;
+  week: number;
+  date: string;
+  time: string;
+  sessionType: 'Bimbingan Kelas Modular' | 'Sesi Kaunseling Individu' | 'Sesi Kaunseling Kelompok' | 'Konsultasi Ibu Bapa / Guru' | 'Pengurusan Program & e-BRPBK' | 'Bimbingan Berfokus';
+  focus: string;
+  title: string;
+  target: string;
+  venue: string;
+  objective: string;
+  steps: string[];
+  teachingAids: string;
+  reflection: string;
+  counselorName: string;
+  status: 'menunggu' | 'disemak' | 'pembetulan';
+  submittedAt: string;
+  reviewedAt?: string;
+  reviewerName?: string;
+  reviewerComment?: string;
+  caseRef?: string;
+  isConfidential?: boolean;
+}
+
+export interface UbkRptItem {
+  id: string;
+  focus: 'Pembangunan Sahsiah' | 'Peningkatan Disiplin' | 'Pendidikan Kerjaya' | 'Kesejahteraan Mental';
+  strategyTitle: string;
+  targetGroup: string;
+  timeline: string;
+  kpi: string;
+  status: 'perancangan' | 'sedang_laksana' | 'selesai';
+  programs: string[];
+  pic: string;
+}
+
+export interface UbkCounselingSessionItem {
+  id: string;
+  caseRef: string;
+  clientCode: string;
+  type: 'individu' | 'kelompok' | 'konsultasi';
+  issueCategory: 'disiplin' | 'akademik' | 'emosi_psikososial' | 'keluarga' | 'kerjaya';
+  referralSource: 'sukarela' | 'guru' | 'pentadbir' | 'waris';
+  sessionDate: string;
+  sessionTime: string;
+  sessionCount: number;
+  goals: string;
+  intervention: string;
+  status: 'aktif' | 'selesai' | 'rujuk_pakar';
+  psychometricData?: {
+    instrumentName: string;
+    scoreResult: string;
+    actionPlan: string;
+  };
+  confidentialNotice: string;
+}
+
+export interface UbkPbpppDimension {
+  id: string;
+  name: string;
+  description: string;
+  weightage: number;
+  indicators: string[];
+  score: number;
+  maxScore: number;
+}
+
+export interface UbkPbpppAssessment {
+  id: string;
+  evaluatedYear: number;
+  counselorName: string;
+  evaluator1Name: string;
+  evaluator2Name: string;
+  dimensions: UbkPbpppDimension[];
+  overallPercentage: number;
+  gradeLevel: 'Cemerlang' | 'Baik' | 'Sederhana' | 'Perlu Bimbingan';
+  evaluatorFeedback: string;
+  lastUpdated: string;
+  status: 'draf' | 'selesai_dinilai';
+}
+
 
 

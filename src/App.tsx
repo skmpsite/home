@@ -187,7 +187,7 @@ export default function App() {
     return 'utama';
   });
 
-  const [hemSubTab, setHemSubTab] = useState<'semua' | 'kehadiran' | 'disiplin' | 'kebajikan' | '3k'>(() => {
+  const [hemSubTab, setHemSubTab] = useState<'semua' | 'kehadiran' | 'ubk' | 'disiplin' | 'kebajikan' | '3k'>(() => {
     if (typeof window === 'undefined') return 'semua';
     const search = (window.location.search || '').toLowerCase();
     const hash = (window.location.hash || '').toLowerCase();
@@ -200,6 +200,15 @@ export default function App() {
       hash.includes('kehadiran')
     ) {
       return 'kehadiran';
+    }
+    if (
+      search.includes('subtab=ubk') ||
+      search.includes('tab=ubk') ||
+      search.includes('view=ubk') ||
+      hash.includes('ubk') ||
+      hash.includes('kaunseling')
+    ) {
+      return 'ubk';
     }
     return 'semua';
   });

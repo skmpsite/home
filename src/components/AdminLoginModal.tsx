@@ -195,7 +195,28 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
       return;
     }
 
-    // 7. Semak akaun PENGGUNA / WARIS SKMP (skmp / 123456)
+    // 7. Semak GURU KAUNSELOR / UBK (ID: UBK, Katalaluan: UBK5012)
+    if (
+      (cleanUser === 'ubk' && (cleanPass === 'UBK5012' || cleanPassLower === 'ubk5012')) ||
+      (cleanPass === 'UBK5012' || (cleanUser === '' && cleanPassLower === 'ubk5012'))
+    ) {
+      setIsSubmitting(true);
+      try {
+        localStorage.setItem('skmp_attendance_auth_user', 'kaunselor');
+      } catch (e) {
+        console.error(e);
+      }
+      setSuccessMsg('Log masuk Guru Kaunselor / UBK Berjaya! Membuka akses Unit Bimbingan & Kaunseling...');
+      setTimeout(() => {
+        setIsSubmitting(false);
+        onLoginSuccess('kaunselor');
+        onClose();
+        setSuccessMsg('');
+      }, 500);
+      return;
+    }
+
+    // 8. Semak akaun PENGGUNA / WARIS SKMP (skmp / 123456)
     if (cleanUser === 'skmp' && cleanPass === '123456') {
       setIsSubmitting(true);
       try {
@@ -347,7 +368,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                 <span>{isSubmitting ? 'Mengesahkan Log Masuk...' : 'Log Masuk'}</span>
               </button>
               <p className="text-center text-[11px] text-slate-400">
-                Sistem menyokong log masuk Guru Besar (ID: GB), Pentadbir, Guru, PK & SU (Kurikulum, HEM, Kokurikulum) serta Pengguna SKMP.
+                Sistem menyokong log masuk Guru Besar (ID: GB), Guru Kaunselor (ID: UBK), Pentadbir, Guru, PK & SU (Kurikulum, HEM, Kokurikulum) serta Pengguna SKMP.
               </p>
             </div>
           </form>

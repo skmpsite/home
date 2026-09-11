@@ -56,6 +56,7 @@ import { initialHemData, initialSchoolHolidays } from '../../data/initialData';
 import { initialStudentsList } from '../../data/studentsData';
 import { initialAbsenceRecords } from '../../data/initialAttendance';
 import { HemAttendanceSubSection } from './HemAttendanceSubSection';
+import { HemUbkSubSection } from './HemUbkSubSection';
 import { TeacherRmtSubSection } from './TeacherRmtSubSection';
 import { UnitNewsSection } from '../common/UnitNewsSection';
 import { formatGoogleDriveUrl } from '../../utils/imageHelpers';
@@ -90,7 +91,7 @@ interface HemSectionProps {
   ) => StudentAbsenceRecord;
   onUpdateAbsenceRecord?: (record: StudentAbsenceRecord) => void;
   onDeleteAbsenceRecord?: (id: string) => void;
-  initialSubTab?: 'semua' | 'kehadiran' | 'disiplin' | 'kebajikan' | '3k';
+  initialSubTab?: 'semua' | 'kehadiran' | 'ubk' | 'disiplin' | 'kebajikan' | '3k';
   newsList?: NewsItem[];
   onSaveNews?: (news: NewsItem[]) => void;
   isAdmin?: boolean;
@@ -153,7 +154,7 @@ export const HemSection: React.FC<HemSectionProps> = ({
   };
 
   const data = currentHemData;
-  const [activeSubTab, setActiveSubTab] = useState<'semua' | 'kehadiran' | 'disiplin' | 'kebajikan' | '3k'>(initialSubTab);
+  const [activeSubTab, setActiveSubTab] = useState<'semua' | 'kehadiran' | 'ubk' | 'disiplin' | 'kebajikan' | '3k'>(initialSubTab);
   const [isRmtModalOpen, setIsRmtModalOpen] = useState(false);
 
   // Edit Modals State
@@ -763,6 +764,28 @@ export const HemSection: React.FC<HemSectionProps> = ({
             </span>
           </button>
 
+          {/* 3. Menu UBK (Unit Bimbingan & Kaunseling) */}
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('ubk')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition cursor-pointer ${
+              activeSubTab === 'ubk'
+                ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30 border border-purple-300'
+                : 'bg-purple-950/40 hover:bg-purple-900/60 text-purple-200 border border-purple-500/40'
+            }`}
+            title="Unit Bimbingan & Kaunseling (UBK) SK Merbau Pulas"
+          >
+            <HeartHandshake className={`w-3.5 h-3.5 ${activeSubTab !== 'ubk' ? 'text-purple-300' : ''}`} />
+            <span>UBK</span>
+            <span
+              className={`text-[10px] px-1.5 py-0.2 rounded font-black ${
+                activeSubTab === 'ubk' ? 'bg-slate-950 text-purple-300' : 'bg-purple-500/30 text-purple-200'
+              }`}
+            >
+              Kaunseling
+            </span>
+          </button>
+
           {/* 3. Menu Carian Murid (Hanya muncul untuk pengguna log masuk Guru & Admin) */}
           {isAuthorized && onOpenStudentPortal && (
             <button
@@ -804,6 +827,15 @@ export const HemSection: React.FC<HemSectionProps> = ({
           onDeleteAbsenceRecord={onDeleteAbsenceRecord}
           isAdmin={isAdmin}
           isTeacher={isTeacher}
+          userRole={userRole}
+          onOpenLogin={onOpenLogin}
+        />
+      )}
+
+      {/* RENDER SPECIFIC SUB-TAB: UBK (UNIT BIMBINGAN & KAUNSELING) */}
+      {activeSubTab === 'ubk' && (
+        <HemUbkSubSection
+          isAdmin={isAdmin}
           userRole={userRole}
           onOpenLogin={onOpenLogin}
         />

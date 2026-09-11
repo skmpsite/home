@@ -213,6 +213,25 @@ export const Header: React.FC<HeaderProps> = ({
                   <span className="hidden sm:inline">Keluar</span>
                 </button>
               </div>
+            ) : userRole === 'kaunselor' ? (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={onOpenTeacherPortal}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-white hover:bg-purple-600 bg-purple-700 px-3 py-0.5 rounded-full border border-purple-400 shadow-md transition cursor-pointer"
+                  title="Guru Kaunselor / UBK SKMP Aktif - Akses Penuh Unit Bimbingan & Kaunseling"
+                >
+                  <UserCheck className="w-3.5 h-3.5 text-yellow-300" />
+                  <span>Kaunselor Active</span>
+                </button>
+                <button
+                  onClick={onLogout}
+                  className="text-xs text-rose-300 hover:text-rose-100 flex items-center gap-1 ml-1 font-semibold cursor-pointer"
+                  title="Log Keluar"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Keluar</span>
+                </button>
+              </div>
             ) : userRole === 'user' ? (
               <div className="flex items-center gap-2">
                 <div
