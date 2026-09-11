@@ -116,7 +116,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <nav className="bg-slate-900/80 backdrop-blur-md border-b border-white/10 text-white shadow-md">
+    <nav className="relative z-10 bg-slate-900/80 backdrop-blur-md border-b border-white/10 text-white shadow-md">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2">
         {/* Full Visible Nav Items with flex-wrap for multiline downwards layout */}
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full">

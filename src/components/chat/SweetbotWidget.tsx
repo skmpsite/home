@@ -920,9 +920,9 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
 
   return (
     <>
-      {/* 1. ROBOT BERPAUT MENGINTAI DI TEPI BINGKAI WEB (Bahagian Atas Sebelah Kanan - Padat & Ringkas Pada Telefon) */}
+      {/* 1. ROBOT BERPAUT MENGINTAI DI TEPI BINGKAI WEB (Bahagian Kanan Bawah Navbar - Padat & Ringkas Pada Telefon) */}
       {!isOpen && (
-        <div className="fixed right-0 top-20 sm:top-24 z-40 sm:z-50 flex items-center select-none pointer-events-auto">
+        <div className="fixed right-0 top-36 sm:top-40 z-30 flex items-center select-none pointer-events-auto">
           {/* Peeking Speech Bubble (HANYA MUNCUL DI DESKTOP BILA DIHALAKAN TETIKUS - TIADA ISU TERLEKAT DI TELEFON) */}
           <AnimatePresence>
             {isPeekingHovered && !isOpen && (
@@ -1128,7 +1128,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
             }}
             exit={{ opacity: 0, scale: 0.85, y: 50, x: 20 }}
             transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-            className={`fixed bottom-2 right-2 sm:bottom-4 sm:right-4 z-50 w-[94vw] sm:w-[420px] max-w-[440px] bg-slate-900/95 backdrop-blur-2xl border-2 border-blue-400/50 rounded-2xl sm:rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.7)] flex flex-col overflow-hidden text-slate-100 font-sans transition-all duration-300`}
+            className={`fixed bottom-2 right-2 sm:bottom-4 sm:right-4 z-[200] w-[94vw] sm:w-[420px] max-w-[440px] bg-slate-900/95 backdrop-blur-2xl border-2 border-blue-400/50 rounded-2xl sm:rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.7)] flex flex-col overflow-hidden text-slate-100 font-sans transition-all duration-300`}
             style={{ maxHeight: '86vh' }}
           >
             {/* Header */}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SchoolProfile, SearchResultItem, UserRole } from '../types';
 import { Search, Lock, UserCheck, MapPin, Phone, Mail, LogOut, ChevronRight, X, ShieldAlert, Menu, Users, Utensils, Smartphone, Crown } from 'lucide-react';
 import { PWAInstallModal } from './PWAInstallModal';
@@ -44,6 +44,25 @@ export const Header: React.FC<HeaderProps> = ({
   const [isPWAInstallOpen, setIsPWAInstallOpen] = useState(false);
   const { canInstall, installPWA } = usePWAInstall();
 
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const mobileSearchRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      const clickedDesktop = searchContainerRef.current && searchContainerRef.current.contains(target);
+      const clickedMobile = mobileSearchRef.current && mobileSearchRef.current.contains(target);
+      if (!clickedDesktop && !clickedMobile) {
+        setShowSearchResults(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const handleInstallButtonClick = async () => {
     if (canInstall) {
       const installed = await installPWA();
@@ -57,7 +76,7 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="bg-white/10 backdrop-blur-lg border-b border-white/10 text-white shadow-md">
+    <header className="relative z-40 bg-white/10 backdrop-blur-lg border-b border-white/10 text-white shadow-md">
       {/* Top Banner Info Line */}
       <div className="bg-white/5 backdrop-blur-md text-slate-200 text-xs py-1.5 px-4 border-b border-white/10">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
@@ -306,7 +325,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Mobile Expandable Search Bar Drawer */}
         {isMobileSearchOpen && (
-          <div className="w-full md:hidden pt-1 pb-1 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div ref={mobileSearchRef} className="w-full md:hidden pt-1 pb-1 relative z-50 animate-in fade-in slide-in-from-top-2 duration-200">
             <div className="relative">
               <Search className="w-4 h-4 text-yellow-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
@@ -336,7 +355,7 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Mobile Dropdown Search Results */}
             {showSearchResults && searchQuery.trim().length > 0 && (
-              <div className="mt-2 bg-slate-900/98 backdrop-blur-2xl border border-yellow-400/40 rounded-2xl shadow-2xl overflow-hidden z-50 max-h-72 overflow-y-auto">
+              <div className="mt-2 bg-slate-900/98 backdrop-blur-2xl border-2 border-yellow-400/50 rounded-2xl shadow-2xl overflow-hidden z-[100] max-h-72 overflow-y-auto">
                 {searchResults.length === 0 ? (
                   <div className="p-3.5 text-center text-xs text-slate-400">
                     Tiada rekod dijumpai untuk "{searchQuery}".
@@ -380,7 +399,7 @@ export const Header: React.FC<HeaderProps> = ({
         )}
 
         {/* Desktop Permanent Search Bar (Hanya muncul di skrin sederhana & besar) */}
-        <div className="hidden md:block relative w-80">
+        <div ref={searchContainerRef} className="hidden md:block relative z-50 w-80 lg:w-96">
           <div className="relative">
             <Search className="w-4 h-4 text-slate-300 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
@@ -409,7 +428,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Autocomplete Dropdown Results Desktop */}
           {showSearchResults && searchQuery.trim().length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-slate-900/95 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl overflow-hidden z-50 max-h-80 overflow-y-auto">
+            <div className="absolute top-full left-0 right-0 mt-2 bg-slate-900/98 backdrop-blur-2xl border-2 border-yellow-400/40 rounded-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.95)] overflow-hidden z-[100] max-h-96 overflow-y-auto ring-1 ring-white/10">
               {searchResults.length === 0 ? (
                 <div className="p-4 text-center text-xs text-slate-400">
                   Tiada rekod dijumpai untuk "{searchQuery}".

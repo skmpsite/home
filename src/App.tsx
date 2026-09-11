@@ -1023,7 +1023,7 @@ export default function App() {
       }}
     >
       {/* Top Header & Tab Navigation Bar (Natural Scroll Flow) */}
-      <div className="w-full relative shadow-2xl backdrop-blur-xl bg-slate-950/90 border-b border-white/10">
+      <div className="w-full relative z-40 shadow-2xl backdrop-blur-xl bg-slate-950/90 border-b border-white/10">
         <Header
           profile={profile}
           isAdmin={isAdmin}
