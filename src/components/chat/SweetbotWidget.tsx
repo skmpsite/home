@@ -105,32 +105,46 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const activeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const sharedAudioRef = useRef<HTMLAudioElement | null>(null);
   const audioQueueRef = useRef<string[]>([]);
   const isPlayingAudioRef = useRef<boolean>(false);
 
   // Cari profil suara rasmi Bahasa Melayu Malaysia (ms-MY) dalam pelayar pengguna
+  // Penapisan tegas: Dilarang sama sekali suara Inggeris, dialek luar, Indonesia, atau Malayalam
   const getBestMalayVoice = (): SpeechSynthesisVoice | null => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
     const voices = window.speechSynthesis.getVoices();
     if (!voices || voices.length === 0) return null;
 
-    // 1. Keutamaan Mutlak: Suara Rasmi Bahasa Melayu Malaysia (ms-MY / ms_MY / Malay Malaysia)
-    // DILARANG SAMA SEKALI suara Indonesia (id / id-ID / Indonesia) atau suara luar
-    const priorityMalayVoice = voices.find((v) => {
-      const name = v.name.toLowerCase();
-      const lang = v.lang.toLowerCase().replace('_', '-');
-
-      // Sekat suara Indonesia dan dialek luar
-      if (
-        lang.includes('id') ||
+    // Senarai larangan suara yang sering disalah tafsir sebagai Melayu pada peranti Windows / iOS / Android
+    const isForbiddenVoice = (name: string, lang: string) => {
+      return (
+        lang.startsWith('en') ||
+        lang.startsWith('id') ||
+        lang.startsWith('ml') ||
+        name.includes('english') ||
+        name.includes('inggeris') ||
         name.includes('indonesia') ||
+        name.includes('malayalam') ||
         name.includes('gadis') ||
         name.includes('ardi') ||
         name.includes('jawa') ||
-        name.includes('sunda')
-      ) {
-        return false;
-      }
+        name.includes('sunda') ||
+        name.includes('david') ||
+        name.includes('zira') ||
+        name.includes('mark') ||
+        name.includes('george') ||
+        name.includes('samantha') ||
+        name.includes('daniel') ||
+        name.includes('siri')
+      );
+    };
+
+    // 1. Keutamaan Mutlak: Suara Rasmi Bahasa Melayu Malaysia (ms-MY / ms_MY / Malay Malaysia)
+    const priorityMalayVoice = voices.find((v) => {
+      const name = v.name.toLowerCase();
+      const lang = v.lang.toLowerCase().replace('_', '-');
+      if (isForbiddenVoice(name, lang)) return false;
 
       return (
         lang === 'ms-my' ||
@@ -139,30 +153,23 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
         name.includes('amira') ||
         name.includes('malay (malaysia)') ||
         name.includes('bahasa melayu (malaysia)') ||
-        name.includes('bahasa malaysia') ||
-        name.includes('malay')
+        name.includes('bahasa malaysia')
       );
     });
     if (priorityMalayVoice) return priorityMalayVoice;
 
-    // 2. Keutamaan Kedua: Mana-mana suara bertag 'ms' (Bahasa Melayu) TANPA Indonesia
+    // 2. Keutamaan Kedua: Suara bertag 'ms' (Bahasa Melayu tulen) tanpa campuran Bahasa Inggeris
     const generalMalayVoice = voices.find((v) => {
       const name = v.name.toLowerCase();
       const lang = v.lang.toLowerCase().replace('_', '-');
+      if (isForbiddenVoice(name, lang)) return false;
 
-      if (
-        lang.includes('id') ||
-        name.includes('indonesia') ||
-        name.includes('gadis') ||
-        name.includes('ardi')
-      ) {
-        return false;
-      }
-
-      return lang.startsWith('ms') || name.includes('melayu');
+      return lang.startsWith('ms') || (name.includes('melayu') && !name.includes('english'));
     });
     if (generalMalayVoice) return generalMalayVoice;
 
+    // JIKA peranti tiada pek Bahasa Melayu, pulangkan null.
+    // JANGAN SESEKALI pulangkan suara Inggeris bagi mengelakkan slang Inggeris!
     return null;
   };
 
@@ -279,15 +286,22 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
     return text.replace(/\s+/g, ' ').trim();
   };
 
-  // Buka kunci AudioContext/HTML5 Audio pada peranti mudah alih (iOS/Android) bila pengguna menekan butang
+  // Buka kunci AudioContext/HTML5 Audio pada peranti mudah alih (iOS Safari/Android Chrome) bila pengguna berinteraksi
   const unlockAudioContext = () => {
     try {
       if (typeof window !== 'undefined') {
-        const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
-        silentAudio.volume = 0.01;
-        silentAudio.play().then(() => {
-          silentAudio.pause();
-        }).catch(() => {});
+        if (!sharedAudioRef.current) {
+          sharedAudioRef.current = new Audio();
+        }
+        const audio = sharedAudioRef.current;
+        audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+        audio.volume = 0.01;
+        const p = audio.play();
+        if (p) {
+          p.then(() => {
+            audio.pause();
+          }).catch(() => {});
+        }
 
         if ('speechSynthesis' in window && window.speechSynthesis.paused) {
           window.speechSynthesis.resume();
@@ -305,9 +319,9 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
     }
 
     const malayVoice = getBestMalayVoice();
-    // JANGAN SESEKALI jalankan jika tiada suara Bahasa Melayu pada peranti (untuk elak suara Inggeris peranti membaca teks Melayu)
+    // JANGAN SESEKALI jalankan jika tiada suara Bahasa Melayu pada peranti (mengelakkan pelat / slang Inggeris)
     if (!malayVoice) {
-      console.warn('Tiada profil suara Bahasa Melayu pada peranti, audio pelayan digunakan.');
+      console.warn('Tiada profil suara Bahasa Melayu tulen pada peranti. Mengelak fallback suara Inggeris.');
       isPlayingAudioRef.current = false;
       setCurrentlySpeakingId(null);
       return;
@@ -365,20 +379,27 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
 
     try {
       const audioUrl = `/api/tts?text=${encodeURIComponent(nextChunk.trim())}`;
-      const audio = new Audio(audioUrl);
+      let audio = sharedAudioRef.current;
+      if (!audio) {
+        audio = new Audio();
+        sharedAudioRef.current = audio;
+      }
       activeAudioRef.current = audio;
+      audio.src = audioUrl;
 
       audio.onended = () => {
         playNextAudioChunk(msgId);
       };
 
       audio.onerror = (err) => {
-        console.warn('Audio stream error, checking device Malay voice:', err);
+        console.warn('Audio stream error, memeriksa suara Bahasa Melayu tulen peranti:', err);
         const malayVoice = getBestMalayVoice();
+        // HANYA gunakan WebSpeech jika peranti disahkan mempunyai suara Bahasa Melayu tulen!
+        // DILARANG SAMA SEKALI jatuh ke suara Inggeris / slang peranti.
         if (malayVoice) {
           speakWithWebSpeech(nextChunk, msgId);
         } else {
-          // Teruskan ke ayat seterusnya
+          // Teruskan ke ayat seterusnya tanpa suara Inggeris
           playNextAudioChunk(msgId);
         }
       };
@@ -386,7 +407,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
       const playPromise = audio.play();
       if (playPromise !== undefined) {
         playPromise.catch((playErr) => {
-          console.warn('Autoplay restricted by browser, activating playback fallback:', playErr);
+          console.warn('Autoplay disekat oleh pelayar, memeriksa suara Melayu peranti:', playErr);
           const malayVoice = getBestMalayVoice();
           if (malayVoice) {
             speakWithWebSpeech(nextChunk, msgId);
@@ -400,6 +421,12 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
       console.warn('TTS playback error:', e);
       playNextAudioChunk(msgId);
     }
+  };
+
+  // Uji sebutan suara rasmi Bahasa Melayu Malaysia
+  const testMalayVoice = () => {
+    unlockAudioContext();
+    speakText('Hai! Saya Sweetbot, pembantu maya rasmi Sekolah Kebangsaan Merbau Pulas. Suara saya diselaraskan dalam sebutan Bahasa Melayu Malaysia yang asli dan baku.');
   };
 
   // Text-To-Speech Rasmi Bahasa Melayu Malaysia (100% Sebutan Asli Malaysia, Tiada Slang Inggeris/Indonesia)
@@ -920,9 +947,9 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
 
   return (
     <>
-      {/* 1. ROBOT BERPAUT MENGINTAI DI TEPI BINGKAI WEB (Bahagian Kanan Bawah Navbar - Padat & Ringkas Pada Telefon) */}
+      {/* 1. ROBOT BERPAUT MENGINTAI DI TEPI BINGKAI WEB (Timbul di atas dengan z-[70], tidak terlindung oleh sebarang butang atau navbar) */}
       {!isOpen && (
-        <div className="fixed right-0 top-36 sm:top-40 z-30 flex items-center select-none pointer-events-auto">
+        <div className="fixed right-0 top-1/2 -translate-y-1/2 z-[70] flex items-center select-none pointer-events-auto">
           {/* Peeking Speech Bubble (HANYA MUNCUL DI DESKTOP BILA DIHALAKAN TETIKUS - TIADA ISU TERLEKAT DI TELEFON) */}
           <AnimatePresence>
             {isPeekingHovered && !isOpen && (
@@ -946,7 +973,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
             )}
           </AnimatePresence>
 
-          {/* Animated Robot Peeking Body (Padat di telefon: hanya muncul sedikit di tepi skrin agar tidak mengganggu) */}
+          {/* Animated Robot Peeking Body (Jelas timbul di tepi skrin, bebas dari sebarang butang) */}
           <motion.div
             id="sweetbot-peek-btn"
             onClick={() => {
@@ -956,16 +983,16 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
             onMouseEnter={() => setIsPeekingHovered(true)}
             onMouseLeave={() => setIsPeekingHovered(false)}
             onTouchStart={() => setIsPeekingHovered(false)}
-            initial={{ x: 34 }}
+            initial={{ x: 14 }}
             animate={
               isPeekingHovered
                 ? {
                     x: 0,
                     rotate: 0,
-                    scale: 1.05
+                    scale: 1.06
                   }
                 : {
-                    x: [34, 34, 0, 0, 0, 34, 34],
+                    x: [14, 14, 0, 0, 0, 14, 14],
                     rotate: [0, 0, -3, 2, -2, 0, 0],
                     y: [0, 0, -4, -2, -4, 0, 0]
                   }
@@ -1163,7 +1190,21 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
               </div>
 
               {/* Action Icons */}
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 sm:gap-1.5">
+                {/* Uji Sebutan Suara Rasmi Melayu Malaysia */}
+                {speechEnabled && (
+                  <button
+                    type="button"
+                    onClick={testMalayVoice}
+                    className="px-2 py-1 bg-yellow-400/20 hover:bg-yellow-400/30 text-yellow-300 border border-yellow-400/40 rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition shadow-sm active:scale-95"
+                    title="Klik untuk dengar ujian sebutan Bahasa Melayu Malaysia (ms-MY)"
+                  >
+                    <Volume2 className="w-3 h-3 text-yellow-300 animate-pulse" />
+                    <span className="hidden sm:inline">Uji Suara Melayu</span>
+                    <span className="sm:hidden">Uji Suara</span>
+                  </button>
+                )}
+
                 {/* Toggle Voice / TTS */}
                 <button
                   type="button"
@@ -1173,7 +1214,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
                       ? 'bg-blue-600/60 text-yellow-300 hover:bg-blue-500/80'
                       : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                   }`}
-                  title={speechEnabled ? 'Suara Aktif (Klik untuk Matikan)' : 'Suara Dimatikan (Klik untuk Aktifkan)'}
+                  title={speechEnabled ? 'Suara Aktif: Bahasa Melayu Malaysia (Klik untuk Matikan)' : 'Suara Dimatikan (Klik untuk Aktifkan)'}
                 >
                   {speechEnabled ? <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                 </button>
