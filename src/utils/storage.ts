@@ -49,6 +49,7 @@ import { initialStudentsData } from '../data/studentsData';
 import { initialAbsenceRecords } from '../data/initialAttendance';
 import { getSafeNewsImageUrl } from './imageHelpers';
 import { sortStaffBySeniority } from './staffHelpers';
+import { syncSave } from './universalSync';
 
 const KEYS = {
   PROFILE: 'skmp_profile_v1',
@@ -93,6 +94,10 @@ function setStored<T>(key: string, data: T): void {
   } catch (err) {
     console.error(`Failed to save key ${key} to localStorage`, err);
   }
+  // Auto-sync ke pelayan berpusat supaya muncul di semua peranti lain
+  syncSave(key, data).catch((e) => {
+    console.warn(`Auto-sync failed for key ${key}:`, e);
+  });
 }
 
 export function loadProfile(): SchoolProfile {

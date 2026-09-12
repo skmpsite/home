@@ -241,9 +241,164 @@ async function startServer() {
     }
   }
 
+  // ==========================================
+  // UNIVERSAL PORTAL LIVE SYNC ENGINE
+  // Menyegerakkan SEMUA data portal (UBK e-RPH, RPT, Kaunseling, PIBG, HEM, Kurikulum, Staff, Berita dsb)
+  // secara automatik merentasi SEMUA peranti (Guru Besar, Kaunselor, Guru, Admin)
+  // ==========================================
+  const PORTAL_SYNC_FILE = path.join(DATA_DIR, "portal-live-sync.json");
+  let livePortalData: Record<string, { data: any; updatedAt: number; updatedBy?: string }> = {};
+
+  if (fs.existsSync(PORTAL_SYNC_FILE)) {
+    try {
+      const fileData = JSON.parse(fs.readFileSync(PORTAL_SYNC_FILE, "utf-8"));
+      if (fileData && typeof fileData === "object") {
+        livePortalData = fileData;
+      }
+    } catch (e) {
+      console.error("Error reading portal-live-sync.json:", e);
+    }
+  }
+
+  // Senarai sambungan klien Server-Sent Events (SSE) untuk siaran langsung sub-saat
+  const syncSseClients = new Set<express.Response>();
+
+  const broadcastSyncUpdate = (key: string, data: any, updatedAt: number, updatedBy?: string) => {
+    const payload = JSON.stringify({ type: "update", key, data, updatedAt, updatedBy });
+    for (const client of syncSseClients) {
+      try {
+        client.write(`data: ${payload}\n\n`);
+      } catch {
+        syncSseClients.delete(client);
+      }
+    }
+  };
+
   // API Routes
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", timestamp: Date.now() });
+  });
+
+  // 1. GET /api/sync/stream: Server-Sent Events (SSE) untuk tolakan masa nyata pantas ke semua peranti
+  app.get("/api/sync/stream", (req, res) => {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    if (typeof (res as any).flushHeaders === "function") {
+      (res as any).flushHeaders();
+    }
+
+    res.write(`data: ${JSON.stringify({ type: "connected", timestamp: Date.now(), clientCount: syncSseClients.size + 1 })}\n\n`);
+    syncSseClients.add(res);
+
+    // Degupan jantung berkala untuk mengekalkan sambungan aktif melalui proksi/Cloud Run
+    const heartbeat = setInterval(() => {
+      try {
+        res.write(`: heartbeat\n\n`);
+      } catch {
+        clearInterval(heartbeat);
+        syncSseClients.delete(res);
+      }
+    }, 20000);
+
+    req.on("close", () => {
+      clearInterval(heartbeat);
+      syncSseClients.delete(res);
+    });
+  });
+
+  // 2. GET /api/sync/all: Dapatkan snapshot penuh semua koleksi terkini di pelayan
+  app.get("/api/sync/all", (_req, res) => {
+    const summary: Record<string, any> = {};
+    const timestamps: Record<string, number> = {};
+    for (const [k, v] of Object.entries(livePortalData)) {
+      if (v) {
+        summary[k] = v.data;
+        timestamps[k] = v.updatedAt || 0;
+      }
+    }
+    res.json({
+      success: true,
+      data: summary,
+      timestamps,
+      serverTime: Date.now()
+    });
+  });
+
+  // 3. GET /api/sync/poll: Polling perubahan berdasarkan cap masa (since)
+  app.get("/api/sync/poll", (req, res) => {
+    const since = parseInt(req.query.since as string, 10) || 0;
+    const updates: Record<string, { data: any; updatedAt: number; updatedBy?: string }> = {};
+    let hasUpdates = false;
+
+    for (const [k, v] of Object.entries(livePortalData)) {
+      if (v && v.updatedAt > since) {
+        updates[k] = v;
+        hasUpdates = true;
+      }
+    }
+
+    res.json({
+      success: true,
+      hasUpdates,
+      updates,
+      serverTime: Date.now()
+    });
+  });
+
+  // 4. POST /api/sync/save: Simpan sebarang kunci atau kumpulan kemaskini dari mana-mana peranti
+  app.post("/api/sync/save", (req, res) => {
+    try {
+      const { key, data, updatedBy, updates } = req.body;
+      const now = Date.now();
+
+      if (key && data !== undefined) {
+        livePortalData[key] = {
+          data,
+          updatedAt: now,
+          updatedBy: updatedBy || "portal_user"
+        };
+        broadcastSyncUpdate(key, data, now, updatedBy);
+        console.log(`[LIVE SYNC] Updated key '${key}' from ${updatedBy || 'user'} at ${new Date().toISOString()}`);
+      } else if (updates && typeof updates === "object") {
+        for (const [k, v] of Object.entries(updates)) {
+          livePortalData[k] = {
+            data: v,
+            updatedAt: now,
+            updatedBy: updatedBy || "portal_user"
+          };
+          broadcastSyncUpdate(k, v, now, updatedBy);
+        }
+        console.log(`[LIVE SYNC] Batch updated ${Object.keys(updates).length} keys from ${updatedBy || 'user'}`);
+      } else {
+        return res.status(400).json({ success: false, error: "key dan data diperlukan." });
+      }
+
+      // Simpan ke storan kekal fail pelayan
+      try {
+        fs.writeFileSync(PORTAL_SYNC_FILE, JSON.stringify(livePortalData, null, 2), "utf-8");
+      } catch (saveErr) {
+        console.error("Failed to write portal-live-sync.json:", saveErr);
+      }
+
+      res.json({
+        success: true,
+        updatedAt: now,
+        savedKey: key || Object.keys(updates || {})
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // 5. GET /api/sync/get/:key: Dapatkan rekod spesifik untuk kunci tertentu
+  app.get("/api/sync/get/:key", (req, res) => {
+    const { key } = req.params;
+    const item = livePortalData[key];
+    if (item) {
+      return res.json({ success: true, key, data: item.data, updatedAt: item.updatedAt, updatedBy: item.updatedBy });
+    }
+    return res.status(404).json({ success: false, error: `Kunci ${key} tidak dijumpai di pelayan.` });
   });
 
   // GET Live Signage for all Smart TVs and connected devices

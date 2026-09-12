@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   HeartHandshake,
   BookOpen,
@@ -18,7 +18,9 @@ import {
   Layers,
   ChevronRight,
   School,
-  Eye
+  Eye,
+  RefreshCw,
+  Wifi
 } from 'lucide-react';
 import {
   UbkDutyItem,
@@ -45,6 +47,7 @@ import { UbkPbpppTab } from '../ubk/UbkPbpppTab';
 import { UbkActivitiesTab } from '../ubk/UbkActivitiesTab';
 import { UbkDutiesTab } from '../ubk/UbkDutiesTab';
 import { UbkPrintModal } from '../ubk/UbkPrintModal';
+import { useSyncedData, useSyncStatus, SYNC_KEYS } from '../../utils/universalSync';
 
 interface HemUbkSubSectionProps {
   isAdmin?: boolean;
@@ -62,6 +65,9 @@ export const HemUbkSubSection: React.FC<HemUbkSubSectionProps> = ({
     isAdmin || userRole === 'admin' || userRole === 'guru_besar' || userRole === 'pk_hem'
   );
 
+  const { connected, forceSync } = useSyncStatus();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   // Tabs:
   // 1. rph = Rancangan Perkhidmatan Harian (RPH GBK) / e-BRPBK
   // 2. rpt = Rancangan Perkhidmatan Tahunan (RPT GBK) 4 Fokus
@@ -71,60 +77,29 @@ export const HemUbkSubSection: React.FC<HemUbkSubSectionProps> = ({
   // 6. tugas = Senarai Tugas GBKSM & 4 Fokus KPM
   const [activeTab, setActiveTab] = useState<'rph' | 'rpt' | 'sesi' | 'pbppp' | 'aktiviti' | 'tugas'>('rph');
 
-  // 1. RPH GBK State
-  const [rphList, setRphList] = useState<UbkRphItem[]>(() => {
-    try {
-      const saved = localStorage.getItem('skmp_ubk_rph');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error(e);
-    }
-    return initialUbkRph;
-  });
+  // 1. RPH GBK State (Segerak Automatik Silang Semua Peranti)
+  const [rphList, setRphList] = useSyncedData<UbkRphItem[]>(SYNC_KEYS.UBK_RPH, initialUbkRph);
 
   // 2. RPT GBK State
-  const [rptList, setRptList] = useState<UbkRptItem[]>(() => {
-    try {
-      const saved = localStorage.getItem('skmp_ubk_rpt');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error(e);
-    }
-    return initialUbkRpt;
-  });
+  const [rptList, setRptList] = useSyncedData<UbkRptItem[]>(SYNC_KEYS.UBK_RPT, initialUbkRpt);
 
   // 3. Counseling Sessions & Psychometrics State
-  const [counselingSessions, setCounselingSessions] = useState<UbkCounselingSessionItem[]>(() => {
-    try {
-      const saved = localStorage.getItem('skmp_ubk_sessions');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error(e);
-    }
-    return initialUbkCounselingSessions;
-  });
+  const [counselingSessions, setCounselingSessions] = useSyncedData<UbkCounselingSessionItem[]>(
+    SYNC_KEYS.UBK_SESSIONS,
+    initialUbkCounselingSessions
+  );
 
   // 4. PBPPP Assessment State
-  const [pbpppAssessment, setPbpppAssessment] = useState<UbkPbpppAssessment>(() => {
-    try {
-      const saved = localStorage.getItem('skmp_ubk_pbppp');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error(e);
-    }
-    return initialUbkPbppp;
-  });
+  const [pbpppAssessment, setPbpppAssessment] = useSyncedData<UbkPbpppAssessment>(
+    SYNC_KEYS.UBK_PBPPP,
+    initialUbkPbppp
+  );
 
   // 5. Activities State
-  const [activities, setActivities] = useState<UbkActivityItem[]>(() => {
-    try {
-      const saved = localStorage.getItem('skmp_ubk_activities');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error(e);
-    }
-    return initialUbkActivities;
-  });
+  const [activities, setActivities] = useSyncedData<UbkActivityItem[]>(
+    SYNC_KEYS.UBK_ACTIVITIES,
+    initialUbkActivities
+  );
 
   // 6. Duties List
   const [duties] = useState<UbkDutyItem[]>(initialUbkDuties);
@@ -132,49 +107,33 @@ export const HemUbkSubSection: React.FC<HemUbkSubSectionProps> = ({
   // Printing State
   const [printItem, setPrintItem] = useState<UbkRphItem | null>(null);
 
-  // Persistence Handlers
+  // Persistence Handlers (Automatik tolak ke pelayan & semua peranti lain)
   const handleSaveRphList = (updated: UbkRphItem[]) => {
     setRphList(updated);
-    try {
-      localStorage.setItem('skmp_ubk_rph', JSON.stringify(updated));
-    } catch (e) {
-      console.error(e);
-    }
   };
 
   const handleSaveRptList = (updated: UbkRptItem[]) => {
     setRptList(updated);
-    try {
-      localStorage.setItem('skmp_ubk_rpt', JSON.stringify(updated));
-    } catch (e) {
-      console.error(e);
-    }
   };
 
   const handleSaveSessions = (updated: UbkCounselingSessionItem[]) => {
     setCounselingSessions(updated);
-    try {
-      localStorage.setItem('skmp_ubk_sessions', JSON.stringify(updated));
-    } catch (e) {
-      console.error(e);
-    }
   };
 
   const handleSavePbppp = (updated: UbkPbpppAssessment) => {
     setPbpppAssessment(updated);
-    try {
-      localStorage.setItem('skmp_ubk_pbppp', JSON.stringify(updated));
-    } catch (e) {
-      console.error(e);
-    }
   };
 
   const handleSaveActivities = (updated: UbkActivityItem[]) => {
     setActivities(updated);
+  };
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
     try {
-      localStorage.setItem('skmp_ubk_activities', JSON.stringify(updated));
-    } catch (e) {
-      console.error(e);
+      await forceSync();
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 600);
     }
   };
 
@@ -194,6 +153,24 @@ export const HemUbkSubSection: React.FC<HemUbkSubSectionProps> = ({
                 <BookOpen className="w-3.5 h-3.5" />
                 e-BRPBK KPM (Pengganti RPH PdPC)
               </span>
+
+              {/* Status Segerak Masa Nyata (Live Cross-Device Indicator) */}
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-950/60 text-emerald-300 border border-emerald-500/40 shadow-sm">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span className="text-[11px]">Segerak Masa Nyata Semua Peranti (Aktif)</span>
+                <button
+                  type="button"
+                  onClick={handleManualRefresh}
+                  disabled={isRefreshing}
+                  title="Segerakkan data terkini dari pelayan sekarang"
+                  className="ml-1 p-0.5 hover:text-white transition active:scale-90 cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
 
               {canEdit ? (
                 <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">
@@ -221,7 +198,8 @@ export const HemUbkSubSection: React.FC<HemUbkSubSectionProps> = ({
               Sistem pengurusan dokumentasi dan penilaian rasmi Guru Bimbingan dan Kaunseling (GBK)
               yang menggantikan RPH akademik biasa. Merangkumi 4 komponen utama KPM: Rancangan Perkhidmatan Harian
               (RPH GBK), Rancangan Perkhidmatan Tahunan (RPT GBK), Rekod Sesi Kaunseling & Pentaksiran Psikometrik,
-              serta Instrumen Penilaian PBPPP Khas GBK.
+              serta Instrumen Penilaian PBPPP Khas GBK. Disegerakkan secara automatik merentasi semua peranti
+              (Guru Besar, PK HEM & Kaunselor).
             </p>
           </div>
 

@@ -93,6 +93,7 @@ import {
   pushAbsenceRecordFully,
   deleteAbsenceRecordFully
 } from './utils/attendanceSync';
+import { initUniversalSync } from './utils/universalSync';
 import { Header } from './components/Header';
 import { Navbar, TabType } from './components/Navbar';
 import { HeroSection } from './components/sections/HeroSection';
@@ -524,7 +525,33 @@ export default function App() {
       setAbsenceRecords(updatedRecords);
     });
 
-    // 6. Penyelarasan antara tab/tetingkap secara 0ms (segera)
+    // 6. Enjin Universal Sync Silang Semua Peranti (UBK, e-RPH, PIBG, HEM, Staff, Berita, dsb)
+    const unsubUniversalSync = initUniversalSync();
+
+    const handleUniversalDataSync = (e: Event) => {
+      const customEvt = e as CustomEvent<{ key: string; data: any }>;
+      const { key, data } = customEvt.detail || {};
+      if (!key || !data) return;
+
+      if (key === 'skmp_staff_v1') setStaffList(data);
+      if (key === 'skmp_profile_v1') setProfile(data);
+      if (key === 'skmp_news_v1') setNewsList(data);
+      if (key === 'skmp_calendar_v1') setEvents(data);
+      if (key === 'skmp_gallery_v1') setGallery(data);
+      if (key === 'skmp_awards_v1') setAwards(data);
+      if (key === 'skmp_signage_slides_v1') setSignageSlides(data);
+      if (key === 'skmp_signage_config_v1') setSignageConfig(data);
+      if (key === 'skmp_hem_v1') setHemData(data);
+      if (key === 'skmp_nav_menu_v1') setNavigationMenu(data);
+      if (key === 'skmp_teacher_links_v1') setTeacherLinks(data);
+      if (key === 'skmp_absence_records_v1') setAbsenceRecords(data);
+      if (key === 'skmp_students_v1') setStudentsList(data);
+      if (key === 'skmp_pibg_comm_v1') setPibgCommittee(data);
+      if (key === 'skmp_pibg_act_v1') setPibgActivities(data);
+      if (key === 'skmp_cocurriculum_v1') setCoCurriculumUnits(data);
+    };
+
+    // 7. Penyelarasan antara tab/tetingkap secara 0ms (segera)
     const handleStorageEvent = (e: StorageEvent) => {
       if (e.key === 'skmp_staff_v1') setStaffList(loadStaff());
       if (e.key === 'skmp_profile_v1') setProfile(loadProfile());
@@ -584,6 +611,7 @@ export default function App() {
     window.addEventListener('focus', handleImmediateSync);
     window.addEventListener('online', handleImmediateSync);
     window.addEventListener('storage', handleStorageEvent);
+    window.addEventListener('skmp_data_sync', handleUniversalDataSync);
     window.addEventListener('skmp_attendance_synced', handleAttendanceSynced);
     window.addEventListener('skmp_teacher_links_updated', handleTeacherLinksUpdated);
     window.addEventListener('skmp_switch_tab', handleCustomTabSwitch);
@@ -593,10 +621,12 @@ export default function App() {
       clearInterval(interval);
       unsubFirestore();
       unsubAttendanceSync();
+      unsubUniversalSync();
       window.removeEventListener('visibilitychange', handleImmediateSync);
       window.removeEventListener('focus', handleImmediateSync);
       window.removeEventListener('online', handleImmediateSync);
       window.removeEventListener('storage', handleStorageEvent);
+      window.removeEventListener('skmp_data_sync', handleUniversalDataSync);
       window.removeEventListener('skmp_attendance_synced', handleAttendanceSynced);
       window.removeEventListener('skmp_teacher_links_updated', handleTeacherLinksUpdated);
       window.removeEventListener('skmp_switch_tab', handleCustomTabSwitch);

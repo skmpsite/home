@@ -49,6 +49,7 @@ import {
 } from '../../data/pibgData';
 import { initialPibgCommittee } from '../../data/initialData';
 import { loadPibgCommittee, savePibgCommittee } from '../../utils/storage';
+import { useSyncedData, SYNC_KEYS } from '../../utils/universalSync';
 import {
   EditCommitteeModal,
   EditActivityModal,
@@ -100,50 +101,24 @@ export const HemPibgSubSection: React.FC<HemPibgSubSectionProps> = ({
     }
   };
 
-  // Activities state
-  const [activities, setActivities] = useState<PibgActivity[]>(() => {
-    try {
-      const saved = localStorage.getItem(LOCAL_STORAGE_ACTIVITIES_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (e) {
-      console.warn('Gagal muat data aktiviti:', e);
-    }
-    return initialPibgExtendedActivities;
-  });
+  // Activities state (Segerak Silang Peranti)
+  const [activities, setActivities] = useSyncedData<PibgActivity[]>(
+    SYNC_KEYS.PIBG_ACT,
+    initialPibgExtendedActivities
+  );
 
   const handleSaveActivities = (updated: PibgActivity[]) => {
     setActivities(updated);
-    try {
-      localStorage.setItem(LOCAL_STORAGE_ACTIVITIES_KEY, JSON.stringify(updated));
-    } catch (e) {
-      console.error(e);
-    }
   };
 
-  // Documents state
-  const [documents, setDocuments] = useState<PibgOfficialDocument[]>(() => {
-    try {
-      const saved = localStorage.getItem(LOCAL_STORAGE_DOCS_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (e) {
-      console.warn('Gagal muat data dokumen:', e);
-    }
-    return initialPibgDocuments;
-  });
+  // Documents state (Segerak Silang Peranti)
+  const [documents, setDocuments] = useSyncedData<PibgOfficialDocument[]>(
+    SYNC_KEYS.PIBG_DOCS,
+    initialPibgDocuments
+  );
 
   const handleSaveDocuments = (updated: PibgOfficialDocument[]) => {
     setDocuments(updated);
-    try {
-      localStorage.setItem(LOCAL_STORAGE_DOCS_KEY, JSON.stringify(updated));
-    } catch (e) {
-      console.error(e);
-    }
   };
 
   // Editor Modal states
@@ -171,19 +146,11 @@ export const HemPibgSubSection: React.FC<HemPibgSubSectionProps> = ({
   const [showQrModal, setShowQrModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState<PibgCommittee | null>(null);
 
-  // E-Usul states
-  const [usulList, setUsulList] = useState<PibgUsul[]>(() => {
-    try {
-      const saved = localStorage.getItem(LOCAL_STORAGE_USUL_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (e) {
-      console.warn('Gagal muat data usul:', e);
-    }
-    return initialPibgUsulList;
-  });
+  // E-Usul states (Segerak Silang Peranti)
+  const [usulList, setUsulList] = useSyncedData<PibgUsul[]>(
+    SYNC_KEYS.PIBG_USUL,
+    initialPibgUsulList
+  );
 
   const [isSubmittingUsul, setIsSubmittingUsul] = useState(false);
   const [usulFormSuccess, setUsulFormSuccess] = useState(false);
@@ -217,14 +184,9 @@ export const HemPibgSubSection: React.FC<HemPibgSubSectionProps> = ({
     skills: [] as string[]
   });
 
-  // Save Usul to LocalStorage
+  // Save Usul (Automatik segerak ke pelayan & semua peranti)
   const handleSaveUsul = (newList: PibgUsul[]) => {
     setUsulList(newList);
-    try {
-      localStorage.setItem(LOCAL_STORAGE_USUL_KEY, JSON.stringify(newList));
-    } catch (e) {
-      console.warn('Gagal simpan usul:', e);
-    }
   };
 
   const handleCopyBankAccount = () => {

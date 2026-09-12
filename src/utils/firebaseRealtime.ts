@@ -26,7 +26,13 @@ import {
   StudentRecord,
   StudentAbsenceRecord,
   IctBookingRecord,
-  IctCashFlowRecord
+  IctCashFlowRecord,
+  UbkRphItem,
+  UbkRptItem,
+  UbkCounselingSessionItem,
+  UbkPbpppAssessment,
+  UbkActivityItem,
+  PibgUsul
 } from '../types';
 
 /**
@@ -835,5 +841,33 @@ export function subscribeToStudentPhotos(callback: (photos: Record<string, strin
     return () => {};
   }
 }
+
+/**
+ * UBK e-RPH & Counseling Real-Time Sync via Firestore
+ */
+export async function pushUbkRphToFirestore(rphList: UbkRphItem[]): Promise<boolean> {
+  return pushToFirestore('ubk_data', 'rph', { items: cleanForFirestore(rphList) });
+}
+
+export async function pushUbkRptToFirestore(rptList: UbkRptItem[]): Promise<boolean> {
+  return pushToFirestore('ubk_data', 'rpt', { items: cleanForFirestore(rptList) });
+}
+
+export async function pushUbkSessionsToFirestore(sessions: UbkCounselingSessionItem[]): Promise<boolean> {
+  return pushToFirestore('ubk_data', 'sessions', { items: cleanForFirestore(sessions) });
+}
+
+export async function pushUbkPbpppToFirestore(pbppp: UbkPbpppAssessment): Promise<boolean> {
+  return pushToFirestore('ubk_data', 'pbppp', { data: cleanForFirestore(pbppp) });
+}
+
+export async function pushUbkActivitiesToFirestore(activities: UbkActivityItem[]): Promise<boolean> {
+  return pushToFirestore('ubk_data', 'activities', { items: cleanForFirestore(activities) });
+}
+
+export async function pushPibgUsulToFirestore(usulList: PibgUsul[]): Promise<boolean> {
+  return pushToFirestore('pibg_data', 'usul', { items: cleanForFirestore(usulList) });
+}
+
 
 
