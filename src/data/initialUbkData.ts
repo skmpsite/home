@@ -216,6 +216,28 @@ export const initialUbkActivities: UbkActivityItem[] = [
 
 export const initialUbkRph: UbkRphItem[] = [
   {
+    id: 'rph-minggu-25-contoh',
+    week: 25,
+    date: '2026-09-12',
+    time: '08:00 PG - 09:00 PG',
+    sessionType: 'Bimbingan Kelas Modular',
+    focus: 'Pembangunan Sahsiah Diri Murid',
+    title: 'Contoh sahaja',
+    target: 'Tahun 5 / 6',
+    venue: 'Bilik Bimbingan & Kaunseling',
+    objective: 'Conrohnya',
+    steps: [
+      'Langkah 1: Set Induksi',
+      'Langkah 2: Aktiviti Utama',
+      'Langkah 3: Penutup & Refleksi'
+    ],
+    teachingAids: 'Bahan Edaran, Modul B&K, LCD Projektor',
+    reflection: 'Tercapai',
+    counselorName: 'Guru Bimbingan & Kaunseling (UBK)',
+    status: 'menunggu',
+    submittedAt: '2026-09-12T08:00:00.000Z'
+  },
+  {
     id: 'rph-1',
     week: 24,
     date: '2026-09-08',

@@ -1,0 +1,105 @@
+{
+  "skmp_ubk_rph": {
+    "data": [
+      {
+        "id": "rph-minggu-25-contoh",
+        "week": 25,
+        "date": "2026-09-12",
+        "time": "08:00 PG - 09:00 PG",
+        "sessionType": "Bimbingan Kelas Modular",
+        "focus": "Pembangunan Sahsiah Diri Murid",
+        "title": "Contoh sahaja",
+        "target": "Tahun 5 / 6",
+        "venue": "Bilik Bimbingan & Kaunseling",
+        "objective": "Conrohnya",
+        "steps": [
+          "Langkah 1: Set Induksi",
+          "Langkah 2: Aktiviti Utama",
+          "Langkah 3: Penutup & Refleksi"
+        ],
+        "teachingAids": "Bahan Edaran, Modul B&K, LCD Projektor",
+        "reflection": "Tercapai",
+        "counselorName": "Guru Bimbingan & Kaunseling (UBK)",
+        "status": "menunggu",
+        "submittedAt": "2026-09-12T08:00:00.000Z"
+      },
+      {
+        "id": "rph-1",
+        "week": 24,
+        "date": "2026-09-08",
+        "time": "08:00 PG - 09:00 PG",
+        "sessionType": "Bimbingan Kelas Modular",
+        "focus": "Pembangunan Sahsiah Diri Murid",
+        "title": "Amalan Komunikasi Berhemah & Menghormati Warga Sekolah",
+        "target": "Tahun 5 Inovatif (32 Murid)",
+        "venue": "Bilik Bimbingan & Kaunseling",
+        "objective": "Pada akhir sesi bimbingan, murid dapat: 1. Menyenaraikan 3 adab bertutur sopan kepada guru dan rakan. 2. Mengaplikasikan teknik mendengar secara empati dalam situasi konflik.",
+        "steps": [
+          "Set Induksi: Tayangan video situasi perbualan sopan dan impak kata-kata kesat (10 minit).",
+          "Langkah 1: Perbincangan kumpulan kecil mengenai situasi harian di bilik darjah (15 minit).",
+          "Langkah 2: Simulasi main peranan respons berhemah bila diprovokasi atau berselisih faham (20 minit).",
+          "Penutup: Rumusan ikrar lisan \"Bahasa Indah Sahsiah Mulia\" dan lembaran refleksi diri (15 minit)."
+        ],
+        "teachingAids": "Video pendek, kad senario perbualan, LCD projektor, pelekat bintang refleksi.",
+        "reflection": "30 daripada 32 murid berjaya menunjukkan respons sopan semasa simulasi. 2 orang murid yang agak pemalu telah digandingkan bersama PRS dan menunjukkan keyakinan bertutur.",
+        "counselorName": "Guru Bimbingan & Kaunseling (UBK)",
+        "status": "disemak",
+        "submittedAt": "2026-09-07T14:30:00.000Z",
+        "reviewedAt": "2026-09-08T11:15:00.000Z",
+        "reviewerName": "Guru Besar SK Merbau Pulas",
+        "reviewerComment": "Rancangan bimbingan kelas yang tersusun kemas dan menepati piawaian KPM. Pendekatan simulasi sangat praktikal dan memberi impak kepada sahsiah murid. Tahniah."
+      },
+      {
+        "id": "rph-2",
+        "week": 24,
+        "date": "2026-09-09",
+        "time": "10:30 PG - 11:30 PG",
+        "sessionType": "Sesi Kaunseling Individu",
+        "focus": "Peningkatan Disiplin Diri Murid (Isu Kehadiran)",
+        "title": "Eksplorasi Punca Ketidakhadiran & Kontrak Tingkah Laku Positif",
+        "target": "Murid A (Tahun 4 Kreatif - Dirujuk Unit Disiplin)",
+        "venue": "Bilik Kaunseling Individu (Terapeutik)",
+        "objective": "Membantu klien meneroka halangan kehadiran ke sekolah, menstruktur jadual bangun pagi, dan menandatangani kontrak sasaran hadir 100%.",
+        "steps": [
+          "Membina hubungan terapeutik (Rapport) dan menstrukturkan etika kerahsiaan serta persetujuan termaklum.",
+          "Meneroka isu klien mengenai kesukaran tidur malam dan ketiadaan pengangkutan pagi.",
+          "Membina pelan tindakan bersama klien: Menetapkan jadual waktu tidur 9:30 malam dan berbasikal bersama rakan sekampung.",
+          "Menandatangani kontrak tingkah laku dengan ganjaran peneguhan positif bagi kehadiran penuh minggu ini."
+        ],
+        "teachingAids": "Borang Kontrak Tingkah Laku Murid, Jadual Harian Bergambar, Kad Peneguhan Positif.",
+        "reflection": "Klien memberi kerjasama yang amat baik dan meluahkan rasa lega kerana didengari. Klien berjanji akan tidur awal dan bersemangat hadir ke sekolah.",
+        "counselorName": "Guru Bimbingan & Kaunseling (UBK)",
+        "status": "disemak",
+        "submittedAt": "2026-09-09T12:00:00.000Z",
+        "reviewedAt": "2026-09-09T16:20:00.000Z",
+        "reviewerName": "Penolong Kanan Hal Ehwal Murid (PK HEM)",
+        "reviewerComment": "Langkah intervensi yang tepat dan berperingkat. Sila pantau status kehadiran murid ini dalam modul e-Kehadiran harian dan maklumkan kepada guru kelas."
+      },
+      {
+        "id": "rph-3",
+        "week": 24,
+        "date": "2026-09-11",
+        "time": "09:00 PG - 10:00 PG",
+        "sessionType": "Sesi Kaunseling Kelompok",
+        "focus": "Pendidikan Kerjaya Murid",
+        "title": "Eksplorasi Potensi Diri & Hala Tuju Selepas Sekolah Rendah",
+        "target": "Kelompok Murid Tahun 6 Cemerlang (6 Orang)",
+        "venue": "Sudut Kerjaya Bilik B&K",
+        "objective": "Membantu murid menghubungkan personaliti RIASEC daripada ujian psikometrik dengan pemilihan sekolah menengah bersesuaian (SBP/MRSM).",
+        "steps": [
+          "Penyatuan kelompok dan perkongsian profil kecenderungan kerjaya masing-masing.",
+          "Aktiviti \"Roadmap Kejayaan\": Mengisi peta matlamat peperiksaan akhir tahun dan syarat kelayakan sekolah khusus.",
+          "Perbincangan interaktif kelompok mengenai cabaran pembelajaran dan motivasi kendiri.",
+          "Rumusan dan komitmen belajar berpasukan."
+        ],
+        "teachingAids": "Brosur Maklumat SBP/MRSM, Lembaran Hala Tuju Kerjaya, Kad Skor IMK Holland.",
+        "reflection": "Ahli kelompok menunjukkan antusiasme tinggi untuk saling menyokong dalam mengulang kaji pelajaran.",
+        "counselorName": "Guru Bimbingan & Kaunseling (UBK)",
+        "status": "menunggu",
+        "submittedAt": "2026-09-10T15:10:00.000Z"
+      }
+    ],
+    "updatedAt": 1757657200000,
+    "updatedBy": "Guru Bimbingan & Kaunseling (UBK)"
+  }
+}

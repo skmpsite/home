@@ -1,4 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  pushUbkRphToFirestore,
+  pushUbkRptToFirestore,
+  pushUbkSessionsToFirestore,
+  pushUbkPbpppToFirestore,
+  pushUbkActivitiesToFirestore,
+  pushPibgUsulToFirestore
+} from './firebaseRealtime';
 
 export const SYNC_KEYS = {
   UBK_RPH: 'skmp_ubk_rph',
@@ -150,6 +158,24 @@ export async function syncSave<T>(
         isConnected = true;
         notifyStatus();
       }
+
+      // 3. Sandaran Firestore (jika ada konfigurasi Firebase aktif)
+      try {
+        if (key === SYNC_KEYS.UBK_RPH && Array.isArray(data)) {
+          pushUbkRphToFirestore(data as any).catch(() => {});
+        } else if (key === SYNC_KEYS.UBK_RPT && Array.isArray(data)) {
+          pushUbkRptToFirestore(data as any).catch(() => {});
+        } else if (key === SYNC_KEYS.UBK_SESSIONS && Array.isArray(data)) {
+          pushUbkSessionsToFirestore(data as any).catch(() => {});
+        } else if (key === SYNC_KEYS.UBK_PBPPP && typeof data === 'object') {
+          pushUbkPbpppToFirestore(data as any).catch(() => {});
+        } else if (key === SYNC_KEYS.UBK_ACTIVITIES && Array.isArray(data)) {
+          pushUbkActivitiesToFirestore(data as any).catch(() => {});
+        } else if (key === SYNC_KEYS.PIBG_USUL && Array.isArray(data)) {
+          pushPibgUsulToFirestore(data as any).catch(() => {});
+        }
+      } catch {}
+
       return true;
     }
   } catch (err) {
@@ -194,7 +220,7 @@ export function subscribeToSyncStatus(
 }
 
 /**
- * Ambil semua data terkini dari pelayan sekali gus (Full Hydration)
+ * Ambil semua data terkini dari pelayan sekali gus (Full Hydration & Smart Reconciliation)
  */
 export async function fetchAllServerData(): Promise<boolean> {
   if (isSyncInProgress) return false;
@@ -208,9 +234,66 @@ export async function fetchAllServerData(): Promise<boolean> {
         const { data, timestamps } = json;
         isConnected = true;
 
-        for (const [key, val] of Object.entries(data)) {
-          const ts = timestamps?.[key] || Date.now();
-          handleIncomingUpdate(key, val, ts, 'server_init', 'poll');
+        for (const [key, serverVal] of Object.entries(data)) {
+          const serverTs = timestamps?.[key] || Date.now();
+          let finalVal = serverVal;
+          let finalTs = serverTs;
+
+          // Periksa jika storan setempat mengandungi rekod tempatan baru yang belum wujud di pelayan
+          try {
+            const rawLocal = localStorage.getItem(key);
+            if (rawLocal) {
+              const localVal = JSON.parse(rawLocal);
+              if (Array.isArray(localVal) && Array.isArray(serverVal)) {
+                // Cantumkan (Merge) senarai supaya tiada rekod peranti tercicir
+                const serverIdSet = new Set(serverVal.map((item: any) => item?.id));
+                const missingLocalItems = localVal.filter(
+                  (item: any) => item?.id && !serverIdSet.has(item.id)
+                );
+
+                if (missingLocalItems.length > 0) {
+                  finalVal = [...missingLocalItems, ...serverVal];
+                  finalTs = Date.now();
+                  // Tolak senarai gabungan kembali ke pelayan serta-merta
+                  syncSave(key, finalVal, { silent: true });
+                }
+              }
+            }
+          } catch (e) {
+            console.warn(`[SYNC] Reconciliation failed for ${key}:`, e);
+          }
+
+          handleIncomingUpdate(key, finalVal, finalTs, 'server_init', 'poll');
+        }
+
+        // Semak juga jika peranti ini mempunyai kunci tempatan yang belum wujud di pelayan langsung
+        try {
+          const allKeysToReconcile = [
+            SYNC_KEYS.UBK_RPH,
+            SYNC_KEYS.UBK_RPT,
+            SYNC_KEYS.UBK_SESSIONS,
+            SYNC_KEYS.UBK_PBPPP,
+            SYNC_KEYS.UBK_ACTIVITIES,
+            SYNC_KEYS.PIBG_USUL,
+            SYNC_KEYS.PIBG_ACT,
+            SYNC_KEYS.PIBG_DOCS
+          ];
+
+          for (const k of allKeysToReconcile) {
+            if (!(k in data)) {
+              const localStored = localStorage.getItem(k);
+              if (localStored) {
+                try {
+                  const parsed = JSON.parse(localStored);
+                  if (parsed) {
+                    syncSave(k, parsed, { silent: true });
+                  }
+                } catch {}
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('[SYNC] Local missing keys push failed:', err);
         }
 
         if (json.serverTime) {
