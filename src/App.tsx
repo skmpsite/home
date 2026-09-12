@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Lock } from 'lucide-react';
+import { Lock, UserCheck, Bell } from 'lucide-react';
 import {
   SchoolProfile,
   Staff,
@@ -26,7 +26,8 @@ import {
   isTeacherRole,
   canEditKurikulum,
   canEditHem,
-  canEditKokurikulum
+  canEditKokurikulum,
+  UbkRphItem
 } from './types';
 import {
   loadProfile,
@@ -93,7 +94,9 @@ import {
   pushAbsenceRecordFully,
   deleteAbsenceRecordFully
 } from './utils/attendanceSync';
-import { initUniversalSync } from './utils/universalSync';
+import { initUniversalSync, useSyncedData, syncSave, SYNC_KEYS } from './utils/universalSync';
+import { initialUbkRph } from './data/initialUbkData';
+import { GbDirectReviewModal } from './components/ubk/GbDirectReviewModal';
 import { Header } from './components/Header';
 import { Navbar, TabType } from './components/Navbar';
 import { HeroSection } from './components/sections/HeroSection';
@@ -162,6 +165,43 @@ export default function App() {
   const [studentsList, setStudentsList] = useState<StudentRecord[]>(getStudentsList);
   const [absenceRecords, setAbsenceRecords] = useState<StudentAbsenceRecord[]>(getAbsenceRecords);
   const [schoolHolidays, setSchoolHolidays] = useState<SchoolHoliday[]>(loadSchoolHolidays);
+
+  // UBK e-RPH Sync & Peti Masuk Pengesahan Guru Besar
+  const [ubkRphList, setUbkRphList] = useSyncedData<UbkRphItem[]>(SYNC_KEYS.UBK_RPH, initialUbkRph);
+  const pendingUbkRphList = useMemo(() => {
+    return (ubkRphList || []).filter((r) => r.status === 'menunggu');
+  }, [ubkRphList]);
+  const [isGbDirectModalOpen, setIsGbDirectModalOpen] = useState(false);
+
+  const handleApproveUbkRph = (
+    id: string,
+    status: 'disemak' | 'pembetulan',
+    comment: string,
+    reviewerName: string
+  ) => {
+    const updated = (ubkRphList || []).map((item) =>
+      item.id === id
+        ? {
+            ...item,
+            status,
+            reviewerComment: comment,
+            reviewerName,
+            reviewedAt: new Date().toLocaleDateString('ms-MY')
+          }
+        : item
+    );
+    setUbkRphList(updated);
+    syncSave(SYNC_KEYS.UBK_RPH, updated, { updatedBy: userRole || 'guru_besar' });
+  };
+
+  const handleNavigateToUbk = () => {
+    setActiveTab('hem');
+    setHemSubTab('ubk');
+    setTimeout(() => {
+      window.location.hash = '#ubk';
+      window.dispatchEvent(new CustomEvent('skmp-navigate-ubk'));
+    }, 100);
+  };
 
   // UI States (with automatic deep link parsing for shared WhatsApp forms and tabs)
   const [activeTab, setActiveTab] = useState<TabType>(() => {
@@ -1078,10 +1118,40 @@ export default function App() {
     >
       {/* Top Header & Tab Navigation Bar (Natural Scroll Flow) */}
       <div className="w-full relative z-40 shadow-2xl backdrop-blur-xl bg-slate-950/90 border-b border-white/10">
+        {/* Direct Guru Besar Notification Bar when pending e-RPH exists */}
+        {pendingUbkRphList.length > 0 && (
+          <div className="bg-gradient-to-r from-amber-700 via-yellow-700 to-amber-800 text-white px-3 sm:px-4 py-2 text-xs flex flex-wrap items-center justify-between gap-2 border-b border-amber-400/40 shadow-lg">
+            <div className="flex items-center gap-2">
+              <span className="flex h-2.5 w-2.5 relative shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-200 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-yellow-300"></span>
+              </span>
+              <span className="font-extrabold uppercase tracking-wide text-yellow-200">
+                Tindakan Guru Besar:
+              </span>
+              <span className="text-slate-100">
+                Terdapat <strong>{pendingUbkRphList.length} rekod e-RPH UBK</strong> (Termasuk Minggu {pendingUbkRphList[0]?.week}: <em>"{pendingUbkRphList[0]?.title}"</em>) menunggu semakan & pengesahan Guru Besar.
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsGbDirectModalOpen(true)}
+                className="px-3.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-lg shadow transition cursor-pointer flex items-center gap-1.5 active:scale-95"
+              >
+                <UserCheck className="w-3.5 h-3.5 text-emerald-200" />
+                <span>Semak & Sahkan Terus</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         <Header
           profile={profile}
           isAdmin={isAdmin}
           userRole={userRole}
+          pendingUbkRphCount={pendingUbkRphList.length}
+          onOpenGbReviewModal={() => setIsGbDirectModalOpen(true)}
           onOpenLogin={() => setLoginModalOpen(true)}
           onLogout={() => {
             setIsAdmin(false);
@@ -1156,6 +1226,8 @@ export default function App() {
             onAddAbsenceRecord={handleAddAbsenceRecord}
             onUpdateAbsenceRecord={handleUpdateAbsenceRecord}
             onDeleteAbsenceRecord={handleDeleteAbsenceRecord}
+            pendingUbkRphList={pendingUbkRphList}
+            onOpenGbReviewModal={() => setIsGbDirectModalOpen(true)}
           />
         )}
 
@@ -1475,6 +1547,24 @@ export default function App() {
       <IctBookingModal
         isOpen={isGlobalIctModalOpen}
         onClose={() => setIsGlobalIctModalOpen(false)}
+      />
+
+      {/* Peti Pengesahan Terus Guru Besar Modal (Semakan e-RPH UBK) */}
+      <GbDirectReviewModal
+        isOpen={isGbDirectModalOpen}
+        onClose={() => setIsGbDirectModalOpen(false)}
+        pendingItems={pendingUbkRphList}
+        userRole={userRole}
+        isAdmin={isAdmin}
+        onApproveItem={handleApproveUbkRph}
+        onOpenLogin={() => setLoginModalOpen(true)}
+        onElevateToGuruBesar={() => {
+          setUserRole('guru_besar');
+          try {
+            localStorage.setItem('skmp_attendance_auth_user', 'guru_besar');
+          } catch {}
+        }}
+        onNavigateToUbk={handleNavigateToUbk}
       />
 
       {/* Global PWA Install & Shortcut Modal */}

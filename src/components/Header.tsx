@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SchoolProfile, SearchResultItem, UserRole } from '../types';
-import { Search, Lock, UserCheck, MapPin, Phone, Mail, LogOut, ChevronRight, X, ShieldAlert, Menu, Users, Utensils, Smartphone, Crown } from 'lucide-react';
+import { Search, Lock, UserCheck, MapPin, Phone, Mail, LogOut, ChevronRight, X, ShieldAlert, Menu, Users, Utensils, Smartphone, Crown, Bell } from 'lucide-react';
 import { PWAInstallModal } from './PWAInstallModal';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 
@@ -20,6 +20,8 @@ interface HeaderProps {
   onOpenPWAInstall?: () => void;
   isMobileMenuOpen?: boolean;
   onToggleMobileMenu?: () => void;
+  pendingUbkRphCount?: number;
+  onOpenGbReviewModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -37,7 +39,9 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenStudentPortal,
   onOpenPWAInstall,
   isMobileMenuOpen,
-  onToggleMobileMenu
+  onToggleMobileMenu,
+  pendingUbkRphCount = 0,
+  onOpenGbReviewModal
 }) => {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
@@ -98,6 +102,19 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold bg-white/10 text-yellow-300 px-2.5 py-0.5 rounded-full border border-white/15">
               Kod Sekolah: {profile.code}
             </span>
+
+            {/* Direct Notification Pill for Pending UBK e-RPH */}
+            {pendingUbkRphCount > 0 && onOpenGbReviewModal && (
+              <button
+                type="button"
+                onClick={onOpenGbReviewModal}
+                className="inline-flex items-center gap-1.5 text-xs font-black bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 text-slate-950 px-3 py-0.5 rounded-full border border-yellow-200 shadow-lg shadow-amber-950/40 hover:brightness-105 active:scale-95 transition cursor-pointer animate-pulse"
+                title={`${pendingUbkRphCount} e-RPH UBK menanti semakan Guru Besar. Klik untuk semak & sahkan secara terus!`}
+              >
+                <Bell className="w-3.5 h-3.5 fill-current text-amber-900" />
+                <span>e-RPH UBK ({pendingUbkRphCount})</span>
+              </button>
+            )}
 
             {isAdmin ? (
               <div className="flex items-center gap-2">
