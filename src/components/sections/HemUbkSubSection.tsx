@@ -358,6 +358,8 @@ export const HemUbkSubSection: React.FC<HemUbkSubSectionProps> = ({
           rphList={rphList}
           canEdit={canEdit}
           isPentadbir={isPentadbir}
+          userRole={userRole}
+          onOpenLogin={onOpenLogin}
           onSaveRphList={handleSaveRphList}
           onPrintItem={(item) => setPrintItem(item)}
         />

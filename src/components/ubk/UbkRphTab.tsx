@@ -18,12 +18,14 @@ import {
   Lock,
   Layers
 } from 'lucide-react';
-import { UbkRphItem } from '../../types';
+import { UbkRphItem, UserRole } from '../../types';
 
 interface UbkRphTabProps {
   rphList: UbkRphItem[];
   canEdit: boolean;
   isPentadbir: boolean;
+  userRole?: UserRole | null;
+  onOpenLogin?: () => void;
   onSaveRphList: (items: UbkRphItem[]) => void;
   onPrintItem: (item: UbkRphItem) => void;
 }
@@ -32,6 +34,8 @@ export const UbkRphTab: React.FC<UbkRphTabProps> = ({
   rphList,
   canEdit,
   isPentadbir,
+  userRole = null,
+  onOpenLogin,
   onSaveRphList,
   onPrintItem
 }) => {
@@ -283,16 +287,26 @@ export const UbkRphTab: React.FC<UbkRphTabProps> = ({
                       <span>Cetak Format e-BRPBK</span>
                     </button>
 
-                    {isPentadbir && (
+                    {isPentadbir ? (
                       <button
                         type="button"
                         onClick={() => setReviewingItem(rph)}
-                        className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1.5 transition cursor-pointer"
+                        className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1.5 transition cursor-pointer shadow-md shadow-emerald-950/40"
                       >
-                        <UserCheck className="w-3.5 h-3.5" />
+                        <UserCheck className="w-3.5 h-3.5 text-emerald-200" />
                         <span>Semak & Sahkan</span>
                       </button>
-                    )}
+                    ) : rph.status === 'menunggu' ? (
+                      <button
+                        type="button"
+                        onClick={() => onOpenLogin && onOpenLogin()}
+                        className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/40 font-bold flex items-center gap-1.5 transition cursor-pointer"
+                        title="Log Masuk Guru Besar (ID: GB, Katalaluan: GB5012) untuk sahkan e-RPH ini"
+                      >
+                        <Lock className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Log Masuk Pentadbir untuk Sahkan</span>
+                      </button>
+                    ) : null}
 
                     {canEdit && (
                       <>
@@ -353,13 +367,20 @@ export const UbkRphTab: React.FC<UbkRphTabProps> = ({
           item={reviewingItem}
           onClose={() => setReviewingItem(null)}
           onSaveReview={(status, comment) => {
+            const reviewerTitle =
+              userRole === 'guru_besar'
+                ? 'Guru Besar SK Merbau Pulas'
+                : userRole === 'pk_hem'
+                ? 'Penolong Kanan HEM'
+                : 'Pentadbir Sekolah';
+
             const updated = rphList.map((r) =>
               r.id === reviewingItem.id
                 ? {
                     ...r,
                     status,
                     reviewerComment: comment,
-                    reviewerName: 'Guru Besar / Pentadbir HEM',
+                    reviewerName: reviewerTitle,
                     reviewedAt: new Date().toLocaleDateString('ms-MY')
                   }
                 : r
