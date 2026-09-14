@@ -2171,6 +2171,25 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
             </div>
           </div>
 
+          {/* Notifikasi jika ada rekod makluman waris pada tarikh lain */}
+          {filterDateMode === 'selected' && absenceRecords.length > dailyAbsenceRecords.length && (
+            <div className="bg-gradient-to-r from-amber-500/20 via-amber-500/10 to-transparent border border-amber-400/40 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-200 shadow-lg animate-fadeIn">
+              <div className="flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping flex-shrink-0" />
+                <span>
+                  Terdapat <strong>{absenceRecords.length - dailyAbsenceRecords.length}</strong> makluman ketidakhadiran murid pada tarikh lain yang dihantar oleh waris.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFilterDateMode('semua')}
+                className="self-start sm:self-auto px-3.5 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-xl text-xs transition shadow-md cursor-pointer flex items-center gap-1.5"
+              >
+                <span>Lihat Semua ({absenceRecords.length})</span>
+              </button>
+            </div>
+          )}
+
           {/* Search & Filter Toolbar */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Search Input */}

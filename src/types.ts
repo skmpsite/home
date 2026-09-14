@@ -562,13 +562,19 @@ export const canEditKokurikulum = (role: UserRole | null | undefined, isAdmin?: 
 };
 
 export const canEditUbk = (role: UserRole | null | undefined, isAdmin?: boolean): boolean => {
-  // Hanya Guru Kaunselor (UBK), Guru Besar, dan Admin mempunyai hak mengedit modul UBK
-  // Guru biasa hanya mempunyai mod rujukan/paparan dan tidak boleh mengedit
+  // Guru Kaunselor (UBK), Guru Besar, Barisan GPK (PK Kurikulum, PK HEM, PK Kokurikulum), Setiausaha dan Guru mempunyai hak mencipta dan menghantar e-RPH
   return Boolean(
     isAdmin ||
     role === 'admin' ||
     role === 'guru_besar' ||
-    role === 'kaunselor'
+    role === 'kaunselor' ||
+    role === 'pk_kurikulum' ||
+    role === 'pk_hem' ||
+    role === 'pk_kokurikulum' ||
+    role === 'su_kurikulum' ||
+    role === 'su_hem' ||
+    role === 'su_kokurikulum' ||
+    role === 'guru'
   );
 };
 
@@ -611,7 +617,18 @@ export interface UbkRphItem {
   week: number;
   date: string;
   time: string;
-  sessionType: 'Bimbingan Kelas Modular' | 'Sesi Kaunseling Individu' | 'Sesi Kaunseling Kelompok' | 'Konsultasi Ibu Bapa / Guru' | 'Pengurusan Program & e-BRPBK' | 'Bimbingan Berfokus';
+  sessionType:
+    | 'Bimbingan Kelas Modular'
+    | 'Sesi Kaunseling Individu'
+    | 'Sesi Kaunseling Kelompok'
+    | 'Konsultasi Ibu Bapa / Guru'
+    | 'Pengurusan Program & e-BRPBK'
+    | 'Bimbingan Berfokus'
+    | 'Pengajaran & Pembelajaran (PdP)'
+    | 'Pengurusan Kurikulum & Pentadbiran'
+    | 'Pengurusan Hal Ehwal Murid'
+    | 'Pengurusan Kokurikulum'
+    | string;
   focus: string;
   title: string;
   target: string;
@@ -621,6 +638,8 @@ export interface UbkRphItem {
   teachingAids: string;
   reflection: string;
   counselorName: string;
+  authorRole?: string;
+  subjectName?: string;
   status: 'menunggu' | 'disemak' | 'pembetulan';
   submittedAt: string;
   reviewedAt?: string;

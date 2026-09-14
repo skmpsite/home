@@ -35,7 +35,8 @@ import {
   ShieldCheck,
   Utensils,
   Crown,
-  UserCheck
+  UserCheck,
+  Clock
 } from 'lucide-react';
 import { getNavIcon } from '../../utils/iconMap';
 import { initialTeacherLinks } from '../../data/initialData';
@@ -63,6 +64,7 @@ interface TeacherSectionProps {
   onUpdateAbsenceRecord?: (record: StudentAbsenceRecord) => void;
   onDeleteAbsenceRecord?: (id: string) => void;
   pendingUbkRphList?: UbkRphItem[];
+  allUbkRphList?: UbkRphItem[];
   onOpenGbReviewModal?: () => void;
 }
 
@@ -129,6 +131,7 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
   onUpdateAbsenceRecord,
   onDeleteAbsenceRecord,
   pendingUbkRphList = [],
+  allUbkRphList = [],
   onOpenGbReviewModal
 }) => {
   const [activeCategory, setActiveCategory] = useState<CategoryType>('semua');
@@ -857,8 +860,8 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
         </div>
       </div>
 
-      {/* Peti Pengesahan Pentadbir / Guru Besar (Jika ada rekod e-RPH UBK menanti semakan) */}
-      {pendingUbkRphList && pendingUbkRphList.length > 0 && (
+      {/* Peti Pengesahan Pentadbir / Guru Besar (Penyeliaan e-RPH GPK & Guru) */}
+      {onOpenGbReviewModal && (
         <div className="bg-gradient-to-r from-amber-950/80 via-slate-900 to-amber-950/80 rounded-2xl border-2 border-amber-500/50 p-4 sm:p-5 shadow-2xl space-y-3 animate-fadeIn">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -866,67 +869,98 @@ export const TeacherSection: React.FC<TeacherSectionProps> = ({
                 <Crown className="w-5 h-5" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <h4 className="text-sm sm:text-base font-black text-white">
-                    Peti Pengesahan Pentadbir (Tindakan Guru Besar / PK HEM)
+                    Peti Pengesahan e-RPH Pentadbir (Guru Besar & Barisan GPK)
                   </h4>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-500 text-slate-950">
-                    {pendingUbkRphList.length} Menunggu
-                  </span>
+                  {pendingUbkRphList.length > 0 ? (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-500 text-slate-950 animate-pulse">
+                      {pendingUbkRphList.length} Menunggu Semakan
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                      Semua Disahkan
+                    </span>
+                  )}
+                  {allUbkRphList.length > 0 && (
+                    <span className="text-[11px] text-slate-400">
+                      (Jumlah: {allUbkRphList.length} Rekod)
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-slate-300 mt-0.5">
-                  e-RPH Bimbingan & Kaunseling (e-BRPBK) yang dihantar oleh guru kaunselor untuk disemak dan disahkan minggu ini.
+                  e-RPH yang dihantar oleh Penolong Kanan (PK 1, PK HEM, PK Ko) dan Guru Kaunselor (UBK) untuk semakan dan pengesahan rasmi Guru Besar.
                 </p>
               </div>
             </div>
 
-            {onOpenGbReviewModal && (
+            <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
               <button
                 type="button"
                 onClick={onOpenGbReviewModal}
-                className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs rounded-xl shadow-lg flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer self-start sm:self-center shrink-0"
+                className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs rounded-xl shadow-lg flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer"
               >
                 <UserCheck className="w-4 h-4 text-emerald-200" />
-                <span>Semak & Sahkan Terus</span>
+                <span>{pendingUbkRphList.length > 0 ? 'Semak & Sahkan Terus' : 'Buka Peti Semakan Guru Besar'}</span>
               </button>
-            )}
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-2">
-            {pendingUbkRphList.map((item) => (
-              <div
-                key={item.id}
-                className="bg-slate-950/70 border border-amber-500/30 rounded-xl p-3 text-xs space-y-2 flex flex-col justify-between hover:border-amber-400/60 transition"
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-1 text-[11px]">
-                    <span className="font-black text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-lg border border-amber-400/30">
-                      Minggu {item.week}
-                    </span>
-                    <span className="text-slate-400">{item.date}</span>
+          {/* Cards Preview (Pending or Recent e-RPH) */}
+          {pendingUbkRphList.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-2">
+              {pendingUbkRphList.map((item) => (
+                <div
+                  key={item.id}
+                  className="bg-slate-950/80 border border-amber-500/40 rounded-xl p-3 text-xs space-y-2 flex flex-col justify-between hover:border-amber-400 transition shadow"
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-1 text-[11px]">
+                      <span className="font-black text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-lg border border-amber-400/30">
+                        Minggu {item.week}
+                      </span>
+                      <span className="text-slate-400 text-[10px]">{item.date}</span>
+                    </div>
+                    <div className="mt-1">
+                      <span className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-blue-500/20 text-blue-300 border border-blue-400/30">
+                        {item.counselorName || 'Penolong Kanan'}
+                      </span>
+                    </div>
+                    <h5 className="font-bold text-white mt-1.5 line-clamp-1">{item.title}</h5>
+                    <p className="text-[11px] text-slate-300 line-clamp-1">{item.target} • {item.sessionType}</p>
                   </div>
-                  <h5 className="font-bold text-white mt-1.5 line-clamp-1">{item.title || 'e-RPH Kaunseling'}</h5>
-                  <p className="text-[11px] text-slate-300 line-clamp-1">Fokus: {item.focus}</p>
-                </div>
 
-                <div className="pt-2 border-t border-white/10 flex items-center justify-between">
-                  <span className="text-[10px] text-amber-200/80 italic font-medium">
-                    Menunggu Semakan
-                  </span>
-                  {onOpenGbReviewModal && (
+                  <div className="pt-2 border-t border-white/10 flex items-center justify-between">
+                    <span className="text-[10px] text-amber-300 font-bold flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-amber-400" />
+                      <span>Menunggu Semakan</span>
+                    </span>
                     <button
                       type="button"
                       onClick={onOpenGbReviewModal}
-                      className="px-2.5 py-1 bg-emerald-600/90 hover:bg-emerald-500 text-white font-bold rounded-lg text-[11px] flex items-center gap-1 cursor-pointer"
+                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-[11px] flex items-center gap-1 cursor-pointer transition active:scale-95"
                     >
                       <UserCheck className="w-3 h-3" />
                       <span>Sahkan</span>
                     </button>
-                  )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-3 bg-slate-950/50 rounded-xl border border-white/10 flex items-center justify-between text-xs">
+              <span className="text-slate-300">
+                Tiada e-RPH GPK yang tertangguh. Semua rekod telah disahkan oleh Guru Besar.
+              </span>
+              <button
+                type="button"
+                onClick={onOpenGbReviewModal}
+                className="text-amber-300 hover:text-amber-200 font-bold underline cursor-pointer text-xs"
+              >
+                Lihat Rekod Telah Disahkan ({allUbkRphList.filter(i => i.status === 'disemak').length})
+              </button>
+            </div>
+          )}
         </div>
       )}
 

@@ -207,17 +207,26 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
     window.addEventListener('skmp_signage_updated', handleCustomSlideUpdate);
     window.addEventListener('skmp_signage_config_updated', handleCustomConfigUpdate);
 
-    // Periodic check every 3s to guarantee real-time reflection across tabs
+    // Periodic check (setiap 20s) sebagai sandaran ringan
     const pollInterval = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       const freshSlides = loadSignageSlides();
-      if (JSON.stringify(freshSlides) !== JSON.stringify(slides)) {
-        setSlides(freshSlides);
-      }
+      setSlides((prev) => {
+        if (freshSlides.length !== prev.length || freshSlides[0]?.id !== prev[0]?.id) {
+          if (JSON.stringify(freshSlides) !== JSON.stringify(prev)) {
+            return freshSlides;
+          }
+        }
+        return prev;
+      });
       const freshConfig = loadSignageConfig();
-      if (JSON.stringify(freshConfig) !== JSON.stringify(config)) {
-        setConfig(freshConfig);
-      }
-    }, 3000);
+      setConfig((prev) => {
+        if (freshConfig.theme !== prev.theme || freshConfig.marqueeText !== prev.marqueeText || freshConfig.autoPlay !== prev.autoPlay) {
+          return freshConfig;
+        }
+        return prev;
+      });
+    }, 20000);
 
     return () => {
       window.removeEventListener('storage', handleStorageUpdate);
@@ -225,7 +234,7 @@ export const SignageSection: React.FC<SignageSectionProps> = ({
       window.removeEventListener('skmp_signage_config_updated', handleCustomConfigUpdate);
       window.clearInterval(pollInterval);
     };
-  }, [slides, config]);
+  }, []);
 
   // Live Clock Tick (Every 1s)
   useEffect(() => {

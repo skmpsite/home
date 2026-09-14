@@ -183,14 +183,22 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
     };
     window.addEventListener(ICT_BOOKINGS_SYNCED_EVENT, handleLocalSync);
 
-    // 5. Periodic polling (every 3 seconds) as backup check
+    // 5. Periodic polling (every 20 seconds) as backup check (only when visible)
     const pollInterval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       fetchLiveIctBookings().then((res) => {
         if (isMounted && res && Array.isArray(res.bookings)) {
-          setBookings(res.bookings);
+          setBookings((prev) => {
+            if (res.bookings.length !== prev.length || (res.bookings[0]?.id !== prev[0]?.id)) {
+              if (JSON.stringify(res.bookings) !== JSON.stringify(prev)) {
+                return res.bookings;
+              }
+            }
+            return prev;
+          });
         }
       });
-    }, 3000);
+    }, 20000);
 
     return () => {
       isMounted = false;

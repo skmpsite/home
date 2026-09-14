@@ -75,8 +75,15 @@ export default function TvApp() {
       }
 
       if (bestSlides.length > 0) {
-        setSlides(bestSlides);
-        saveSignageSlides(bestSlides);
+        setSlides((prev) => {
+          if (prev.length !== bestSlides.length || prev[0]?.id !== bestSlides[0]?.id) {
+            if (JSON.stringify(prev) !== JSON.stringify(bestSlides)) {
+              saveSignageSlides(bestSlides);
+              return bestSlides;
+            }
+          }
+          return prev;
+        });
       }
       setLastSyncTime(new Date().toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
     } catch (err) {
@@ -93,8 +100,8 @@ export default function TvApp() {
     // 1. Muat turun data cloud serta merta semasa TV dihidupkan
     refreshFromCloud();
 
-    // 2. Semak kemas kini awan secara automatik setiap 4 saat
-    const cloudPoll = window.setInterval(refreshFromCloud, 4000);
+    // 2. Semak kemas kini awan secara automatik setiap 15 saat (mesra TV & tidak membebankan pemproses)
+    const cloudPoll = window.setInterval(refreshFromCloud, 15000);
 
     // 3. Penyelarasan setempat (antar tab & broadcast event)
     const onStorageChange = () => {

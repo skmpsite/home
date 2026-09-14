@@ -460,6 +460,41 @@ const RphModal: React.FC<{
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs max-h-[80vh] overflow-y-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-950/60 p-3 rounded-xl border border-white/10">
+            <div>
+              <label className="block font-bold text-teal-300 mb-1">Jawatan / Peranan Pengirim *</label>
+              <select
+                value={formData.authorRole || 'kaunselor'}
+                onChange={(e) => {
+                  const role = e.target.value as any;
+                  let defName = 'Guru Bimbingan & Kaunseling (UBK)';
+                  if (role === 'pk_kurikulum') defName = 'Penolong Kanan Pentadbiran (PK 1)';
+                  if (role === 'pk_hem') defName = 'Penolong Kanan Hal Ehwal Murid (PK HEM)';
+                  if (role === 'pk_kokurikulum') defName = 'Penolong Kanan Kokurikulum (PK Ko)';
+                  if (role === 'guru') defName = 'Guru Akademik SKMP';
+                  setFormData({ ...formData, authorRole: role, counselorName: defName });
+                }}
+                className="w-full px-3 py-2 bg-slate-900 border border-white/15 rounded-xl text-white"
+              >
+                <option value="kaunselor">Guru Bimbingan & Kaunseling (UBK)</option>
+                <option value="pk_kurikulum">GPK Pentadbiran (PK 1)</option>
+                <option value="pk_hem">GPK Hal Ehwal Murid (PK HEM)</option>
+                <option value="pk_kokurikulum">GPK Kokurikulum (PK Ko)</option>
+                <option value="guru">Guru Akademik</option>
+              </select>
+            </div>
+            <div>
+              <label className="block font-bold text-teal-300 mb-1">Nama / Gelaran Penyedia *</label>
+              <input
+                type="text"
+                required
+                value={formData.counselorName}
+                onChange={(e) => setFormData({ ...formData, counselorName: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-900 border border-white/15 rounded-xl text-white font-medium"
+              />
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block font-bold text-slate-300 mb-1">Minggu Persekolahan *</label>
@@ -484,7 +519,7 @@ const RphModal: React.FC<{
               />
             </div>
             <div>
-              <label className="block font-bold text-slate-300 mb-1">Waktu Sesi *</label>
+              <label className="block font-bold text-slate-300 mb-1">Waktu Sesi / PdP *</label>
               <input
                 type="text"
                 required
@@ -498,12 +533,16 @@ const RphModal: React.FC<{
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-bold text-slate-300 mb-1">Jenis Perkhidmatan GBK *</label>
+              <label className="block font-bold text-slate-300 mb-1">Jenis Aktiviti / PdP *</label>
               <select
                 value={formData.sessionType}
                 onChange={(e) => setFormData({ ...formData, sessionType: e.target.value as any })}
                 className="w-full px-3 py-2 bg-slate-950 border border-white/15 rounded-xl text-white"
               >
+                <option value="Pengajaran & Pembelajaran (PdP)">Pengajaran & Pembelajaran (PdP)</option>
+                <option value="Pengurusan Kurikulum & Pentadbiran">Pengurusan Kurikulum & Pentadbiran</option>
+                <option value="Pengurusan Hal Ehwal Murid">Pengurusan Hal Ehwal Murid</option>
+                <option value="Pengurusan Kokurikulum">Pengurusan Kokurikulum</option>
                 <option value="Bimbingan Kelas Modular">Kelas Bimbingan Modular</option>
                 <option value="Sesi Kaunseling Individu">Sesi Kaunseling Individu</option>
                 <option value="Sesi Kaunseling Kelompok">Sesi Kaunseling Kelompok</option>
@@ -513,12 +552,15 @@ const RphModal: React.FC<{
               </select>
             </div>
             <div>
-              <label className="block font-bold text-slate-300 mb-1">Fokus Utama KPM *</label>
+              <label className="block font-bold text-slate-300 mb-1">Fokus Utama KPM / Bidang *</label>
               <select
                 value={formData.focus}
                 onChange={(e) => setFormData({ ...formData, focus: e.target.value })}
                 className="w-full px-3 py-2 bg-slate-950 border border-white/15 rounded-xl text-white"
               >
+                <option value="Pengurusan Kurikulum & PdP Berkesan">Pengurusan Kurikulum & PdP Berkesan</option>
+                <option value="Peningkatan Disiplin & Amalan Guru Penyayang">Peningkatan Disiplin & Amalan Guru Penyayang</option>
+                <option value="Kecemerlangan Badan Beruniform & Sukan">Kecemerlangan Badan Beruniform & Sukan</option>
                 <option value="Pembangunan Sahsiah Diri Murid">Pembangunan Sahsiah Diri Murid</option>
                 <option value="Peningkatan Disiplin Diri Murid">Peningkatan Disiplin Diri Murid</option>
                 <option value="Pendidikan Kerjaya Murid">Pendidikan Kerjaya Murid</option>

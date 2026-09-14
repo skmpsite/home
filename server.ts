@@ -260,8 +260,51 @@ async function startServer() {
     }
   }
 
+  // Gabungkan dan segerakkan data e-Kehadiran antara attendance-live.json dan portal-live-sync.json
+  const portalAttendanceRecords = livePortalData['skmp_absence_records_v1']?.data;
+  if (Array.isArray(portalAttendanceRecords) && portalAttendanceRecords.length > 0) {
+    const map = new Map<string, any>();
+    liveAttendanceRecords.forEach((r: any) => { if (r && r.id) map.set(r.id, r); });
+    portalAttendanceRecords.forEach((r: any) => { if (r && r.id) map.set(r.id, r); });
+    liveAttendanceRecords = Array.from(map.values()).sort((a: any, b: any) =>
+      (b.createdAt || "").localeCompare(a.createdAt || "")
+    );
+  }
+  livePortalData['skmp_absence_records_v1'] = {
+    data: liveAttendanceRecords,
+    updatedAt: attendanceLastUpdated,
+    updatedBy: 'server_init'
+  };
+
   // Senarai sambungan klien Server-Sent Events (SSE) untuk siaran langsung sub-saat
   const syncSseClients = new Set<express.Response>();
+
+  let portalSyncSaveTimer: NodeJS.Timeout | null = null;
+  const schedulePortalSyncSave = () => {
+    if (portalSyncSaveTimer) return;
+    portalSyncSaveTimer = setTimeout(() => {
+      portalSyncSaveTimer = null;
+      fs.writeFile(PORTAL_SYNC_FILE, JSON.stringify(livePortalData, null, 2), "utf-8", (err) => {
+        if (err) console.error("Failed to write portal-live-sync.json asynchronously:", err);
+      });
+    }, 1200);
+  };
+
+  let attendanceSaveTimer: NodeJS.Timeout | null = null;
+  const scheduleAttendanceSave = () => {
+    if (attendanceSaveTimer) return;
+    attendanceSaveTimer = setTimeout(() => {
+      attendanceSaveTimer = null;
+      fs.writeFile(
+        ATTENDANCE_FILE,
+        JSON.stringify({ records: liveAttendanceRecords, lastUpdated: attendanceLastUpdated }, null, 2),
+        "utf-8",
+        (err) => {
+          if (err) console.error("Failed to write to attendance-live.json asynchronously:", err);
+        }
+      );
+    }, 500);
+  };
 
   const broadcastSyncUpdate = (key: string, data: any, updatedAt: number, updatedBy?: string) => {
     const payload = JSON.stringify({ type: "update", key, data, updatedAt, updatedBy });
@@ -360,6 +403,12 @@ async function startServer() {
         };
         broadcastSyncUpdate(key, data, now, updatedBy);
         console.log(`[LIVE SYNC] Updated key '${key}' from ${updatedBy || 'user'} at ${new Date().toISOString()}`);
+
+        if (key === 'skmp_absence_records_v1' && Array.isArray(data)) {
+          liveAttendanceRecords = data;
+          attendanceLastUpdated = now;
+          scheduleAttendanceSave();
+        }
       } else if (updates && typeof updates === "object") {
         for (const [k, v] of Object.entries(updates)) {
           livePortalData[k] = {
@@ -368,18 +417,20 @@ async function startServer() {
             updatedBy: updatedBy || "portal_user"
           };
           broadcastSyncUpdate(k, v, now, updatedBy);
+
+          if (k === 'skmp_absence_records_v1' && Array.isArray(v)) {
+            liveAttendanceRecords = v;
+            attendanceLastUpdated = now;
+            scheduleAttendanceSave();
+          }
         }
         console.log(`[LIVE SYNC] Batch updated ${Object.keys(updates).length} keys from ${updatedBy || 'user'}`);
       } else {
         return res.status(400).json({ success: false, error: "key dan data diperlukan." });
       }
 
-      // Simpan ke storan kekal fail pelayan
-      try {
-        fs.writeFileSync(PORTAL_SYNC_FILE, JSON.stringify(livePortalData, null, 2), "utf-8");
-      } catch (saveErr) {
-        console.error("Failed to write portal-live-sync.json:", saveErr);
-      }
+      // Simpan ke storan kekal fail pelayan secara nyah-hentak (debounced) agar tidak menyekat event loop
+      schedulePortalSyncSave();
 
       res.json({
         success: true,
@@ -513,16 +564,18 @@ async function startServer() {
 
       if (hasChanges) {
         attendanceLastUpdated = Date.now();
-        try {
-          fs.writeFileSync(
-            ATTENDANCE_FILE,
-            JSON.stringify({ records: liveAttendanceRecords, lastUpdated: attendanceLastUpdated }, null, 2),
-            "utf-8"
-          );
-        } catch (saveErr) {
-          console.error("Failed to write to attendance-live.json:", saveErr);
-        }
-        console.log(`[LIVE ATTENDANCE] Synced ${liveAttendanceRecords.length} records across all devices at ${new Date().toISOString()}`);
+        scheduleAttendanceSave();
+
+        // Segerakkan ke Live Portal Engine untuk semua peranti & siarkan melalui SSE
+        livePortalData['skmp_absence_records_v1'] = {
+          data: liveAttendanceRecords,
+          updatedAt: attendanceLastUpdated,
+          updatedBy: 'waris'
+        };
+        schedulePortalSyncSave();
+        broadcastSyncUpdate('skmp_absence_records_v1', liveAttendanceRecords, attendanceLastUpdated, 'waris');
+
+        console.log(`[LIVE ATTENDANCE] Synced and broadcasted ${liveAttendanceRecords.length} records across all devices at ${new Date().toISOString()}`);
       }
 
       return res.json({
@@ -543,15 +596,15 @@ async function startServer() {
       liveAttendanceRecords = liveAttendanceRecords.filter((r: any) => r.id !== id);
       if (liveAttendanceRecords.length !== initialLen) {
         attendanceLastUpdated = Date.now();
-        try {
-          fs.writeFileSync(
-            ATTENDANCE_FILE,
-            JSON.stringify({ records: liveAttendanceRecords, lastUpdated: attendanceLastUpdated }, null, 2),
-            "utf-8"
-          );
-        } catch (saveErr) {
-          console.error("Failed to write to attendance-live.json:", saveErr);
-        }
+        scheduleAttendanceSave();
+
+        livePortalData['skmp_absence_records_v1'] = {
+          data: liveAttendanceRecords,
+          updatedAt: attendanceLastUpdated,
+          updatedBy: 'admin'
+        };
+        schedulePortalSyncSave();
+        broadcastSyncUpdate('skmp_absence_records_v1', liveAttendanceRecords, attendanceLastUpdated, 'admin');
       }
       return res.json({
         success: true,
@@ -1133,17 +1186,32 @@ KEUPAYAAN ILMU & JAWAPAN MENYELURUH (GEMINI OMNISCIENCE):
   }
 
   // Vite middleware in dev or static serving in production
-  if (process.env.NODE_ENV !== "production") {
+  const isProduction =
+    process.env.NODE_ENV === "production" ||
+    (typeof __dirname !== "undefined" && __dirname.includes("dist")) ||
+    (fs.existsSync(path.join(process.cwd(), "dist", "index.html")) && process.env.NODE_ENV !== "development");
+
+  if (!isProduction) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), "dist");
+    const distPath = fs.existsSync(path.join(process.cwd(), "dist", "index.html"))
+      ? path.join(process.cwd(), "dist")
+      : typeof __dirname !== "undefined" && fs.existsSync(path.join(__dirname, "index.html"))
+      ? __dirname
+      : path.join(process.cwd(), "dist");
+
     app.use(express.static(distPath));
     app.get("*", (_req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
+      const indexPath = path.join(distPath, "index.html");
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(404).send("Application index.html not found.");
+      }
     });
   }
 

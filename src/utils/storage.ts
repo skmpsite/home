@@ -51,11 +51,12 @@ import { getSafeNewsImageUrl } from './imageHelpers';
 import { sortStaffBySeniority } from './staffHelpers';
 import { syncSave } from './universalSync';
 
-const KEYS = {
+export const KEYS = {
   PROFILE: 'skmp_profile_v1',
   STAFF: 'skmp_staff_v1',
   NEWS: 'skmp_news_v1',
   CALENDAR: 'skmp_calendar_v1',
+  EVENTS: 'skmp_calendar_v1',
   GALLERY: 'skmp_gallery_v1',
   AWARDS: 'skmp_awards_v1',
   DOCUMENTS: 'skmp_documents_v1',
@@ -63,8 +64,11 @@ const KEYS = {
   TEACHER_LINKS: 'skmp_teacher_links_v1',
   FEEDBACK: 'skmp_feedback_v1',
   PIBG_ACT: 'skmp_pibg_act_v1',
+  PIBG_ACTIVITIES: 'skmp_pibg_act_v1',
   PIBG_COMM: 'skmp_pibg_comm_v1',
+  PIBG_COMMITTEE: 'skmp_pibg_comm_v1',
   COCURRICULUM: 'skmp_cocurriculum_v1',
+  CO_CURRICULUM: 'skmp_cocurriculum_v1',
   SIGNAGE_SLIDES: 'skmp_signage_slides_v1',
   SIGNAGE_CONFIG: 'skmp_signage_config_v1',
   HEM: 'skmp_hem_v1',
@@ -73,7 +77,9 @@ const KEYS = {
   ABSENCE_RECORDS: 'skmp_absence_records_v1',
   SCHOOL_HOLIDAYS: 'skmp_school_holidays_v1',
   ACADEMIC_SUBJECTS: 'skmp_academic_subjects_v1',
-  ACADEMIC_PROGRAMS: 'skmp_academic_programs_v1'
+  ACADEMIC_PROGRAMS: 'skmp_academic_programs_v1',
+  ICT_BOOKINGS: 'skmp_ict_bookings_v1',
+  ICT_CASHFLOW: 'skmp_ict_cashflow_v1'
 };
 
 function getStored<T>(key: string, fallback: T): T {

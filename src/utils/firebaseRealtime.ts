@@ -199,6 +199,7 @@ export function setupFirestoreRealtimeSync(callbacks: {
   onIctFinanceChange?: (records: IctCashFlowRecord[]) => void;
   onStudentsChange?: (students: StudentRecord[]) => void;
   onStudentPhotosChange?: (photos: Record<string, string>) => void;
+  onUbkRphChange?: (rphList: UbkRphItem[]) => void;
 }): () => void {
   if (!isFirebaseEnabled()) return () => {};
   const db = getFirebaseDb();
@@ -412,6 +413,20 @@ export function setupFirestoreRealtimeSync(callbacks: {
           }
         }
       }, (err) => console.warn('[FIRESTORE] Student photos sync listener:', err));
+      unsubscribers.push(unsub);
+    }
+
+    // 16. e-RPH UBK / GPK (Live Real-Time Cloud Sync ke semua peranti)
+    if (callbacks.onUbkRphChange) {
+      const unsub = onSnapshot(doc(db, 'ubk_data', 'rph'), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data && Array.isArray(data.items)) {
+            console.log('[FIRESTORE REALTIME] e-RPH data received from cloud:', data.items.length);
+            callbacks.onUbkRphChange!(data.items as UbkRphItem[]);
+          }
+        }
+      }, (err) => console.warn('[FIRESTORE] e-RPH sync listener error:', err));
       unsubscribers.push(unsub);
     }
 
@@ -846,7 +861,69 @@ export function subscribeToStudentPhotos(callback: (photos: Record<string, strin
  * UBK e-RPH & Counseling Real-Time Sync via Firestore
  */
 export async function pushUbkRphToFirestore(rphList: UbkRphItem[]): Promise<boolean> {
-  return pushToFirestore('ubk_data', 'rph', { items: cleanForFirestore(rphList) });
+  return pushToFirestore('ubk_data', 'rph', { 
+    items: cleanForFirestore(rphList),
+    updatedAt: new Date().toISOString(),
+    updatedTimestamp: Date.now()
+  });
+}
+
+/**
+ * Dapatkan data e-RPH terkini terus dari Firebase Firestore
+ */
+export async function fetchUbkRphFromFirestore(): Promise<UbkRphItem[] | null> {
+  if (!isFirebaseEnabled()) return null;
+  const db = getFirebaseDb();
+  if (!db) return null;
+
+  try {
+    const docRef = doc(db, 'ubk_data', 'rph');
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      if (data && Array.isArray(data.items)) {
+        console.log('[FIRESTORE] e-RPH fetched directly from cloud:', data.items.length);
+        return data.items as UbkRphItem[];
+      }
+    }
+  } catch (err) {
+    console.warn('[FIRESTORE] fetchUbkRphFromFirestore error:', err);
+  }
+  return null;
+}
+
+/**
+ * Langganan langsung masa nyata (onSnapshot) khas untuk e-RPH UBK / GPK
+ */
+export function subscribeToUbkRphFromFirestore(
+  callback: (rphList: UbkRphItem[]) => void
+): () => void {
+  if (!isFirebaseEnabled()) return () => {};
+  const db = getFirebaseDb();
+  if (!db) return () => {};
+
+  try {
+    const docRef = doc(db, 'ubk_data', 'rph');
+    const unsub = onSnapshot(
+      docRef,
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data && Array.isArray(data.items)) {
+            console.log('[FIRESTORE REALTIME] Direct e-RPH snapshot arrived:', data.items.length);
+            callback(data.items as UbkRphItem[]);
+          }
+        }
+      },
+      (err) => {
+        console.warn('[FIRESTORE] Direct e-RPH listener error:', err);
+      }
+    );
+    return unsub;
+  } catch (err) {
+    console.warn('[FIRESTORE] Unable to set up direct e-RPH listener:', err);
+    return () => {};
+  }
 }
 
 export async function pushUbkRptToFirestore(rptList: UbkRptItem[]): Promise<boolean> {

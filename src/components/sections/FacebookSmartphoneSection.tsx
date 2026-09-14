@@ -33,6 +33,7 @@ export const FacebookSmartphoneSection: React.FC<FacebookSmartphoneSectionProps>
   const [zoomScale, setZoomScale] = useState<number>(getResponsiveDefaultScale);
   const [iframeKey, setIframeKey] = useState<number>(0);
   const [toastMsg, setToastMsg] = useState<string>('');
+  const [activeView, setActiveView] = useState<'both' | 'skmp' | 'ppdkbb'>('skmp');
 
   // Update clock every minute for realistic smartphone status bar & respond to screen resize
   useEffect(() => {
@@ -195,6 +196,7 @@ export const FacebookSmartphoneSection: React.FC<FacebookSmartphoneSectionProps>
                   src={iframeSrc}
                   width="100%"
                   height="100%"
+                  loading="lazy"
                   style={{
                     border: 'none',
                     overflow: 'hidden',
@@ -316,23 +318,70 @@ export const FacebookSmartphoneSection: React.FC<FacebookSmartphoneSectionProps>
         </div>
       </div>
 
-      {/* Main Smartphone Showcase Area: Permanent Dual Smartphone */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center justify-center pt-2">
-        <div className="space-y-3">
-          <div className="text-center font-extrabold text-xs text-yellow-300 uppercase tracking-wider flex items-center justify-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-yellow-400"></span>
-            <span>Telefon 1: SK Merbau Pulas Rasmi</span>
-          </div>
-          {renderPhoneMockup('skmp')}
+      {/* Phone View Mode Selector (Sangat berguna untuk menjimatkan memori di peranti mudah alih & desktop) */}
+      <div className="flex flex-wrap items-center justify-center gap-2 pt-1 pb-1">
+        <div className="inline-flex items-center p-1 bg-slate-900/90 rounded-xl border border-white/15 shadow-md">
+          <button
+            type="button"
+            onClick={() => setActiveView('skmp')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              activeView === 'skmp'
+                ? 'bg-amber-400 text-blue-950 shadow font-extrabold'
+                : 'text-slate-300 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-amber-400 border border-amber-600"></span>
+            <span>SK Merbau Pulas</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveView('ppdkbb')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              activeView === 'ppdkbb'
+                ? 'bg-[#1877F2] text-white shadow font-extrabold'
+                : 'text-slate-300 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-blue-300"></span>
+            <span>PPD Kulim Bandar Baharu</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveView('both')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              activeView === 'both'
+                ? 'bg-emerald-600 text-white shadow font-extrabold'
+                : 'text-slate-300 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <span>Dwi-Paparan (Kedua-dua)</span>
+          </button>
         </div>
+      </div>
 
-        <div className="space-y-3">
-          <div className="text-center font-extrabold text-xs text-blue-300 uppercase tracking-wider flex items-center justify-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-            <span>Telefon 2: PPD Kulim Bandar Baharu</span>
+      {/* Main Smartphone Showcase Area */}
+      <div className={`grid gap-8 items-center justify-center pt-2 ${
+        activeView === 'both' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1 max-w-lg mx-auto'
+      }`}>
+        {(activeView === 'both' || activeView === 'skmp') && (
+          <div className="space-y-3">
+            <div className="text-center font-extrabold text-xs text-yellow-300 uppercase tracking-wider flex items-center justify-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-yellow-400"></span>
+              <span>Telefon 1: SK Merbau Pulas Rasmi</span>
+            </div>
+            {renderPhoneMockup('skmp')}
           </div>
-          {renderPhoneMockup('ppdkbb')}
-        </div>
+        )}
+
+        {(activeView === 'both' || activeView === 'ppdkbb') && (
+          <div className="space-y-3">
+            <div className="text-center font-extrabold text-xs text-blue-300 uppercase tracking-wider flex items-center justify-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+              <span>Telefon 2: PPD Kulim Bandar Baharu</span>
+            </div>
+            {renderPhoneMockup('ppdkbb')}
+          </div>
+        )}
       </div>
 
       {/* Bottom Information Callout */}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Lock, UserCheck, Bell } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import {
   SchoolProfile,
   Staff,
@@ -69,7 +69,9 @@ import {
   saveAbsenceRecords,
   loadSchoolHolidays,
   saveSchoolHolidays,
-  resetAllToDefault
+  resetAllToDefault,
+  KEYS,
+  BROADCAST_CHANNEL_ATTENDANCE
 } from './utils/storage';
 import {
   syncFeedbackToGoogleSheets,
@@ -83,7 +85,9 @@ import {
   setupFirestoreRealtimeSync,
   fetchAbsenceRecordsFromFirestore,
   pushAbsenceRecordsToFirestore,
-  pushSingleAbsenceRecordToFirestore
+  pushSingleAbsenceRecordToFirestore,
+  pushUbkRphToFirestore,
+  fetchUbkRphFromFirestore
 } from './utils/firebaseRealtime';
 import { saveIctBookings } from './utils/ictBookingHelpers';
 import { saveIctCashFlow } from './utils/ictFinanceHelpers';
@@ -192,6 +196,15 @@ export default function App() {
     );
     setUbkRphList(updated);
     syncSave(SYNC_KEYS.UBK_RPH, updated, { updatedBy: userRole || 'guru_besar' });
+    pushUbkRphToFirestore(updated).catch(() => {});
+  };
+
+  const handleSaveNewRph = (newItem: UbkRphItem) => {
+    const current = ubkRphList || [];
+    const updated = [newItem, ...current.filter((item) => item.id !== newItem.id)];
+    setUbkRphList(updated);
+    syncSave(SYNC_KEYS.UBK_RPH, updated, { updatedBy: userRole || 'gpk' });
+    pushUbkRphToFirestore(updated).catch(() => {});
   };
 
   const handleNavigateToUbk = () => {
@@ -402,50 +415,93 @@ export default function App() {
 
   // Ref to prevent overlapping in-flight fetch requests
   const isSyncingRef = useRef(false);
+  const lastSheetsRawHashRef = useRef<string>('');
+  const lastImmediateSyncRef = useRef<number>(0);
 
-  // Auto-sync data dari Google Sheets Web App secara pantas & responsif
+  // Auto-sync data dari Google Sheets Web App secara bijak & efisien
   const refreshFromGoogleSheets = async () => {
     if (isSyncingRef.current) return;
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+      return; // Jimat CPU/memori bila tab sedang diminimumkan atau di latar belakang
+    }
     isSyncingRef.current = true;
     try {
       const raw = await fetchSchoolDataFromGoogleSheets();
       if (raw) {
+        // Cepatkan semakan: jika data mentah langsung sama dengan sebelum ini, elak kitaran re-render & simpanan berulang
+        const rawHash = JSON.stringify(raw);
+        if (rawHash === lastSheetsRawHashRef.current) {
+          return;
+        }
+        lastSheetsRawHashRef.current = rawHash;
+
         const parsed = parseSchoolDataFromSheets(raw);
         if (parsed.events && parsed.events.length > 0) {
-          setEvents(parsed.events);
-          saveCalendarEvents(parsed.events);
+          setEvents((prev) => {
+            if (JSON.stringify(prev) !== JSON.stringify(parsed.events)) {
+              saveCalendarEvents(parsed.events!);
+              return parsed.events!;
+            }
+            return prev;
+          });
         }
         if (parsed.staffList && parsed.staffList.length > 0) {
-          setStaffList(parsed.staffList);
-          saveStaff(parsed.staffList);
+          setStaffList((prev) => {
+            if (JSON.stringify(prev) !== JSON.stringify(parsed.staffList)) {
+              saveStaff(parsed.staffList!);
+              return parsed.staffList!;
+            }
+            return prev;
+          });
         }
         if (parsed.newsList && parsed.newsList.length > 0) {
-          setNewsList(parsed.newsList);
-          saveNews(parsed.newsList);
+          setNewsList((prev) => {
+            if (JSON.stringify(prev) !== JSON.stringify(parsed.newsList)) {
+              saveNews(parsed.newsList!);
+              return parsed.newsList!;
+            }
+            return prev;
+          });
         }
         if (parsed.signageSlides && parsed.signageSlides.length > 0) {
-          setSignageSlides(parsed.signageSlides);
-          saveSignageSlides(parsed.signageSlides);
+          setSignageSlides((prev) => {
+            if (JSON.stringify(prev) !== JSON.stringify(parsed.signageSlides)) {
+              saveSignageSlides(parsed.signageSlides!);
+              return parsed.signageSlides!;
+            }
+            return prev;
+          });
         }
         if (parsed.signageConfig && Object.keys(parsed.signageConfig).length > 0) {
-          setSignageConfig(prev => {
+          setSignageConfig((prev) => {
             const updated = { ...prev, ...parsed.signageConfig };
-            saveSignageConfig(updated);
-            return updated;
+            if (JSON.stringify(prev) !== JSON.stringify(updated)) {
+              saveSignageConfig(updated);
+              return updated;
+            }
+            return prev;
           });
         }
         if (parsed.teacherLinks && parsed.teacherLinks.length > 0) {
-          setTeacherLinks(parsed.teacherLinks);
-          saveTeacherLinks(parsed.teacherLinks);
+          setTeacherLinks((prev) => {
+            if (JSON.stringify(prev) !== JSON.stringify(parsed.teacherLinks)) {
+              saveTeacherLinks(parsed.teacherLinks!);
+              return parsed.teacherLinks!;
+            }
+            return prev;
+          });
         }
         if (parsed.profileUpdates) {
-          setProfile(prev => {
+          setProfile((prev) => {
             const updated = { ...prev, ...parsed.profileUpdates };
             if (!parsed.profileUpdates?.principalPhotoUrl && prev.principalPhotoUrl) {
               updated.principalPhotoUrl = prev.principalPhotoUrl;
             }
-            saveProfile(updated);
-            return updated;
+            if (JSON.stringify(prev) !== JSON.stringify(updated)) {
+              saveProfile(updated);
+              return updated;
+            }
+            return prev;
           });
         }
       }
@@ -460,81 +516,130 @@ export default function App() {
     // 1. Muat turun serta-merta semasa aplikasi mula dibuka
     refreshFromGoogleSheets();
 
-    // 2. Semak data baru secara pantas (setiap 4 saat)
-    const interval = setInterval(refreshFromGoogleSheets, 4000);
+    // 2. Semak data Google Sheets secara santai & efisien (setiap 60 saat)
+    const interval = setInterval(refreshFromGoogleSheets, 60000);
+
+    // Helper senyap untuk kemas kini storan tempatan tanpa mencetuskan kitaran tolak keluar (infinite sync loop)
+    const updateIncomingLocal = (key: string, data: any) => {
+      try {
+        localStorage.setItem(key, JSON.stringify(data));
+      } catch {}
+    };
 
     // 3. Langganan Firestore Masa Nyata (Real-time Live Sync across devices)
     const unsubFirestore = setupFirestoreRealtimeSync({
       onProfileChange: (p) => {
-        setProfile(p);
-        saveProfile(p);
+        setProfile((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(p)) return prev;
+          updateIncomingLocal(KEYS.PROFILE, p);
+          return p;
+        });
       },
       onStaffChange: (s) => {
-        setStaffList(s);
-        saveStaff(s);
+        setStaffList((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(s)) return prev;
+          updateIncomingLocal(KEYS.STAFF, s);
+          return s;
+        });
       },
       onNewsChange: (n) => {
-        setNewsList(n);
-        saveNews(n);
+        setNewsList((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(n)) return prev;
+          updateIncomingLocal(KEYS.NEWS, n);
+          return n;
+        });
       },
       onEventsChange: (e) => {
-        setEvents(e);
-        saveCalendarEvents(e);
+        setEvents((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(e)) return prev;
+          updateIncomingLocal(KEYS.EVENTS, e);
+          return e;
+        });
       },
       onHemDataChange: (h) => {
-        setHemData(h);
-        saveHemData(h);
+        setHemData((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(h)) return prev;
+          updateIncomingLocal(KEYS.HEM, h);
+          return h;
+        });
       },
       onCoCurriculumChange: (c) => {
-        setCoCurriculumUnits(c);
-        saveCoCurriculum(c);
+        setCoCurriculumUnits((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(c)) return prev;
+          updateIncomingLocal(KEYS.CO_CURRICULUM, c);
+          return c;
+        });
       },
       onPibgCommitteeChange: (comm) => {
-        setPibgCommittee(comm);
-        savePibgCommittee(comm);
+        setPibgCommittee((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(comm)) return prev;
+          updateIncomingLocal(KEYS.PIBG_COMMITTEE, comm);
+          return comm;
+        });
       },
       onPibgActivitiesChange: (act) => {
-        setPibgActivities(act);
-        savePibgActivities(act);
+        setPibgActivities((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(act)) return prev;
+          updateIncomingLocal(KEYS.PIBG_ACTIVITIES, act);
+          return act;
+        });
       },
       onSignageSlidesChange: (slides) => {
-        setSignageSlides(slides);
-        saveSignageSlides(slides);
+        setSignageSlides((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(slides)) return prev;
+          updateIncomingLocal(KEYS.SIGNAGE_SLIDES, slides);
+          return slides;
+        });
       },
       onSignageConfigChange: (cfg) => {
-        setSignageConfig(cfg);
-        saveSignageConfig(cfg);
+        setSignageConfig((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(cfg)) return prev;
+          updateIncomingLocal(KEYS.SIGNAGE_CONFIG, cfg);
+          return cfg;
+        });
       },
       onNavigationMenuChange: (menu) => {
-        setNavigationMenu(menu);
-        saveNavigationMenu(menu);
+        setNavigationMenu((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(menu)) return prev;
+          updateIncomingLocal(KEYS.NAV_MENU, menu);
+          return menu;
+        });
       },
       onTeacherLinksChange: (links) => {
         if (Array.isArray(links) && links.length > 0) {
-          setTeacherLinks(links);
-          saveTeacherLinks(links);
+          setTeacherLinks((prev) => {
+            if (JSON.stringify(prev) === JSON.stringify(links)) return prev;
+            updateIncomingLocal(KEYS.TEACHER_LINKS, links);
+            return links;
+          });
         }
       },
       onAbsenceRecordsChange: (records) => {
         if (Array.isArray(records)) {
-          setAbsenceRecords(records);
-          saveAbsenceRecords(records, true);
+          setAbsenceRecords((prev) => {
+            if (JSON.stringify(prev) === JSON.stringify(records)) return prev;
+            updateIncomingLocal(KEYS.ABSENCE_RECORDS, records);
+            return records;
+          });
         }
       },
       onIctBookingsChange: (bookings) => {
         if (Array.isArray(bookings)) {
-          saveIctBookings(bookings);
+          updateIncomingLocal(KEYS.ICT_BOOKINGS, bookings);
         }
       },
       onIctFinanceChange: (financeRecords) => {
         if (Array.isArray(financeRecords)) {
-          saveIctCashFlow(financeRecords);
+          updateIncomingLocal(KEYS.ICT_CASHFLOW, financeRecords);
         }
       },
       onStudentsChange: (students) => {
         if (Array.isArray(students) && students.length > 0) {
-          setStudentsList(students);
-          saveStudentsList(students, true);
+          setStudentsList((prev) => {
+            if (JSON.stringify(prev) === JSON.stringify(students)) return prev;
+            updateIncomingLocal(KEYS.STUDENTS, students);
+            return students;
+          });
         }
       },
       onStudentPhotosChange: (photos) => {
@@ -547,15 +652,47 @@ export default function App() {
             // ignore
           }
         }
+      },
+      onUbkRphChange: (rphList) => {
+        if (Array.isArray(rphList)) {
+          setUbkRphList((prev) => {
+            if (JSON.stringify(prev) === JSON.stringify(rphList)) return prev;
+            try {
+              localStorage.setItem(SYNC_KEYS.UBK_RPH, JSON.stringify(rphList));
+            } catch {}
+            return rphList;
+          });
+        }
       }
     });
 
-    // 4. Semak data serta-merta apabila pengguna membuka tab, fokus pelayar, atau peranti kembali aktif
+    // 3b. Muat turun e-RPH terus dari Firebase Firestore serta-merta semasa aplikasi dibuka
+    fetchUbkRphFromFirestore().then((cloudRph) => {
+      if (cloudRph && Array.isArray(cloudRph) && cloudRph.length > 0) {
+        setUbkRphList(cloudRph);
+        try {
+          localStorage.setItem(SYNC_KEYS.UBK_RPH, JSON.stringify(cloudRph));
+        } catch {}
+      }
+    }).catch(() => {});
+
+    // 4. Semak data serta-merta apabila pengguna membuka tab, fokus pelayar, atau peranti kembali aktif (debounced 15s)
     const handleImmediateSync = () => {
+      const now = Date.now();
+      if (now - lastImmediateSyncRef.current < 15000) {
+        return; // Elak semakan berlebihan jika pengguna klik keluar/masuk tab berulang kali
+      }
+      lastImmediateSyncRef.current = now;
+
       refreshFromGoogleSheets();
       syncAttendanceWithAllSources((records) => {
         if (Array.isArray(records) && records.length > 0) {
           setAbsenceRecords(records);
+        }
+      }).catch(() => {});
+      fetchUbkRphFromFirestore().then((cloudRph) => {
+        if (cloudRph && Array.isArray(cloudRph) && cloudRph.length > 0) {
+          setUbkRphList(cloudRph);
         }
       }).catch(() => {});
     };
@@ -589,6 +726,7 @@ export default function App() {
       if (key === 'skmp_pibg_comm_v1') setPibgCommittee(data);
       if (key === 'skmp_pibg_act_v1') setPibgActivities(data);
       if (key === 'skmp_cocurriculum_v1') setCoCurriculumUnits(data);
+      if (key === SYNC_KEYS.UBK_RPH && Array.isArray(data)) setUbkRphList(data);
     };
 
     // 7. Penyelarasan antara tab/tetingkap secara 0ms (segera)
@@ -606,6 +744,11 @@ export default function App() {
       if (e.key === 'skmp_teacher_links_v1') setTeacherLinks(loadTeacherLinks());
       if (e.key === 'skmp_absence_records_v1') setAbsenceRecords(getAbsenceRecords());
       if (e.key === 'skmp_students_list_v1') setStudentsList(getStudentsList());
+      if (e.key === SYNC_KEYS.UBK_RPH && e.newValue) {
+        try {
+          setUbkRphList(JSON.parse(e.newValue));
+        } catch {}
+      }
     };
 
     const handleAttendanceSynced = (e: Event) => {
@@ -647,6 +790,18 @@ export default function App() {
       setHemSubTab('pibg');
     };
 
+    let attendanceBc: BroadcastChannel | null = null;
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      try {
+        attendanceBc = new BroadcastChannel(BROADCAST_CHANNEL_ATTENDANCE);
+        attendanceBc.onmessage = (ev) => {
+          if (ev.data?.type === 'ATTENDANCE_UPDATED' && Array.isArray(ev.data.records)) {
+            setAbsenceRecords(ev.data.records);
+          }
+        };
+      } catch {}
+    }
+
     window.addEventListener('visibilitychange', handleImmediateSync);
     window.addEventListener('focus', handleImmediateSync);
     window.addEventListener('online', handleImmediateSync);
@@ -662,6 +817,11 @@ export default function App() {
       unsubFirestore();
       unsubAttendanceSync();
       unsubUniversalSync();
+      if (attendanceBc) {
+        try {
+          attendanceBc.close();
+        } catch {}
+      }
       window.removeEventListener('visibilitychange', handleImmediateSync);
       window.removeEventListener('focus', handleImmediateSync);
       window.removeEventListener('online', handleImmediateSync);
@@ -1118,34 +1278,6 @@ export default function App() {
     >
       {/* Top Header & Tab Navigation Bar (Natural Scroll Flow) */}
       <div className="w-full relative z-40 shadow-2xl backdrop-blur-xl bg-slate-950/90 border-b border-white/10">
-        {/* Direct Guru Besar Notification Bar when pending e-RPH exists */}
-        {pendingUbkRphList.length > 0 && (
-          <div className="bg-gradient-to-r from-amber-700 via-yellow-700 to-amber-800 text-white px-3 sm:px-4 py-2 text-xs flex flex-wrap items-center justify-between gap-2 border-b border-amber-400/40 shadow-lg">
-            <div className="flex items-center gap-2">
-              <span className="flex h-2.5 w-2.5 relative shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-200 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-yellow-300"></span>
-              </span>
-              <span className="font-extrabold uppercase tracking-wide text-yellow-200">
-                Tindakan Guru Besar:
-              </span>
-              <span className="text-slate-100">
-                Terdapat <strong>{pendingUbkRphList.length} rekod e-RPH UBK</strong> (Termasuk Minggu {pendingUbkRphList[0]?.week}: <em>"{pendingUbkRphList[0]?.title}"</em>) menunggu semakan & pengesahan Guru Besar.
-              </span>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => setIsGbDirectModalOpen(true)}
-                className="px-3.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-lg shadow transition cursor-pointer flex items-center gap-1.5 active:scale-95"
-              >
-                <UserCheck className="w-3.5 h-3.5 text-emerald-200" />
-                <span>Semak & Sahkan Terus</span>
-              </button>
-            </div>
-          </div>
-        )}
-
         <Header
           profile={profile}
           isAdmin={isAdmin}
@@ -1227,6 +1359,7 @@ export default function App() {
             onUpdateAbsenceRecord={handleUpdateAbsenceRecord}
             onDeleteAbsenceRecord={handleDeleteAbsenceRecord}
             pendingUbkRphList={pendingUbkRphList}
+            allUbkRphList={ubkRphList || []}
             onOpenGbReviewModal={() => setIsGbDirectModalOpen(true)}
           />
         )}
@@ -1549,14 +1682,16 @@ export default function App() {
         onClose={() => setIsGlobalIctModalOpen(false)}
       />
 
-      {/* Peti Pengesahan Terus Guru Besar Modal (Semakan e-RPH UBK) */}
+      {/* Peti Pengesahan Terus Guru Besar Modal (Semakan e-RPH UBK & Barisan GPK) */}
       <GbDirectReviewModal
         isOpen={isGbDirectModalOpen}
         onClose={() => setIsGbDirectModalOpen(false)}
+        allItems={ubkRphList || []}
         pendingItems={pendingUbkRphList}
         userRole={userRole}
         isAdmin={isAdmin}
         onApproveItem={handleApproveUbkRph}
+        onSaveNewRph={handleSaveNewRph}
         onOpenLogin={() => setLoginModalOpen(true)}
         onElevateToGuruBesar={() => {
           setUserRole('guru_besar');

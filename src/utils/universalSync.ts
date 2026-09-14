@@ -5,7 +5,10 @@ import {
   pushUbkSessionsToFirestore,
   pushUbkPbpppToFirestore,
   pushUbkActivitiesToFirestore,
-  pushPibgUsulToFirestore
+  pushPibgUsulToFirestore,
+  pushAbsenceRecordsToFirestore,
+  subscribeToUbkRphFromFirestore,
+  fetchUbkRphFromFirestore
 } from './firebaseRealtime';
 
 export const SYNC_KEYS = {
@@ -76,7 +79,7 @@ export function handleIncomingUpdate(
   data: any,
   updatedAt: number,
   updatedBy?: string,
-  source: 'sse' | 'poll' | 'local' = 'sse'
+  source: 'sse' | 'poll' | 'local' | 'cloud' = 'sse'
 ) {
   const localTs = keyTimestamps.get(key) || 0;
   
@@ -137,7 +140,30 @@ export async function syncSave<T>(
     console.warn(`[SYNC] Failed to write ${key} to localStorage:`, e);
   }
 
-  // 2. Hantar ke pelayan pusat (/api/sync/save) untuk disegerakkan ke semua peranti lain
+  // 2. Tolak ke Firebase Firestore SERTA-MERTA untuk penyegerakan kilat masa nyata silang semua peranti
+  try {
+    if (key === SYNC_KEYS.UBK_RPH && Array.isArray(data)) {
+      pushUbkRphToFirestore(data as any).catch((err) =>
+        console.warn('[FIRESTORE] Direct e-RPH push failed:', err)
+      );
+    } else if (key === SYNC_KEYS.UBK_RPT && Array.isArray(data)) {
+      pushUbkRptToFirestore(data as any).catch(() => {});
+    } else if (key === SYNC_KEYS.UBK_SESSIONS && Array.isArray(data)) {
+      pushUbkSessionsToFirestore(data as any).catch(() => {});
+    } else if (key === SYNC_KEYS.UBK_PBPPP && typeof data === 'object') {
+      pushUbkPbpppToFirestore(data as any).catch(() => {});
+    } else if (key === SYNC_KEYS.UBK_ACTIVITIES && Array.isArray(data)) {
+      pushUbkActivitiesToFirestore(data as any).catch(() => {});
+    } else if (key === SYNC_KEYS.PIBG_USUL && Array.isArray(data)) {
+      pushPibgUsulToFirestore(data as any).catch(() => {});
+    } else if (key === SYNC_KEYS.ABSENCE && Array.isArray(data)) {
+      pushAbsenceRecordsToFirestore(data as any).catch(() => {});
+    }
+  } catch (fbErr) {
+    console.warn('[FIRESTORE] Pre-push exception:', fbErr);
+  }
+
+  // 3. Hantar ke pelayan pusat (/api/sync/save) untuk disegerakkan ke semua peranti lain
   try {
     const res = await fetch('/api/sync/save', {
       method: 'POST',
@@ -158,23 +184,6 @@ export async function syncSave<T>(
         isConnected = true;
         notifyStatus();
       }
-
-      // 3. Sandaran Firestore (jika ada konfigurasi Firebase aktif)
-      try {
-        if (key === SYNC_KEYS.UBK_RPH && Array.isArray(data)) {
-          pushUbkRphToFirestore(data as any).catch(() => {});
-        } else if (key === SYNC_KEYS.UBK_RPT && Array.isArray(data)) {
-          pushUbkRptToFirestore(data as any).catch(() => {});
-        } else if (key === SYNC_KEYS.UBK_SESSIONS && Array.isArray(data)) {
-          pushUbkSessionsToFirestore(data as any).catch(() => {});
-        } else if (key === SYNC_KEYS.UBK_PBPPP && typeof data === 'object') {
-          pushUbkPbpppToFirestore(data as any).catch(() => {});
-        } else if (key === SYNC_KEYS.UBK_ACTIVITIES && Array.isArray(data)) {
-          pushUbkActivitiesToFirestore(data as any).catch(() => {});
-        } else if (key === SYNC_KEYS.PIBG_USUL && Array.isArray(data)) {
-          pushPibgUsulToFirestore(data as any).catch(() => {});
-        }
-      } catch {}
 
       return true;
     }
@@ -269,6 +278,7 @@ export async function fetchAllServerData(): Promise<boolean> {
         // Semak juga jika peranti ini mempunyai kunci tempatan yang belum wujud di pelayan langsung
         try {
           const allKeysToReconcile = [
+            SYNC_KEYS.ABSENCE,
             SYNC_KEYS.UBK_RPH,
             SYNC_KEYS.UBK_RPT,
             SYNC_KEYS.UBK_SESSIONS,
@@ -313,10 +323,17 @@ export async function fetchAllServerData(): Promise<boolean> {
 }
 
 /**
- * Poll sebarang perubahan terkini secara berkala (Fallback jika SSE terputus)
+ * Poll sebarang perubahan terkini secara berkala (Fallback pintar jika SSE belum bersedia)
  */
 async function pollServerUpdates(): Promise<void> {
   if (isSyncInProgress) return;
+  if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+    return; // Jimat sumber bila tab tidak aktif
+  }
+  // Jika sambungan SSE aktif dan stabil, elak polling HTTP berlebihan
+  if (eventSource && eventSource.readyState === EventSource.OPEN && isConnected) {
+    return;
+  }
   try {
     const res = await fetch(`/api/sync/poll?since=${lastPollTimestamp}`);
     if (res.ok) {
@@ -404,22 +421,63 @@ export function initUniversalSync(): () => void {
   if (isInitialized) return () => {};
   isInitialized = true;
 
-  // 1. Dapatkan data penuh awal dari pelayan
+  // 1. Dapatkan data penuh awal dari pelayan pusat
   fetchAllServerData();
 
-  // 2. Sambungkan SSE untuk kemaskini langsung segera
+  // 2. Muat turun e-RPH secara terus dari Firebase Firestore (jaminan data awan terkini serta-merta)
+  fetchUbkRphFromFirestore().then((cloudList) => {
+    if (cloudList && Array.isArray(cloudList) && cloudList.length > 0) {
+      console.log('[UNIVERSAL SYNC] Hydrated e-RPH from Firestore:', cloudList.length);
+      handleIncomingUpdate(
+        SYNC_KEYS.UBK_RPH,
+        cloudList,
+        Date.now(),
+        'firestore_init',
+        'cloud'
+      );
+    }
+  }).catch(() => {});
+
+  // 3. Langgan Firebase Firestore secara langsung (onSnapshot) untuk e-RPH silang peranti segera (< 200ms)
+  const unsubFirestoreRph = subscribeToUbkRphFromFirestore((cloudList) => {
+    if (Array.isArray(cloudList)) {
+      console.log('[UNIVERSAL SYNC] Firestore e-RPH real-time push incoming:', cloudList.length);
+      handleIncomingUpdate(
+        SYNC_KEYS.UBK_RPH,
+        cloudList,
+        Date.now(),
+        'firestore_realtime',
+        'cloud'
+      );
+    }
+  });
+
+  // 4. Sambungkan SSE untuk kemaskini langsung segera pelayan Express
   connectSse();
 
-  // 3. Pasang polling berkala (setiap 3.5 saat) sebagai jaminan dwi-lapisan
-  pollIntervalId = setInterval(pollServerUpdates, 3500);
+  // 5. Pasang polling berkala (setiap 20 saat) sebagai sandaran ringan
+  pollIntervalId = setInterval(pollServerUpdates, 20000);
 
-  // 4. Semak segera apabila tetingkap aktif semula atau pengguna kembali ke tab
-  const onFocus = () => {
+  // 6. Semak segera apabila tetingkap aktif semula atau pengguna kembali ke tab
+  let lastVisibilitySync = 0;
+  const triggerFocusCheck = () => {
+    const now = Date.now();
+    if (now - lastVisibilitySync < 15000) return;
+    lastVisibilitySync = now;
     pollServerUpdates();
+    fetchUbkRphFromFirestore().then((cloudList) => {
+      if (cloudList && Array.isArray(cloudList)) {
+        handleIncomingUpdate(SYNC_KEYS.UBK_RPH, cloudList, Date.now(), 'firestore_focus', 'cloud');
+      }
+    }).catch(() => {});
+  };
+
+  const onFocus = () => {
+    triggerFocusCheck();
   };
   const onVisibilityChange = () => {
     if (document.visibilityState === 'visible') {
-      pollServerUpdates();
+      triggerFocusCheck();
     }
   };
 
@@ -428,6 +486,11 @@ export function initUniversalSync(): () => void {
 
   // Bersihkan semasa unmount jika perlu
   return () => {
+    if (unsubFirestoreRph) {
+      try {
+        unsubFirestoreRph();
+      } catch {}
+    }
     if (eventSource) {
       try {
         eventSource.close();
