@@ -98,7 +98,7 @@ import {
   pushAbsenceRecordFully,
   deleteAbsenceRecordFully
 } from './utils/attendanceSync';
-import { initUniversalSync, useSyncedData, syncSave, SYNC_KEYS } from './utils/universalSync';
+import { initUniversalSync, syncSave, SYNC_KEYS } from './utils/universalSync';
 import { initialUbkRph } from './data/initialUbkData';
 import { GbDirectReviewModal } from './components/ubk/GbDirectReviewModal';
 import { Header } from './components/Header';
@@ -171,7 +171,13 @@ export default function App() {
   const [schoolHolidays, setSchoolHolidays] = useState<SchoolHoliday[]>(loadSchoolHolidays);
 
   // UBK e-RPH Sync & Peti Masuk Pengesahan Guru Besar
-  const [ubkRphList, setUbkRphList] = useSyncedData<UbkRphItem[]>(SYNC_KEYS.UBK_RPH, initialUbkRph);
+  const [ubkRphList, setUbkRphList] = useState<UbkRphItem[]>(() => {
+    try {
+      const stored = localStorage.getItem(SYNC_KEYS.UBK_RPH);
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return initialUbkRph;
+  });
   const pendingUbkRphList = useMemo(() => {
     return (ubkRphList || []).filter((r) => r.status === 'menunggu');
   }, [ubkRphList]);
@@ -726,7 +732,12 @@ export default function App() {
       if (key === 'skmp_pibg_comm_v1') setPibgCommittee(data);
       if (key === 'skmp_pibg_act_v1') setPibgActivities(data);
       if (key === 'skmp_cocurriculum_v1') setCoCurriculumUnits(data);
-      if (key === SYNC_KEYS.UBK_RPH && Array.isArray(data)) setUbkRphList(data);
+      if (key === SYNC_KEYS.UBK_RPH && Array.isArray(data)) {
+        setUbkRphList((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(data)) return prev;
+          return data;
+        });
+      }
     };
 
     // 7. Penyelarasan antara tab/tetingkap secara 0ms (segera)

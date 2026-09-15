@@ -71,6 +71,9 @@ function notifyStatus() {
   });
 }
 
+// Peta memori untuk menyimpan hash/string bersiri terakhir bagi mengelakkan kitaran panggilan infinite (loop)
+const keyLastSerialized = new Map<string, string>();
+
 /**
  * Tangani kemasukan data baru daripada pelayan (SSE atau Polling)
  */
@@ -85,6 +88,19 @@ export function handleIncomingUpdate(
   
   // Hanya kemaskini jika data dari pelayan adalah terkini atau sama
   if (updatedAt >= localTs || source === 'local') {
+    let serialized: string | null = null;
+    try {
+      serialized = JSON.stringify(data);
+    } catch {}
+
+    // Semak jika data adalah sama dengan yang sudah tersimpan untuk menghentikan kitaran infinite
+    if (serialized && keyLastSerialized.get(key) === serialized && source !== 'local') {
+      return;
+    }
+    if (serialized) {
+      keyLastSerialized.set(key, serialized);
+    }
+
     keyTimestamps.set(key, updatedAt);
     if (updatedAt > lastPollTimestamp) {
       lastPollTimestamp = updatedAt;
@@ -554,6 +570,12 @@ export function useSyncedData<T>(
         typeof valueOrUpdater === 'function'
           ? (valueOrUpdater as (prev: T) => T)(dataRef.current)
           : valueOrUpdater;
+
+      try {
+        if (JSON.stringify(nextValue) === JSON.stringify(dataRef.current)) {
+          return; // Nilai serupa, elak kitaran simpanan & penyegerakan berulang
+        }
+      } catch {}
 
       setData(nextValue);
       setIsSynced(false);
