@@ -184,7 +184,7 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
 
           // 1. Kemas kini antaramuka secara serta-merta
           const primaryKey = targetStudent.studentId || targetStudent.ic || targetStudent.id;
-          handlePhotoSaved(primaryKey, dataUrl);
+          handlePhotoSaved(primaryKey, dataUrl, targetStudent);
 
           // 2. Segerakkan secara automatik ke pangkalan data tempatan, pelayan, Firestore & Google Sheets
           await syncStudentPhotoToGoogleSheets(targetStudent, dataUrl);
@@ -366,6 +366,16 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
               return photo ? { ...s, photoUrl: photo } : s;
             })
           );
+          setSelectedStudent((prev) => {
+            if (!prev) return null;
+            const photo = resolveStudentPhoto(photos, prev) || prev.photoUrl;
+            return photo ? { ...prev, photoUrl: photo } : prev;
+          });
+          setZoomedStudent((prev) => {
+            if (!prev) return null;
+            const photo = resolveStudentPhoto(photos, prev) || prev.photoUrl;
+            return photo ? { ...prev, photoUrl: photo } : prev;
+          });
         }
       };
       window.addEventListener('skmp_student_photos_synced_all', handleAllPhotosEvent);
@@ -387,8 +397,9 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
     }, 2500);
   };
 
-  const handlePhotoSaved = (studentKey: string, newPhotoUrl: string) => {
+  const handlePhotoSaved = (studentKey: string, newPhotoUrl: string, targetStudent?: FullStudentRecord | null) => {
     const clean = studentKey.replace(/\//g, '_');
+    const target = targetStudent || currentPhotoStudentRef.current;
     setStudents((prev) =>
       prev.map((s) => {
         const isMatch =
@@ -398,7 +409,14 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
           s.id === clean ||
           s.studentId === clean ||
           s.ic === clean ||
-          (clean.startsWith('stu-') && (s.studentId === clean.slice(4) || s.ic === clean.slice(4)));
+          (clean.startsWith('stu-') && (s.studentId === clean.slice(4) || s.ic === clean.slice(4))) ||
+          (target && (
+            s.id === target.id ||
+            (s.studentId && target.studentId && s.studentId === target.studentId) ||
+            (s.ic && target.ic && s.ic === target.ic) ||
+            (s.bil && target.bil && s.bil === target.bil) ||
+            (s.name && target.name && s.name.trim().toUpperCase() === target.name.trim().toUpperCase())
+          ));
         return isMatch ? { ...s, photoUrl: newPhotoUrl } : s;
       })
     );
@@ -411,21 +429,37 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
         prev.id === clean ||
         prev.studentId === clean ||
         prev.ic === clean ||
-        (clean.startsWith('stu-') && (prev.studentId === clean.slice(4) || prev.ic === clean.slice(4)));
+        (clean.startsWith('stu-') && (prev.studentId === clean.slice(4) || prev.ic === clean.slice(4))) ||
+        (target && (
+          prev.id === target.id ||
+          (prev.studentId && target.studentId && prev.studentId === target.studentId) ||
+          (prev.ic && target.ic && prev.ic === target.ic) ||
+          (prev.bil && target.bil && prev.bil === target.bil) ||
+          (prev.name && target.name && prev.name.trim().toUpperCase() === target.name.trim().toUpperCase())
+        ));
       return isMatch ? { ...prev, photoUrl: newPhotoUrl } : prev;
     });
-    if (
-      zoomedStudent &&
-      (zoomedStudent.id === studentKey ||
+    if (zoomedStudent) {
+      const isZoomMatch =
+        zoomedStudent.id === studentKey ||
         zoomedStudent.studentId === studentKey ||
         zoomedStudent.ic === studentKey ||
         zoomedStudent.id === clean ||
         zoomedStudent.studentId === clean ||
-        zoomedStudent.ic === clean)
-    ) {
-      setZoomedStudent((prev) => (prev ? { ...prev, photoUrl: newPhotoUrl } : null));
+        zoomedStudent.ic === clean ||
+        (clean.startsWith('stu-') && (zoomedStudent.studentId === clean.slice(4) || zoomedStudent.ic === clean.slice(4))) ||
+        (target && (
+          zoomedStudent.id === target.id ||
+          (zoomedStudent.studentId && target.studentId && zoomedStudent.studentId === target.studentId) ||
+          (zoomedStudent.ic && target.ic && zoomedStudent.ic === target.ic) ||
+          (zoomedStudent.bil && target.bil && zoomedStudent.bil === target.bil) ||
+          (zoomedStudent.name && target.name && zoomedStudent.name.trim().toUpperCase() === target.name.trim().toUpperCase())
+        ));
+      if (isZoomMatch) {
+        setZoomedStudent((prev) => (prev ? { ...prev, photoUrl: newPhotoUrl } : null));
+      }
     }
-    showToast('Gambar murid berjaya disimpan & disegerakkan ke pangkalan data!');
+    showToast('Gambar murid berjaya disimpan & disegerakkan ke semua peranti!');
   };
 
   const loadData = async (force: boolean) => {
@@ -435,10 +469,13 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
       setLoading(true);
     }
     try {
-      const result = await fetchGoogleSheetStudents(force);
-      const localPhotos = getLocalStudentPhotos();
+      const [result, cloudPhotos] = await Promise.all([
+        fetchGoogleSheetStudents(force),
+        syncCloudPhotosToLocal().catch(() => getLocalStudentPhotos())
+      ]);
+      const activePhotos = { ...getLocalStudentPhotos(), ...cloudPhotos };
       const enrichedStudents = result.students.map((s) => {
-        const photo = resolveStudentPhoto(localPhotos, s) || s.photoUrl;
+        const photo = resolveStudentPhoto(activePhotos, s) || s.photoUrl;
         return photo ? { ...s, photoUrl: photo } : s;
       });
       setStudents(enrichedStudents);

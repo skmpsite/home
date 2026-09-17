@@ -1,5 +1,6 @@
 import { FullStudentRecord } from '../types';
 import { initialStudentsData } from '../data/studentsData';
+import { syncSave, SYNC_KEYS } from './universalSync';
 import {
   pushStudentsToFirestore,
   fetchStudentsFromFirestore,
@@ -35,30 +36,38 @@ export {
 
 /**
  * Penyelesai gambar murid universal yang memadankan semua kemungkinan variasi kunci
- * (studentId, ic, id, stu-studentId, stu-ic, dsb.)
+ * (studentId, ic, id, stu-studentId, stu-ic, nama murid, dsb.)
  */
 export function resolveStudentPhoto(
   photosMap: Record<string, string> | null | undefined,
-  student: { id?: string; studentId?: string; ic?: string; bil?: number; photoUrl?: string } | null | undefined
+  student: { id?: string; studentId?: string; ic?: string; bil?: number; name?: string; photoUrl?: string } | null | undefined
 ): string | undefined {
   if (!student) return undefined;
-  if (student.photoUrl && (student.photoUrl.startsWith('data:image') || student.photoUrl.startsWith('http'))) {
+  if (student.photoUrl && typeof student.photoUrl === 'string' && (student.photoUrl.startsWith('data:image') || student.photoUrl.startsWith('http'))) {
     return student.photoUrl;
   }
-  if (!photosMap) return undefined;
+  if (!photosMap || typeof photosMap !== 'object') return undefined;
 
   const candidateKeys = [
     student.studentId,
     student.ic,
+    student.ic ? student.ic.replace(/[^0-9]/g, '') : undefined,
     student.id,
     student.id ? student.id.replace(/^stu-/, '') : undefined,
+    student.id ? `stu-${student.id.replace(/^stu-/, '')}` : undefined,
     student.studentId ? `stu-${student.studentId}` : undefined,
     student.ic ? `stu-${student.ic}` : undefined,
-    student.bil ? `stu-${student.bil}` : undefined
+    student.bil ? `stu-${student.bil}` : undefined,
+    student.name ? student.name.trim().toUpperCase() : undefined
   ].filter(Boolean) as string[];
 
   for (const k of candidateKeys) {
-    if (photosMap[k]) return photosMap[k];
+    const val = photosMap[k];
+    if (typeof val === 'string' && (val.startsWith('data:image') || val.startsWith('http'))) {
+      return val;
+    } else if (val && typeof val === 'object' && typeof (val as any).photoUrl === 'string') {
+      return (val as any).photoUrl;
+    }
   }
   return undefined;
 }
@@ -71,15 +80,24 @@ export async function fetchStudentPhotosFromServer(): Promise<Record<string, str
     const res = await fetch('/api/students/photos');
     if (res.ok) {
       const data = await res.json();
-      if (data && data.photos && typeof data.photos === 'object') {
-        const result: Record<string, string> = {};
-        for (const [k, v] of Object.entries(data.photos)) {
-          if (v && typeof v === 'object' && (v as any).photoUrl) {
-            result[k] = (v as any).photoUrl;
-          } else if (typeof v === 'string') {
+      const result: Record<string, string> = {};
+      if (data && data.flatPhotos && typeof data.flatPhotos === 'object') {
+        for (const [k, v] of Object.entries(data.flatPhotos)) {
+          if (typeof v === 'string' && (v.startsWith('data:image') || v.startsWith('http'))) {
             result[k] = v;
           }
         }
+      }
+      if (data && data.photos && typeof data.photos === 'object') {
+        for (const [k, v] of Object.entries(data.photos)) {
+          if (v && typeof v === 'object' && (v as any).photoUrl) {
+            result[k] = (v as any).photoUrl;
+          } else if (typeof v === 'string' && (v.startsWith('data:image') || v.startsWith('http'))) {
+            result[k] = v;
+          }
+        }
+      }
+      if (Object.keys(result).length > 0) {
         return result;
       }
     }
@@ -93,7 +111,18 @@ export function getLocalStudentPhotos(): Record<string, string> {
   try {
     const raw = localStorage.getItem(CACHE_KEY_PHOTOS);
     if (raw) {
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        const clean: Record<string, string> = {};
+        for (const [k, v] of Object.entries(parsed)) {
+          if (typeof v === 'string' && (v.startsWith('data:image') || v.startsWith('http'))) {
+            clean[k] = v;
+          } else if (v && typeof v === 'object' && (v as any).photoUrl) {
+            clean[k] = (v as any).photoUrl;
+          }
+        }
+        return clean;
+      }
     }
   } catch (err) {
     console.warn('Failed to load local student photos', err);
@@ -109,9 +138,36 @@ export function saveLocalStudentPhoto(
   try {
     const cleanKey = studentKey.replace(/\//g, '_');
     const photos = getLocalStudentPhotos();
+
+    // Petakan semua variasi kunci untuk kebolehcapaian maksimum
     photos[cleanKey] = photoUrl;
-    if (extra?.studentId) photos[extra.studentId] = photoUrl;
-    if (extra?.ic) photos[extra.ic] = photoUrl;
+    if (cleanKey.startsWith('stu-')) {
+      photos[cleanKey.slice(4)] = photoUrl;
+    } else {
+      photos[`stu-${cleanKey}`] = photoUrl;
+    }
+
+    if (extra?.studentId) {
+      const sid = String(extra.studentId).trim();
+      photos[sid] = photoUrl;
+      photos[`stu-${sid}`] = photoUrl;
+    }
+    if (extra?.ic) {
+      const icClean = String(extra.ic).trim();
+      photos[icClean] = photoUrl;
+      photos[`stu-${icClean}`] = photoUrl;
+      const digitsOnly = icClean.replace(/[^0-9]/g, '');
+      if (digitsOnly && digitsOnly !== icClean) {
+        photos[digitsOnly] = photoUrl;
+        photos[`stu-${digitsOnly}`] = photoUrl;
+      }
+    }
+    if (extra?.name) {
+      const nameUpper = String(extra.name).trim().toUpperCase();
+      if (nameUpper) {
+        photos[nameUpper] = photoUrl;
+      }
+    }
 
     try {
       localStorage.setItem(CACHE_KEY_PHOTOS, JSON.stringify(photos));
@@ -119,7 +175,7 @@ export function saveLocalStudentPhoto(
       console.warn('LocalStorage quota reached, photo kept in active memory/cloud:', storageErr);
     }
 
-    // 1. Broadcast to other open tabs on this device
+    // 1. Broadcast kepada tab lain pada peranti ini
     try {
       if ('BroadcastChannel' in window) {
         const bc = new BroadcastChannel(BROADCAST_CHANNEL_STUDENT_PHOTOS);
@@ -130,12 +186,21 @@ export function saveLocalStudentPhoto(
       // ignore
     }
 
-    // 2. Dispatch local event
+    // 2. Lancarkan acara setempat dan global untuk UI
     window.dispatchEvent(
       new CustomEvent(STUDENT_PHOTOS_SYNCED_EVENT, { detail: { studentKey: cleanKey, photoUrl } })
     );
+    window.dispatchEvent(
+      new CustomEvent('skmp_student_photos_synced_all', { detail: { photos } })
+    );
 
-    // 3. Push to Express Server (Cross-device, Smart TV, persistent server file)
+    // 3. SEGERAKKAN KE UNIVERSAL SYNC ENGINE (SSE + Live Server Web Sockets)
+    syncSave(SYNC_KEYS.STUDENT_PHOTOS, photos, {
+      silent: false,
+      updatedBy: 'student_photo_capture'
+    });
+
+    // 4. Hantar ke endpoint khusus Express Server (/api/students/photos) untuk fail kekal
     fetch('/api/students/photos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -152,7 +217,7 @@ export function saveLocalStudentPhoto(
       console.warn('Server photo sync failed/bypassed:', err);
     });
 
-    // 4. Push to Firebase Firestore cloud (Koleksi 'student_photos' - TIADA HAD 1MB KESELURUHAN)
+    // 5. Simpan ke Firebase Firestore cloud
     saveSingleStudentPhotoToFirestore(cleanKey, photoUrl, extra).catch((err) => {
       console.warn('Failed to push student photo to Firestore cloud:', err);
     });
@@ -596,11 +661,20 @@ export async function syncCloudPhotosToLocal(): Promise<Record<string, string>> 
 
     const fsPhotos = cloudPhotos.status === 'fulfilled' && cloudPhotos.value ? cloudPhotos.value : {};
     const srvPhotos = serverPhotos.status === 'fulfilled' && serverPhotos.value ? serverPhotos.value : {};
-    const combinedRemote = { ...fsPhotos, ...srvPhotos };
+    const combinedRemote: Record<string, string> = {};
 
-    if (Object.keys(combinedRemote).length > 0) {
-      const localPhotos = getLocalStudentPhotos();
-      const merged = { ...localPhotos, ...combinedRemote };
+    for (const [k, v] of Object.entries({ ...fsPhotos, ...srvPhotos })) {
+      if (typeof v === 'string' && (v.startsWith('data:image') || v.startsWith('http'))) {
+        combinedRemote[k] = v;
+      } else if (v && typeof v === 'object' && (v as any).photoUrl) {
+        combinedRemote[k] = (v as any).photoUrl;
+      }
+    }
+
+    const localPhotos = getLocalStudentPhotos();
+    const merged = { ...localPhotos, ...combinedRemote };
+
+    if (Object.keys(merged).length > 0) {
       try {
         localStorage.setItem(CACHE_KEY_PHOTOS, JSON.stringify(merged));
       } catch (storageErr) {

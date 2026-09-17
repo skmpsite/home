@@ -305,6 +305,36 @@ async function startServer() {
     updatedBy: 'server_init'
   };
 
+  // Gabungkan dan segerakkan data foto murid antara student-photos-live.json dan portal-live-sync.json
+  const portalPhotosData = livePortalData['skmp_student_photos_v1']?.data;
+  if (portalPhotosData && typeof portalPhotosData === 'object') {
+    for (const [k, v] of Object.entries(portalPhotosData)) {
+      const photoUrl = typeof v === 'string' ? v : (v as any)?.photoUrl;
+      if (photoUrl && typeof photoUrl === 'string' && !liveStudentPhotos[k]) {
+        liveStudentPhotos[k] = {
+          photoUrl,
+          updatedAt: new Date().toISOString()
+        };
+      }
+    }
+  }
+  // Pastikan livePortalData sentiasa mengandungi salinan foto murid terkini untuk capaian pantas peranti baru
+  const initialFlatPhotos: Record<string, string> = {};
+  for (const [k, v] of Object.entries(liveStudentPhotos)) {
+    if (v && typeof v === 'object' && v.photoUrl) {
+      initialFlatPhotos[k] = v.photoUrl;
+    } else if (typeof v === 'string') {
+      initialFlatPhotos[k] = v;
+    }
+  }
+  if (Object.keys(initialFlatPhotos).length > 0 || !livePortalData['skmp_student_photos_v1']) {
+    livePortalData['skmp_student_photos_v1'] = {
+      data: initialFlatPhotos,
+      updatedAt: Date.now(),
+      updatedBy: 'server_init'
+    };
+  }
+
   // Senarai sambungan klien Server-Sent Events (SSE) untuk siaran langsung sub-saat
   const syncSseClients = new Set<express.Response>();
 
@@ -389,6 +419,16 @@ async function startServer() {
         timestamps[k] = v.updatedAt || 0;
       }
     }
+    // Pastikan skmp_student_photos_v1 sentiasa dibekalkan kepada peranti baru jika ada foto di pelayan
+    if (!summary['skmp_student_photos_v1'] && Object.keys(liveStudentPhotos).length > 0) {
+      const flat: Record<string, string> = {};
+      for (const [k, v] of Object.entries(liveStudentPhotos)) {
+        if (v && typeof v === 'object' && v.photoUrl) flat[k] = v.photoUrl;
+        else if (typeof v === 'string') flat[k] = v;
+      }
+      summary['skmp_student_photos_v1'] = flat;
+      timestamps['skmp_student_photos_v1'] = Date.now();
+    }
     res.json({
       success: true,
       data: summary,
@@ -438,6 +478,24 @@ async function startServer() {
           attendanceLastUpdated = now;
           scheduleAttendanceSave();
         }
+
+        if (key === 'skmp_student_photos_v1' && typeof data === 'object' && data !== null) {
+          for (const [k, v] of Object.entries(data)) {
+            const photoUrl = typeof v === 'string' ? v : (v as any)?.photoUrl;
+            if (photoUrl && typeof photoUrl === 'string') {
+              if (!liveStudentPhotos[k]) {
+                liveStudentPhotos[k] = {
+                  photoUrl,
+                  updatedAt: new Date(now).toISOString()
+                };
+              } else {
+                liveStudentPhotos[k].photoUrl = photoUrl;
+                liveStudentPhotos[k].updatedAt = new Date(now).toISOString();
+              }
+            }
+          }
+          scheduleStudentPhotosSave();
+        }
       } else if (updates && typeof updates === "object") {
         for (const [k, v] of Object.entries(updates)) {
           livePortalData[k] = {
@@ -451,6 +509,24 @@ async function startServer() {
             liveAttendanceRecords = v;
             attendanceLastUpdated = now;
             scheduleAttendanceSave();
+          }
+
+          if (k === 'skmp_student_photos_v1' && typeof v === 'object' && v !== null) {
+            for (const [pk, pv] of Object.entries(v)) {
+              const photoUrl = typeof pv === 'string' ? pv : (pv as any)?.photoUrl;
+              if (photoUrl && typeof photoUrl === 'string') {
+                if (!liveStudentPhotos[pk]) {
+                  liveStudentPhotos[pk] = {
+                    photoUrl,
+                    updatedAt: new Date(now).toISOString()
+                  };
+                } else {
+                  liveStudentPhotos[pk].photoUrl = photoUrl;
+                  liveStudentPhotos[pk].updatedAt = new Date(now).toISOString();
+                }
+              }
+            }
+            scheduleStudentPhotosSave();
           }
         }
         console.log(`[LIVE SYNC] Batch updated ${Object.keys(updates).length} keys from ${updatedBy || 'user'}`);
@@ -485,10 +561,27 @@ async function startServer() {
   // STUDENT PHOTOS API ENDPOINTS
   // ==========================================
   app.get("/api/students/photos", (_req, res) => {
+    const flatPhotos: Record<string, string> = {};
+    for (const [k, v] of Object.entries(liveStudentPhotos)) {
+      if (v && typeof v === 'object' && v.photoUrl) {
+        flatPhotos[k] = v.photoUrl;
+      } else if (typeof v === 'string') {
+        flatPhotos[k] = v;
+      }
+    }
+    const portalData = livePortalData['skmp_student_photos_v1']?.data;
+    if (portalData && typeof portalData === 'object') {
+      for (const [pk, pv] of Object.entries(portalData)) {
+        if (typeof pv === 'string' && !flatPhotos[pk]) {
+          flatPhotos[pk] = pv;
+        }
+      }
+    }
     res.json({
       success: true,
       photos: liveStudentPhotos,
-      count: Object.keys(liveStudentPhotos).length,
+      flatPhotos,
+      count: Object.keys(flatPhotos).length,
       timestamp: Date.now()
     });
   });
@@ -511,23 +604,88 @@ async function startServer() {
         updatedAt: now
       };
 
-      liveStudentPhotos[studentKey] = record;
-      if (ic && ic !== studentKey) {
-        liveStudentPhotos[ic] = record;
+      const cleanKey = String(studentKey).replace(/\//g, '_');
+      liveStudentPhotos[cleanKey] = record;
+      if (cleanKey.startsWith('stu-')) {
+        liveStudentPhotos[cleanKey.slice(4)] = record;
+      } else {
+        liveStudentPhotos[`stu-${cleanKey}`] = record;
       }
-      if (studentId && studentId !== studentKey) {
-        liveStudentPhotos[studentId] = record;
+
+      if (ic) {
+        const cleanIc = String(ic).trim();
+        liveStudentPhotos[cleanIc] = record;
+        liveStudentPhotos[`stu-${cleanIc}`] = record;
+        const icDigits = cleanIc.replace(/[^0-9]/g, '');
+        if (icDigits && icDigits !== cleanIc) {
+          liveStudentPhotos[icDigits] = record;
+          liveStudentPhotos[`stu-${icDigits}`] = record;
+        }
+      }
+
+      if (studentId) {
+        const cleanSid = String(studentId).trim();
+        liveStudentPhotos[cleanSid] = record;
+        liveStudentPhotos[`stu-${cleanSid}`] = record;
+      }
+
+      if (name) {
+        const cleanName = String(name).trim().toUpperCase();
+        if (cleanName) {
+          liveStudentPhotos[cleanName] = record;
+        }
       }
 
       scheduleStudentPhotosSave();
 
-      // Broadcast update across SSE
-      broadcastSyncUpdate("skmp_student_photos_v1", liveStudentPhotos, Date.now(), "photo_capture");
+      // Bina peta rata string URL untuk Universal Sync Silang Semua Peranti
+      const flatPhotos: Record<string, string> = {};
+      for (const [k, v] of Object.entries(liveStudentPhotos)) {
+        if (v && typeof v === 'object' && v.photoUrl) {
+          flatPhotos[k] = v.photoUrl;
+        } else if (typeof v === 'string') {
+          flatPhotos[k] = v;
+        }
+      }
+      flatPhotos[cleanKey] = photoUrl;
+      if (cleanKey.startsWith('stu-')) flatPhotos[cleanKey.slice(4)] = photoUrl;
+      else flatPhotos[`stu-${cleanKey}`] = photoUrl;
+      if (ic) {
+        const cleanIc = String(ic).trim();
+        flatPhotos[cleanIc] = photoUrl;
+        flatPhotos[`stu-${cleanIc}`] = photoUrl;
+        const icDigits = cleanIc.replace(/[^0-9]/g, '');
+        if (icDigits && icDigits !== cleanIc) {
+          flatPhotos[icDigits] = photoUrl;
+          flatPhotos[`stu-${icDigits}`] = photoUrl;
+        }
+      }
+      if (studentId) {
+        const cleanSid = String(studentId).trim();
+        flatPhotos[cleanSid] = photoUrl;
+        flatPhotos[`stu-${cleanSid}`] = photoUrl;
+      }
+      if (name) {
+        const cleanName = String(name).trim().toUpperCase();
+        if (cleanName) flatPhotos[cleanName] = photoUrl;
+      }
+
+      // Segerakkan ke Live Portal Engine untuk peranti baru & yang sedia ada
+      livePortalData['skmp_student_photos_v1'] = {
+        data: flatPhotos,
+        updatedAt: Date.now(),
+        updatedBy: 'student_photo_capture'
+      };
+      schedulePortalSyncSave();
+
+      // Siarkan serta-merta ke semua peranti aktif melalui SSE
+      broadcastSyncUpdate("skmp_student_photos_v1", flatPhotos, Date.now(), "photo_capture");
 
       res.json({
         success: true,
         message: "Foto murid berjaya disimpan di pelayan",
-        studentKey,
+        studentKey: cleanKey,
+        totalPhotos: Object.keys(flatPhotos).length,
         updatedAt: now
       });
     } catch (err: any) {
@@ -540,7 +698,20 @@ async function startServer() {
     if (liveStudentPhotos[key]) {
       delete liveStudentPhotos[key];
       scheduleStudentPhotosSave();
-      broadcastSyncUpdate("skmp_student_photos_v1", liveStudentPhotos, Date.now(), "photo_delete");
+
+      const flatPhotos: Record<string, string> = {};
+      for (const [k, v] of Object.entries(liveStudentPhotos)) {
+        if (v && typeof v === 'object' && v.photoUrl) flatPhotos[k] = v.photoUrl;
+        else if (typeof v === 'string') flatPhotos[k] = v;
+      }
+      livePortalData['skmp_student_photos_v1'] = {
+        data: flatPhotos,
+        updatedAt: Date.now(),
+        updatedBy: 'photo_delete'
+      };
+      schedulePortalSyncSave();
+      broadcastSyncUpdate("skmp_student_photos_v1", flatPhotos, Date.now(), "photo_delete");
+
       res.json({ success: true, message: `Foto murid ${key} dipadam` });
     } else {
       res.status(404).json({ success: false, error: "Foto tidak dijumpai" });

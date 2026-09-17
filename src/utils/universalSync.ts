@@ -36,6 +36,7 @@ export const SYNC_KEYS = {
   HEM: 'skmp_hem_v1',
   NAV_MENU: 'skmp_nav_menu_v1',
   STUDENTS: 'skmp_students_v1',
+  STUDENT_PHOTOS: 'skmp_student_photos_v1',
   ABSENCE: 'skmp_absence_records_v1',
   ICT_BOOKINGS: 'skmp_ict_bookings_v1',
   ICT_CASHFLOW: 'skmp_ict_cashflow_v1',
@@ -295,6 +296,7 @@ export async function fetchAllServerData(): Promise<boolean> {
         try {
           const allKeysToReconcile = [
             SYNC_KEYS.ABSENCE,
+            SYNC_KEYS.STUDENT_PHOTOS,
             SYNC_KEYS.UBK_RPH,
             SYNC_KEYS.UBK_RPT,
             SYNC_KEYS.UBK_SESSIONS,

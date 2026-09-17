@@ -651,8 +651,22 @@ export default function App() {
       onStudentPhotosChange: (photos) => {
         if (photos && typeof photos === 'object') {
           try {
-            const existing = JSON.parse(localStorage.getItem('skmp_student_photos_v1') || '{}');
-            const merged = { ...existing, ...photos };
+            const flatIncoming: Record<string, string> = {};
+            for (const [k, v] of Object.entries(photos)) {
+              if (typeof v === 'string' && (v.startsWith('data:image') || v.startsWith('http'))) {
+                flatIncoming[k] = v;
+              } else if (v && typeof v === 'object' && (v as any).photoUrl) {
+                flatIncoming[k] = (v as any).photoUrl;
+              }
+            }
+            const existingRaw = localStorage.getItem('skmp_student_photos_v1') || '{}';
+            const existing = JSON.parse(existingRaw);
+            const cleanExisting: Record<string, string> = {};
+            for (const [k, v] of Object.entries(existing)) {
+              if (typeof v === 'string') cleanExisting[k] = v;
+              else if (v && typeof v === 'object' && (v as any).photoUrl) cleanExisting[k] = (v as any).photoUrl;
+            }
+            const merged = { ...cleanExisting, ...flatIncoming };
             localStorage.setItem('skmp_student_photos_v1', JSON.stringify(merged));
             window.dispatchEvent(new CustomEvent('skmp_student_photos_synced_all', { detail: { photos: merged } }));
           } catch {
@@ -735,8 +749,22 @@ export default function App() {
       if (key === 'skmp_cocurriculum_v1') setCoCurriculumUnits(data);
       if (key === 'skmp_student_photos_v1' && data && typeof data === 'object') {
         try {
-          const existing = JSON.parse(localStorage.getItem('skmp_student_photos_v1') || '{}');
-          const merged = { ...existing, ...data };
+          const flatIncoming: Record<string, string> = {};
+          for (const [k, v] of Object.entries(data)) {
+            if (typeof v === 'string' && (v.startsWith('data:image') || v.startsWith('http'))) {
+              flatIncoming[k] = v;
+            } else if (v && typeof v === 'object' && (v as any).photoUrl) {
+              flatIncoming[k] = (v as any).photoUrl;
+            }
+          }
+          const existingRaw = localStorage.getItem('skmp_student_photos_v1') || '{}';
+          const existing = JSON.parse(existingRaw);
+          const cleanExisting: Record<string, string> = {};
+          for (const [k, v] of Object.entries(existing)) {
+            if (typeof v === 'string') cleanExisting[k] = v;
+            else if (v && typeof v === 'object' && (v as any).photoUrl) cleanExisting[k] = (v as any).photoUrl;
+          }
+          const merged = { ...cleanExisting, ...flatIncoming };
           localStorage.setItem('skmp_student_photos_v1', JSON.stringify(merged));
           window.dispatchEvent(new CustomEvent('skmp_student_photos_synced_all', { detail: { photos: merged } }));
         } catch {
