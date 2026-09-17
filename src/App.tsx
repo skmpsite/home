@@ -654,6 +654,7 @@ export default function App() {
             const existing = JSON.parse(localStorage.getItem('skmp_student_photos_v1') || '{}');
             const merged = { ...existing, ...photos };
             localStorage.setItem('skmp_student_photos_v1', JSON.stringify(merged));
+            window.dispatchEvent(new CustomEvent('skmp_student_photos_synced_all', { detail: { photos: merged } }));
           } catch {
             // ignore
           }
@@ -732,6 +733,16 @@ export default function App() {
       if (key === 'skmp_pibg_comm_v1') setPibgCommittee(data);
       if (key === 'skmp_pibg_act_v1') setPibgActivities(data);
       if (key === 'skmp_cocurriculum_v1') setCoCurriculumUnits(data);
+      if (key === 'skmp_student_photos_v1' && data && typeof data === 'object') {
+        try {
+          const existing = JSON.parse(localStorage.getItem('skmp_student_photos_v1') || '{}');
+          const merged = { ...existing, ...data };
+          localStorage.setItem('skmp_student_photos_v1', JSON.stringify(merged));
+          window.dispatchEvent(new CustomEvent('skmp_student_photos_synced_all', { detail: { photos: merged } }));
+        } catch {
+          // ignore
+        }
+      }
       if (key === SYNC_KEYS.UBK_RPH && Array.isArray(data)) {
         setUbkRphList((prev) => {
           if (JSON.stringify(prev) === JSON.stringify(data)) return prev;

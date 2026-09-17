@@ -33,6 +33,62 @@ export {
   subscribeToStudentPhotos
 };
 
+/**
+ * Penyelesai gambar murid universal yang memadankan semua kemungkinan variasi kunci
+ * (studentId, ic, id, stu-studentId, stu-ic, dsb.)
+ */
+export function resolveStudentPhoto(
+  photosMap: Record<string, string> | null | undefined,
+  student: { id?: string; studentId?: string; ic?: string; bil?: number; photoUrl?: string } | null | undefined
+): string | undefined {
+  if (!student) return undefined;
+  if (student.photoUrl && (student.photoUrl.startsWith('data:image') || student.photoUrl.startsWith('http'))) {
+    return student.photoUrl;
+  }
+  if (!photosMap) return undefined;
+
+  const candidateKeys = [
+    student.studentId,
+    student.ic,
+    student.id,
+    student.id ? student.id.replace(/^stu-/, '') : undefined,
+    student.studentId ? `stu-${student.studentId}` : undefined,
+    student.ic ? `stu-${student.ic}` : undefined,
+    student.bil ? `stu-${student.bil}` : undefined
+  ].filter(Boolean) as string[];
+
+  for (const k of candidateKeys) {
+    if (photosMap[k]) return photosMap[k];
+  }
+  return undefined;
+}
+
+/**
+ * Dapatkan foto murid terkini daripada pelayan Express (/api/students/photos)
+ */
+export async function fetchStudentPhotosFromServer(): Promise<Record<string, string> | null> {
+  try {
+    const res = await fetch('/api/students/photos');
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.photos && typeof data.photos === 'object') {
+        const result: Record<string, string> = {};
+        for (const [k, v] of Object.entries(data.photos)) {
+          if (v && typeof v === 'object' && (v as any).photoUrl) {
+            result[k] = (v as any).photoUrl;
+          } else if (typeof v === 'string') {
+            result[k] = v;
+          }
+        }
+        return result;
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to fetch student photos from server:', err);
+  }
+  return null;
+}
+
 export function getLocalStudentPhotos(): Record<string, string> {
   try {
     const raw = localStorage.getItem(CACHE_KEY_PHOTOS);
@@ -45,27 +101,29 @@ export function getLocalStudentPhotos(): Record<string, string> {
   return {};
 }
 
-export function saveLocalStudentPhoto(studentKey: string, photoUrl: string): void {
+export function saveLocalStudentPhoto(
+  studentKey: string,
+  photoUrl: string,
+  extra?: { studentId?: string; ic?: string; name?: string; year?: string; className?: string }
+): void {
   try {
+    const cleanKey = studentKey.replace(/\//g, '_');
     const photos = getLocalStudentPhotos();
-    photos[studentKey] = photoUrl;
-    localStorage.setItem(CACHE_KEY_PHOTOS, JSON.stringify(photos));
+    photos[cleanKey] = photoUrl;
+    if (extra?.studentId) photos[extra.studentId] = photoUrl;
+    if (extra?.ic) photos[extra.ic] = photoUrl;
 
-    // Also update student in cached list if present
-    const cachedStudents = getCachedDetailedStudents();
-    const updated = cachedStudents.map((s) => {
-      if (s.id === studentKey || s.studentId === studentKey || s.ic === studentKey) {
-        return { ...s, photoUrl };
-      }
-      return s;
-    });
-    localStorage.setItem(CACHE_KEY_STUDENTS, JSON.stringify(updated));
+    try {
+      localStorage.setItem(CACHE_KEY_PHOTOS, JSON.stringify(photos));
+    } catch (storageErr) {
+      console.warn('LocalStorage quota reached, photo kept in active memory/cloud:', storageErr);
+    }
 
     // 1. Broadcast to other open tabs on this device
     try {
       if ('BroadcastChannel' in window) {
         const bc = new BroadcastChannel(BROADCAST_CHANNEL_STUDENT_PHOTOS);
-        bc.postMessage({ type: 'STUDENT_PHOTO_UPDATED', studentKey, photoUrl });
+        bc.postMessage({ type: 'STUDENT_PHOTO_UPDATED', studentKey: cleanKey, photoUrl });
         bc.close();
       }
     } catch {
@@ -74,11 +132,28 @@ export function saveLocalStudentPhoto(studentKey: string, photoUrl: string): voi
 
     // 2. Dispatch local event
     window.dispatchEvent(
-      new CustomEvent(STUDENT_PHOTOS_SYNCED_EVENT, { detail: { studentKey, photoUrl } })
+      new CustomEvent(STUDENT_PHOTOS_SYNCED_EVENT, { detail: { studentKey: cleanKey, photoUrl } })
     );
 
-    // 3. Push to Firebase Firestore cloud (Cross-device auto sync)
-    saveSingleStudentPhotoToFirestore(studentKey, photoUrl).catch((err) => {
+    // 3. Push to Express Server (Cross-device, Smart TV, persistent server file)
+    fetch('/api/students/photos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        studentKey: cleanKey,
+        photoUrl,
+        studentId: extra?.studentId || (cleanKey.startsWith('stu-') ? cleanKey.slice(4) : cleanKey),
+        ic: extra?.ic || '',
+        name: extra?.name || '',
+        year: extra?.year || '',
+        className: extra?.className || ''
+      })
+    }).catch((err) => {
+      console.warn('Server photo sync failed/bypassed:', err);
+    });
+
+    // 4. Push to Firebase Firestore cloud (Koleksi 'student_photos' - TIADA HAD 1MB KESELURUHAN)
+    saveSingleStudentPhotoToFirestore(cleanKey, photoUrl, extra).catch((err) => {
       console.warn('Failed to push student photo to Firestore cloud:', err);
     });
   } catch (err) {
@@ -93,15 +168,16 @@ export async function syncStudentPhotoToGoogleSheets(
   student: FullStudentRecord,
   photoDataUrl: string
 ): Promise<{ success: boolean; message: string }> {
-  // First persist in local cache
+  // First persist in local cache, server & Firestore collection
   const primaryKey = student.studentId || student.ic || student.id;
-  saveLocalStudentPhoto(primaryKey, photoDataUrl);
-  if (student.ic && student.ic !== primaryKey) {
-    saveLocalStudentPhoto(student.ic, photoDataUrl);
-  }
-  if (student.id && student.id !== primaryKey) {
-    saveLocalStudentPhoto(student.id, photoDataUrl);
-  }
+  const extra = {
+    studentId: student.studentId,
+    ic: student.ic,
+    name: student.name,
+    year: student.year,
+    className: student.className
+  };
+  saveLocalStudentPhoto(primaryKey, photoDataUrl, extra);
 
   // Attempt Google Apps Script sync
   try {
@@ -275,11 +351,16 @@ export function mapRowsToStudents(rows: string[][]): FullStudentRecord[] {
 
     const rawPhoto = (r[61] || '').trim();
     const localPhotos = getLocalStudentPhotos();
-    const primaryKey = studentId || ic || `stu-${bil}`;
+    const candidateRef = {
+      id: studentId ? `stu-${studentId}` : `stu-${ic || bil}`,
+      studentId,
+      ic,
+      bil
+    };
     const photoUrl =
       rawPhoto && (rawPhoto.startsWith('http') || rawPhoto.startsWith('data:image'))
         ? rawPhoto
-        : localPhotos[primaryKey] || localPhotos[studentId] || localPhotos[ic] || undefined;
+        : resolveStudentPhoto(localPhotos, candidateRef);
 
     const student: FullStudentRecord = {
       id: studentId ? `stu-${studentId}` : `stu-${ic || bil}`,
@@ -365,8 +446,7 @@ export function getCachedDetailedStudents(): FullStudentRecord[] {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed.map((s: FullStudentRecord) => {
-          const key = s.studentId || s.ic || s.id;
-          const photo = s.photoUrl || localPhotos[key] || (s.studentId ? localPhotos[s.studentId] : undefined) || (s.ic ? localPhotos[s.ic] : undefined);
+          const photo = resolveStudentPhoto(localPhotos, s) || s.photoUrl;
           return photo ? { ...s, photoUrl: photo } : s;
         });
       }
@@ -377,8 +457,7 @@ export function getCachedDetailedStudents(): FullStudentRecord[] {
 
   // Fallback map from initialStudentsData
   return initialStudentsData.map((s) => {
-    const key = s.id || s.ic;
-    const photo = localPhotos[key] || (s.ic ? localPhotos[s.ic] : undefined);
+    const photo = resolveStudentPhoto(localPhotos, s) || (s as any).photoUrl;
     return {
       ...s,
       photoUrl: photo,
@@ -506,15 +585,27 @@ export async function fetchGoogleSheetStudents(
 }
 
 /**
- * Segerakkan kamus gambar murid daripada Firebase Firestore ke storan tempatan
+ * Segerakkan kamus gambar murid daripada Firebase Firestore dan Pelayan ke storan tempatan
  */
 export async function syncCloudPhotosToLocal(): Promise<Record<string, string>> {
   try {
-    const cloudPhotos = await fetchStudentPhotosFromFirestore();
-    if (cloudPhotos && Object.keys(cloudPhotos).length > 0) {
+    const [cloudPhotos, serverPhotos] = await Promise.allSettled([
+      fetchStudentPhotosFromFirestore(),
+      fetchStudentPhotosFromServer()
+    ]);
+
+    const fsPhotos = cloudPhotos.status === 'fulfilled' && cloudPhotos.value ? cloudPhotos.value : {};
+    const srvPhotos = serverPhotos.status === 'fulfilled' && serverPhotos.value ? serverPhotos.value : {};
+    const combinedRemote = { ...fsPhotos, ...srvPhotos };
+
+    if (Object.keys(combinedRemote).length > 0) {
       const localPhotos = getLocalStudentPhotos();
-      const merged = { ...localPhotos, ...cloudPhotos };
-      localStorage.setItem(CACHE_KEY_PHOTOS, JSON.stringify(merged));
+      const merged = { ...localPhotos, ...combinedRemote };
+      try {
+        localStorage.setItem(CACHE_KEY_PHOTOS, JSON.stringify(merged));
+      } catch (storageErr) {
+        console.warn('LocalStorage limit reached when caching photos:', storageErr);
+      }
       return merged;
     }
   } catch (err) {

@@ -7,6 +7,8 @@ import {
   subscribeToStudentPhotos,
   subscribeToStudents,
   syncCloudPhotosToLocal,
+  resolveStudentPhoto,
+  getLocalStudentPhotos,
   BROADCAST_CHANNEL_STUDENT_PHOTOS,
   STUDENT_PHOTOS_SYNCED_EVENT
 } from '../../utils/googleSheetsStudentSync';
@@ -122,16 +124,20 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
       setIsFitScreen(true);
       loadData(false);
 
-      // Background sync photos from Firestore to local
+      // Background sync photos from Firestore and Server to local
       syncCloudPhotosToLocal().then((cloudPhotos) => {
         if (cloudPhotos && Object.keys(cloudPhotos).length > 0) {
           setStudents((prev) =>
             prev.map((s) => {
-              const key = s.studentId || s.ic || s.id;
-              const photo = cloudPhotos[key] || (s.studentId ? cloudPhotos[s.studentId] : undefined) || (s.ic ? cloudPhotos[s.ic] : undefined);
+              const photo = resolveStudentPhoto(cloudPhotos, s) || s.photoUrl;
               return photo ? { ...s, photoUrl: photo } : s;
             })
           );
+          setSelectedStudent((prev) => {
+            if (!prev) return null;
+            const photo = resolveStudentPhoto(cloudPhotos, prev) || prev.photoUrl;
+            return photo ? { ...prev, photoUrl: photo } : prev;
+          });
         }
       });
 
@@ -139,15 +145,13 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
       const unsubPhotos = subscribeToStudentPhotos((photosMap) => {
         setStudents((prev) =>
           prev.map((s) => {
-            const key = s.studentId || s.ic || s.id;
-            const photo = photosMap[key] || (s.studentId ? photosMap[s.studentId] : undefined) || (s.ic ? photosMap[s.ic] : undefined);
+            const photo = resolveStudentPhoto(photosMap, s) || s.photoUrl;
             return photo ? { ...s, photoUrl: photo } : s;
           })
         );
         setSelectedStudent((prev) => {
           if (!prev) return null;
-          const key = prev.studentId || prev.ic || prev.id;
-          const photo = photosMap[key] || (prev.studentId ? photosMap[prev.studentId] : undefined) || (prev.ic ? photosMap[prev.ic] : undefined);
+          const photo = resolveStudentPhoto(photosMap, prev) || prev.photoUrl;
           return photo ? { ...prev, photoUrl: photo } : prev;
         });
       });
@@ -155,7 +159,12 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
       // 2. Direct Firestore onSnapshot listener for student list
       const unsubStudents = subscribeToStudents((cloudStudents) => {
         if (Array.isArray(cloudStudents) && cloudStudents.length > 0) {
-          setStudents(cloudStudents as FullStudentRecord[]);
+          const localPhotos = getLocalStudentPhotos();
+          const enriched = (cloudStudents as FullStudentRecord[]).map((s) => {
+            const photo = resolveStudentPhoto(localPhotos, s) || s.photoUrl;
+            return photo ? { ...s, photoUrl: photo } : s;
+          });
+          setStudents(enriched);
         }
       });
 
@@ -167,13 +176,32 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
           bc.onmessage = (evt) => {
             if (evt.data?.type === 'STUDENT_PHOTO_UPDATED' && evt.data?.studentKey && evt.data?.photoUrl) {
               const { studentKey, photoUrl } = evt.data;
+              const clean = studentKey.replace(/\//g, '_');
               setStudents((prev) =>
-                prev.map((s) =>
-                  s.id === studentKey || s.studentId === studentKey || s.ic === studentKey
-                    ? { ...s, photoUrl }
-                    : s
-                )
+                prev.map((s) => {
+                  const isMatch =
+                    s.id === studentKey ||
+                    s.studentId === studentKey ||
+                    s.ic === studentKey ||
+                    s.id === clean ||
+                    s.studentId === clean ||
+                    s.ic === clean ||
+                    (clean.startsWith('stu-') && (s.studentId === clean.slice(4) || s.ic === clean.slice(4)));
+                  return isMatch ? { ...s, photoUrl } : s;
+                })
               );
+              setSelectedStudent((prev) => {
+                if (!prev) return null;
+                const isMatch =
+                  prev.id === studentKey ||
+                  prev.studentId === studentKey ||
+                  prev.ic === studentKey ||
+                  prev.id === clean ||
+                  prev.studentId === clean ||
+                  prev.ic === clean ||
+                  (clean.startsWith('stu-') && (prev.studentId === clean.slice(4) || prev.ic === clean.slice(4)));
+                return isMatch ? { ...prev, photoUrl } : prev;
+              });
             }
           };
         }
@@ -186,22 +214,57 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
         const customEvt = evt as CustomEvent<{ studentKey: string; photoUrl: string }>;
         if (customEvt.detail) {
           const { studentKey, photoUrl } = customEvt.detail;
+          const clean = studentKey.replace(/\//g, '_');
           setStudents((prev) =>
-            prev.map((s) =>
-              s.id === studentKey || s.studentId === studentKey || s.ic === studentKey
-                ? { ...s, photoUrl }
-                : s
-            )
+            prev.map((s) => {
+              const isMatch =
+                s.id === studentKey ||
+                s.studentId === studentKey ||
+                s.ic === studentKey ||
+                s.id === clean ||
+                s.studentId === clean ||
+                s.ic === clean ||
+                (clean.startsWith('stu-') && (s.studentId === clean.slice(4) || s.ic === clean.slice(4)));
+              return isMatch ? { ...s, photoUrl } : s;
+            })
           );
+          setSelectedStudent((prev) => {
+            if (!prev) return null;
+            const isMatch =
+              prev.id === studentKey ||
+              prev.studentId === studentKey ||
+              prev.ic === studentKey ||
+              prev.id === clean ||
+              prev.studentId === clean ||
+              prev.ic === clean ||
+              (clean.startsWith('stu-') && (prev.studentId === clean.slice(4) || prev.ic === clean.slice(4)));
+            return isMatch ? { ...prev, photoUrl } : prev;
+          });
         }
       };
       window.addEventListener(STUDENT_PHOTOS_SYNCED_EVENT, handleLocalPhotoEvent);
+
+      // 5. Global sync event listener for multi-user server push
+      const handleAllPhotosEvent = (evt: Event) => {
+        const customEvt = evt as CustomEvent<{ photos: Record<string, string> }>;
+        if (customEvt.detail?.photos) {
+          const photos = customEvt.detail.photos;
+          setStudents((prev) =>
+            prev.map((s) => {
+              const photo = resolveStudentPhoto(photos, s) || s.photoUrl;
+              return photo ? { ...s, photoUrl: photo } : s;
+            })
+          );
+        }
+      };
+      window.addEventListener('skmp_student_photos_synced_all', handleAllPhotosEvent);
 
       return () => {
         unsubPhotos();
         unsubStudents();
         if (bc) bc.close();
         window.removeEventListener(STUDENT_PHOTOS_SYNCED_EVENT, handleLocalPhotoEvent);
+        window.removeEventListener('skmp_student_photos_synced_all', handleAllPhotosEvent);
       };
     }
   }, [isOpen]);
@@ -214,31 +277,44 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
   };
 
   const handlePhotoSaved = (studentKey: string, newPhotoUrl: string) => {
+    const clean = studentKey.replace(/\//g, '_');
     setStudents((prev) =>
       prev.map((s) => {
-        if (s.id === studentKey || s.studentId === studentKey || s.ic === studentKey) {
-          return { ...s, photoUrl: newPhotoUrl };
-        }
-        return s;
+        const isMatch =
+          s.id === studentKey ||
+          s.studentId === studentKey ||
+          s.ic === studentKey ||
+          s.id === clean ||
+          s.studentId === clean ||
+          s.ic === clean ||
+          (clean.startsWith('stu-') && (s.studentId === clean.slice(4) || s.ic === clean.slice(4)));
+        return isMatch ? { ...s, photoUrl: newPhotoUrl } : s;
       })
     );
-    if (
-      selectedStudent &&
-      (selectedStudent.id === studentKey ||
-        selectedStudent.studentId === studentKey ||
-        selectedStudent.ic === studentKey)
-    ) {
-      setSelectedStudent((prev) => (prev ? { ...prev, photoUrl: newPhotoUrl } : null));
-    }
+    setSelectedStudent((prev) => {
+      if (!prev) return null;
+      const isMatch =
+        prev.id === studentKey ||
+        prev.studentId === studentKey ||
+        prev.ic === studentKey ||
+        prev.id === clean ||
+        prev.studentId === clean ||
+        prev.ic === clean ||
+        (clean.startsWith('stu-') && (prev.studentId === clean.slice(4) || prev.ic === clean.slice(4)));
+      return isMatch ? { ...prev, photoUrl: newPhotoUrl } : prev;
+    });
     if (
       zoomedStudent &&
       (zoomedStudent.id === studentKey ||
         zoomedStudent.studentId === studentKey ||
-        zoomedStudent.ic === studentKey)
+        zoomedStudent.ic === studentKey ||
+        zoomedStudent.id === clean ||
+        zoomedStudent.studentId === clean ||
+        zoomedStudent.ic === clean)
     ) {
       setZoomedStudent((prev) => (prev ? { ...prev, photoUrl: newPhotoUrl } : null));
     }
-    showToast('Gambar murid berjaya disimpan & disegerakkan ke Google Sheets!');
+    showToast('Gambar murid berjaya disimpan & disegerakkan ke pangkalan data!');
   };
 
   const loadData = async (force: boolean) => {
@@ -249,7 +325,12 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
     }
     try {
       const result = await fetchGoogleSheetStudents(force);
-      setStudents(result.students);
+      const localPhotos = getLocalStudentPhotos();
+      const enrichedStudents = result.students.map((s) => {
+        const photo = resolveStudentPhoto(localPhotos, s) || s.photoUrl;
+        return photo ? { ...s, photoUrl: photo } : s;
+      });
+      setStudents(enrichedStudents);
       setLastUpdated(result.lastUpdated);
       if (force) {
         showToast('Data murid berjaya disegerakkan daripada Google Sheets!');

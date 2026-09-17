@@ -242,6 +242,35 @@ async function startServer() {
   }
 
   // ==========================================
+  // STUDENT PHOTOS SERVER-SIDE STORAGE & LIVE SYNC
+  // Storan foto murid bebas had kuota (disimpan kekal di pelayan & disegerakkan ke semua peranti)
+  // ==========================================
+  const STUDENT_PHOTOS_FILE = path.join(DATA_DIR, "student-photos-live.json");
+  let liveStudentPhotos: Record<string, { photoUrl: string; name?: string; className?: string; year?: string; studentId?: string; ic?: string; updatedAt: string }> = {};
+
+  if (fs.existsSync(STUDENT_PHOTOS_FILE)) {
+    try {
+      const fileData = JSON.parse(fs.readFileSync(STUDENT_PHOTOS_FILE, "utf-8"));
+      if (fileData && typeof fileData === "object") {
+        liveStudentPhotos = fileData;
+      }
+    } catch (e) {
+      console.error("Error reading student-photos-live.json:", e);
+    }
+  }
+
+  let studentPhotosSaveTimer: NodeJS.Timeout | null = null;
+  const scheduleStudentPhotosSave = () => {
+    if (studentPhotosSaveTimer) return;
+    studentPhotosSaveTimer = setTimeout(() => {
+      studentPhotosSaveTimer = null;
+      fs.writeFile(STUDENT_PHOTOS_FILE, JSON.stringify(liveStudentPhotos, null, 2), "utf-8", (err) => {
+        if (err) console.error("Failed to write student-photos-live.json asynchronously:", err);
+      });
+    }, 1000);
+  };
+
+  // ==========================================
   // UNIVERSAL PORTAL LIVE SYNC ENGINE
   // Menyegerakkan SEMUA data portal (UBK e-RPH, RPT, Kaunseling, PIBG, HEM, Kurikulum, Staff, Berita dsb)
   // secara automatik merentasi SEMUA peranti (Guru Besar, Kaunselor, Guru, Admin)
@@ -450,6 +479,72 @@ async function startServer() {
       return res.json({ success: true, key, data: item.data, updatedAt: item.updatedAt, updatedBy: item.updatedBy });
     }
     return res.status(404).json({ success: false, error: `Kunci ${key} tidak dijumpai di pelayan.` });
+  });
+
+  // ==========================================
+  // STUDENT PHOTOS API ENDPOINTS
+  // ==========================================
+  app.get("/api/students/photos", (_req, res) => {
+    res.json({
+      success: true,
+      photos: liveStudentPhotos,
+      count: Object.keys(liveStudentPhotos).length,
+      timestamp: Date.now()
+    });
+  });
+
+  app.post("/api/students/photos", (req, res) => {
+    try {
+      const { studentKey, photoUrl, name, className, year, studentId, ic } = req.body;
+      if (!studentKey || !photoUrl) {
+        return res.status(400).json({ success: false, error: "studentKey and photoUrl are required" });
+      }
+
+      const now = new Date().toISOString();
+      const record = {
+        photoUrl,
+        name: name || "",
+        className: className || "",
+        year: year || "",
+        studentId: studentId || "",
+        ic: ic || "",
+        updatedAt: now
+      };
+
+      liveStudentPhotos[studentKey] = record;
+      if (ic && ic !== studentKey) {
+        liveStudentPhotos[ic] = record;
+      }
+      if (studentId && studentId !== studentKey) {
+        liveStudentPhotos[studentId] = record;
+      }
+
+      scheduleStudentPhotosSave();
+
+      // Broadcast update across SSE
+      broadcastSyncUpdate("skmp_student_photos_v1", liveStudentPhotos, Date.now(), "photo_capture");
+
+      res.json({
+        success: true,
+        message: "Foto murid berjaya disimpan di pelayan",
+        studentKey,
+        updatedAt: now
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.delete("/api/students/photos/:key", (req, res) => {
+    const key = req.params.key;
+    if (liveStudentPhotos[key]) {
+      delete liveStudentPhotos[key];
+      scheduleStudentPhotosSave();
+      broadcastSyncUpdate("skmp_student_photos_v1", liveStudentPhotos, Date.now(), "photo_delete");
+      res.json({ success: true, message: `Foto murid ${key} dipadam` });
+    } else {
+      res.status(404).json({ success: false, error: "Foto tidak dijumpai" });
+    }
   });
 
   // GET Live Signage for all Smart TVs and connected devices

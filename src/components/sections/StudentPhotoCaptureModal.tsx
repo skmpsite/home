@@ -178,9 +178,9 @@ export const StudentPhotoCaptureModal: React.FC<StudentPhotoCaptureModalProps> =
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Set dimensions for passport portrait photo (e.g. 480 x 600)
-    const targetWidth = 480;
-    const targetHeight = 600;
+    // Set dimensions for passport portrait photo (320 x 400 - nisbah 4:5 tajam, ringan & pantas)
+    const targetWidth = 320;
+    const targetHeight = 400;
     canvas.width = targetWidth;
     canvas.height = targetHeight;
 
@@ -208,7 +208,7 @@ export const StudentPhotoCaptureModal: React.FC<StudentPhotoCaptureModalProps> =
 
     ctx.drawImage(video, startX, startY, cropWidth, cropHeight, 0, 0, targetWidth, targetHeight);
 
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.78);
     setCapturedPhoto(dataUrl);
     stopCamera();
   };
@@ -247,8 +247,8 @@ export const StudentPhotoCaptureModal: React.FC<StudentPhotoCaptureModalProps> =
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        const targetWidth = 480;
-        const targetHeight = 600;
+        const targetWidth = 320;
+        const targetHeight = 400;
         canvas.width = targetWidth;
         canvas.height = targetHeight;
 
@@ -266,7 +266,7 @@ export const StudentPhotoCaptureModal: React.FC<StudentPhotoCaptureModalProps> =
         const startY = (img.height - cropHeight) / 2;
 
         ctx.drawImage(img, startX, startY, cropWidth, cropHeight, 0, 0, targetWidth, targetHeight);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.78);
         setCapturedPhoto(dataUrl);
       };
       img.src = event.target?.result as string;

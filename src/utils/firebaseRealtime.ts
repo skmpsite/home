@@ -1,9 +1,11 @@
 import {
   getFirebaseDb,
   isFirebaseEnabled,
+  collection,
   doc,
   setDoc,
   getDoc,
+  getDocs,
   onSnapshot
 } from './firebaseSync';
 import {
@@ -781,25 +783,70 @@ export function subscribeToStudents(callback: (students: StudentRecord[]) => voi
 }
 
 /**
- * Simpan satu gambar murid terus ke Awan Firestore (Kamus Gambar Murid Silang-Peranti)
+ * Simpan satu gambar murid terus ke Awan Firestore (Koleksi Bebas Had 'student_photos')
  */
-export async function saveSingleStudentPhotoToFirestore(studentKey: string, photoUrl: string): Promise<boolean> {
+export async function saveSingleStudentPhotoToFirestore(
+  studentKey: string,
+  photoUrl: string,
+  extra?: { studentId?: string; ic?: string; name?: string; year?: string; className?: string }
+): Promise<boolean> {
   if (!isFirebaseEnabled()) return false;
   const db = getFirebaseDb();
   if (!db) return false;
 
   try {
-    const docRef = doc(db, 'school_data', 'student_photos');
-    const snap = await getDoc(docRef);
-    const existingPhotos: Record<string, string> = snap.exists() && snap.data().photos ? { ...snap.data().photos } : {};
-    existingPhotos[studentKey] = photoUrl;
-
-    await setDoc(docRef, {
-      photos: existingPhotos,
+    const cleanKey = studentKey.replace(/\//g, '_');
+    
+    // 1. Simpan ke koleksi dokumen individu 'student_photos/{cleanKey}' (TIADA HAD 1MB KESELURUHAN)
+    const photoDocRef = doc(db, 'student_photos', cleanKey);
+    await setDoc(photoDocRef, {
+      studentKey: cleanKey,
+      photoUrl,
+      studentId: extra?.studentId || '',
+      ic: extra?.ic || '',
+      name: extra?.name || '',
+      year: extra?.year || '',
+      className: extra?.className || '',
       updatedAt: new Date().toISOString()
     }, { merge: true });
 
-    console.log(`[FIRESTORE] Saved photo for student key ${studentKey} to cloud`);
+    // Jika ada IC berlainan daripada cleanKey, simpan juga alias dokumen untuk capaian pantas
+    if (extra?.ic && extra.ic !== cleanKey) {
+      try {
+        const icDocRef = doc(db, 'student_photos', extra.ic.replace(/\//g, '_'));
+        await setDoc(icDocRef, {
+          studentKey: cleanKey,
+          photoUrl,
+          studentId: extra?.studentId || '',
+          ic: extra.ic,
+          name: extra?.name || '',
+          year: extra?.year || '',
+          className: extra?.className || '',
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      } catch {
+        // ignore alias error
+      }
+    }
+
+    // 2. Juga cuba simpan ke ringkasan dokumen 'school_data/student_photos' sekiranya saiz membenarkan (graceful fallback)
+    try {
+      const docRef = doc(db, 'school_data', 'student_photos');
+      const snap = await getDoc(docRef);
+      const existingPhotos: Record<string, string> = snap.exists() && snap.data().photos ? { ...snap.data().photos } : {};
+      existingPhotos[cleanKey] = photoUrl;
+      // Periksa anggaran saiz dokumen sebelum simpan (< 850,000 bytes bagi mengelak ralat 1MB)
+      if (JSON.stringify(existingPhotos).length < 850000) {
+        await setDoc(docRef, {
+          photos: existingPhotos,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      }
+    } catch {
+      // Dokumen koleksi 'student_photos' sudah berjaya disimpan, jadi abaikan ralat dokumen monolitik
+    }
+
+    console.log(`[FIRESTORE] Saved photo for student key ${cleanKey} in collection 'student_photos'`);
     return true;
   } catch (err) {
     console.warn('[FIRESTORE ERROR] Gagal menyimpan gambar murid ke cloud:', err);
@@ -808,22 +855,48 @@ export async function saveSingleStudentPhotoToFirestore(studentKey: string, phot
 }
 
 /**
- * Dapatkan kamus gambar murid daripada Firestore
+ * Dapatkan kamus gambar murid daripada Firestore (menggabungkan koleksi 'student_photos' dan ringkasan)
  */
 export async function fetchStudentPhotosFromFirestore(): Promise<Record<string, string> | null> {
   if (!isFirebaseEnabled()) return null;
   const db = getFirebaseDb();
   if (!db) return null;
 
+  const result: Record<string, string> = {};
+
   try {
-    const docRef = doc(db, 'school_data', 'student_photos');
-    const snap = await getDoc(docRef);
-    if (snap.exists()) {
-      const data = snap.data();
-      if (data && data.photos && typeof data.photos === 'object') {
-        return data.photos as Record<string, string>;
+    // 1. Ambil daripada koleksi dokumen individu 'student_photos'
+    const colRef = collection(db, 'student_photos');
+    const snap = await getDocs(colRef);
+    snap.forEach((d) => {
+      const data = d.data();
+      if (data && data.photoUrl) {
+        result[d.id] = data.photoUrl;
+        if (data.studentId) result[data.studentId] = data.photoUrl;
+        if (data.ic) result[data.ic] = data.photoUrl;
+        if (data.studentKey) result[data.studentKey] = data.photoUrl;
       }
+    });
+
+    // 2. Jika ada rekod dalam dokumen 'school_data/student_photos', gabungkan
+    try {
+      const docRef = doc(db, 'school_data', 'student_photos');
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data && data.photos && typeof data.photos === 'object') {
+          Object.entries(data.photos).forEach(([k, v]) => {
+            if (typeof v === 'string' && !result[k]) {
+              result[k] = v;
+            }
+          });
+        }
+      }
+    } catch {
+      // ignore
     }
+
+    return Object.keys(result).length > 0 ? result : null;
   } catch (err) {
     console.warn('[FIRESTORE] Failed to fetch student photos map:', err);
   }
@@ -831,26 +904,51 @@ export async function fetchStudentPhotosFromFirestore(): Promise<Record<string, 
 }
 
 /**
- * Langganan masa nyata untuk kemaskini gambar murid (Auto-sync silang peranti)
+ * Langganan masa nyata untuk kemaskini gambar murid (Auto-sync silang peranti tanpa had dokumen)
  */
 export function subscribeToStudentPhotos(callback: (photos: Record<string, string>) => void): () => void {
   if (!isFirebaseEnabled()) return () => {};
   const db = getFirebaseDb();
   if (!db) return () => {};
 
+  const currentPhotos: Record<string, string> = {};
+
   try {
+    // 1. Langganan koleksi 'student_photos'
+    const colRef = collection(db, 'student_photos');
+    const unsubCol = onSnapshot(colRef, (snap) => {
+      snap.forEach((d) => {
+        const data = d.data();
+        if (data && data.photoUrl) {
+          currentPhotos[d.id] = data.photoUrl;
+          if (data.studentId) currentPhotos[data.studentId] = data.photoUrl;
+          if (data.ic) currentPhotos[data.ic] = data.photoUrl;
+          if (data.studentKey) currentPhotos[data.studentKey] = data.photoUrl;
+        }
+      });
+      callback({ ...currentPhotos });
+    }, (err) => {
+      console.warn('[FIRESTORE] student_photos collection subscription error:', err);
+    });
+
+    // 2. Langganan dokumen 'school_data/student_photos'
     const docRef = doc(db, 'school_data', 'student_photos');
-    const unsub = onSnapshot(docRef, (snap) => {
+    const unsubDoc = onSnapshot(docRef, (snap) => {
       if (snap.exists()) {
         const data = snap.data();
         if (data && data.photos && typeof data.photos === 'object') {
-          callback(data.photos as Record<string, string>);
+          Object.assign(currentPhotos, data.photos);
+          callback({ ...currentPhotos });
         }
       }
     }, (err) => {
-      console.warn('[FIRESTORE] Direct student photos subscription error:', err);
+      console.warn('[FIRESTORE] Direct student photos doc subscription error:', err);
     });
-    return unsub;
+
+    return () => {
+      unsubCol();
+      unsubDoc();
+    };
   } catch (err) {
     console.warn('[FIRESTORE] Unable to set up student photos listener:', err);
     return () => {};
