@@ -9,6 +9,7 @@ import {
   syncCloudPhotosToLocal,
   resolveStudentPhoto,
   getLocalStudentPhotos,
+  syncStudentPhotoToGoogleSheets,
   BROADCAST_CHANNEL_STUDENT_PHOTOS,
   STUDENT_PHOTOS_SYNCED_EVENT
 } from '../../utils/googleSheetsStudentSync';
@@ -102,6 +103,116 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
   // Photo Lightbox Zoom Modal State
   const [zoomedStudent, setZoomedStudent] = useState<FullStudentRecord | null>(null);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+
+  // Direct Smartphone Camera State & Refs
+  const phoneCameraInputRef = React.useRef<HTMLInputElement | null>(null);
+  const currentPhotoStudentRef = React.useRef<FullStudentRecord | null>(null);
+  const [photoProcessingState, setPhotoProcessingState] = useState<{
+    isProcessing: boolean;
+    studentName?: string;
+    className?: string;
+    previewUrl?: string;
+    status: 'saving' | 'success' | 'error';
+  } | null>(null);
+
+  const handleTriggerStudentCamera = (student: FullStudentRecord) => {
+    currentPhotoStudentRef.current = student;
+    if (phoneCameraInputRef.current) {
+      phoneCameraInputRef.current.value = '';
+      phoneCameraInputRef.current.click();
+    }
+  };
+
+  const handleDirectPhoneCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const targetStudent = currentPhotoStudentRef.current;
+    e.target.value = '';
+    if (!file || !targetStudent) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('Sila pilih fail gambar format JPG atau PNG.');
+      return;
+    }
+
+    setPhotoProcessingState({
+      isProcessing: true,
+      studentName: targetStudent.name,
+      className: `${targetStudent.year} ${targetStudent.className}`,
+      status: 'saving'
+    });
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = async () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            setPhotoProcessingState(null);
+            return;
+          }
+
+          // Format nisbah pasport (320 x 400 - 4:5 tajam, ringan & pantas)
+          const targetWidth = 320;
+          const targetHeight = 400;
+          canvas.width = targetWidth;
+          canvas.height = targetHeight;
+
+          const aspect = targetWidth / targetHeight;
+          let cropWidth = img.width;
+          let cropHeight = img.width / aspect;
+
+          if (cropHeight > img.height) {
+            cropHeight = img.height;
+            cropWidth = img.height * aspect;
+          }
+
+          const startX = (img.width - cropWidth) / 2;
+          const startY = (img.height - cropHeight) / 2;
+
+          ctx.drawImage(img, startX, startY, cropWidth, cropHeight, 0, 0, targetWidth, targetHeight);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.78);
+
+          setPhotoProcessingState({
+            isProcessing: true,
+            studentName: targetStudent.name,
+            className: `${targetStudent.year} ${targetStudent.className}`,
+            previewUrl: dataUrl,
+            status: 'saving'
+          });
+
+          // 1. Kemas kini antaramuka secara serta-merta
+          const primaryKey = targetStudent.studentId || targetStudent.ic || targetStudent.id;
+          handlePhotoSaved(primaryKey, dataUrl);
+
+          // 2. Segerakkan secara automatik ke pangkalan data tempatan, pelayan, Firestore & Google Sheets
+          await syncStudentPhotoToGoogleSheets(targetStudent, dataUrl);
+
+          // 3. Paparkan status berjaya & tutup auto
+          setPhotoProcessingState({
+            isProcessing: true,
+            studentName: targetStudent.name,
+            className: `${targetStudent.year} ${targetStudent.className}`,
+            previewUrl: dataUrl,
+            status: 'success'
+          });
+
+          showToast(`Gambar ${targetStudent.name} berjaya disimpan & disegerakkan!`);
+
+          setTimeout(() => {
+            setPhotoProcessingState(null);
+          }, 1200);
+        } catch (err) {
+          console.error('Ralat memproses gambar:', err);
+          setPhotoProcessingState(null);
+          showToast('Ralat semasa memproses gambar murid.');
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleOpenPhotoZoom = (student: FullStudentRecord) => {
     setZoomedStudent(student);
@@ -980,11 +1091,10 @@ Alamat: ${s.fullAddress || '-'}`;
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setPhotoModalStudent(student);
-                                setIsPhotoModalOpen(true);
+                                handleTriggerStudentCamera(student);
                               }}
                               className="absolute -bottom-1 -right-1 p-1 sm:p-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg sm:rounded-xl shadow-lg border border-emerald-300 transition active:scale-95"
-                              title="Tangkap / Muat Naik Gambar Murid (Kamera)"
+                              title="Tangkap Gambar Murid (Kamera Telefon)"
                             >
                               <Camera className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                             </button>
@@ -1087,11 +1197,10 @@ Alamat: ${s.fullAddress || '-'}`;
                         <button
                           type="button"
                           onClick={() => {
-                            setPhotoModalStudent(student);
-                            setIsPhotoModalOpen(true);
+                            handleTriggerStudentCamera(student);
                           }}
                           className="p-1.5 bg-white/10 hover:bg-emerald-600 text-slate-300 hover:text-white rounded-xl transition border border-white/10 flex items-center gap-1 text-xs font-bold px-2"
-                          title="Tangkap / Muat Naik Gambar Murid (Kamera)"
+                          title="Tangkap Gambar Murid (Kamera Telefon)"
                         >
                           <Camera className="w-3.5 h-3.5 text-emerald-400 group-hover:text-white" />
                           <span className="hidden sm:inline">Foto</span>
@@ -1407,14 +1516,13 @@ Alamat: ${s.fullAddress || '-'}`;
                   <button
                     type="button"
                     onClick={() => {
-                      setPhotoModalStudent(selectedStudent);
-                      setIsPhotoModalOpen(true);
+                      handleTriggerStudentCamera(selectedStudent);
                     }}
                     className="mt-2 w-full py-1 px-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[10px] font-black transition flex items-center justify-center gap-1 border border-emerald-400/60 shadow-md"
-                    title="Tangkap / Muat Naik Gambar Murid (Kamera)"
+                    title="Tangkap Gambar Murid (Kamera Telefon)"
                   >
                     <Camera className="w-3 h-3" />
-                    <span>{selectedStudent.photoUrl ? 'Tukar Foto' : 'Kamera'}</span>
+                    <span>{selectedStudent.photoUrl ? 'Tukar Foto' : 'Kamera Telefon'}</span>
                   </button>
                 </div>
 
@@ -1820,10 +1928,56 @@ Alamat: ${s.fullAddress || '-'}`;
           setZoomedStudent(null);
         }}
         onOpenPhotoCapture={(s) => {
-          setPhotoModalStudent(s);
-          setIsPhotoModalOpen(true);
+          handleTriggerStudentCamera(s);
         }}
       />
+
+      {/* Hidden Native Phone Camera Input */}
+      <input
+        ref={phoneCameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleDirectPhoneCameraCapture}
+        className="hidden"
+        id="student-direct-phone-camera-input"
+      />
+
+      {/* Floating Instant Saving Overlay for Direct Phone Camera */}
+      {photoProcessingState && (
+        <div className="fixed inset-0 z-[100] bg-black/75 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-slate-900 border border-emerald-500/50 rounded-3xl p-5 max-w-xs w-full flex flex-col items-center text-center shadow-2xl shadow-emerald-950/70 relative overflow-hidden">
+            <div className="relative w-28 h-36 rounded-2xl overflow-hidden border-2 border-emerald-400 mb-3 bg-black flex items-center justify-center shadow-lg">
+              {photoProcessingState.previewUrl ? (
+                <img
+                  src={photoProcessingState.previewUrl}
+                  alt="Pratonton Gambar"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <RefreshCw className="w-8 h-8 text-emerald-400 animate-spin" />
+              )}
+            </div>
+            <h4 className="text-sm font-black text-white line-clamp-1">
+              {photoProcessingState.studentName}
+            </h4>
+            <p className="text-xs text-slate-300 font-mono mb-3">
+              {photoProcessingState.className}
+            </p>
+            {photoProcessingState.status === 'saving' ? (
+              <div className="flex items-center gap-2 text-xs font-bold text-yellow-300 bg-yellow-400/10 px-3 py-1.5 rounded-xl border border-yellow-400/20">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-yellow-400" />
+                <span>Menyimpan gambar murid...</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-xs font-black text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20 animate-fadeIn">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span>Gambar Berjaya Disimpan!</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

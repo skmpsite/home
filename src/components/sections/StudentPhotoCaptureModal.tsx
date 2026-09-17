@@ -211,6 +211,7 @@ export const StudentPhotoCaptureModal: React.FC<StudentPhotoCaptureModalProps> =
     const dataUrl = canvas.toDataURL('image/jpeg', 0.78);
     setCapturedPhoto(dataUrl);
     stopCamera();
+    handleSavePhoto(dataUrl);
   };
 
   // Snap with countdown
@@ -268,6 +269,7 @@ export const StudentPhotoCaptureModal: React.FC<StudentPhotoCaptureModalProps> =
         ctx.drawImage(img, startX, startY, cropWidth, cropHeight, 0, 0, targetWidth, targetHeight);
         const dataUrl = canvas.toDataURL('image/jpeg', 0.78);
         setCapturedPhoto(dataUrl);
+        handleSavePhoto(dataUrl);
       };
       img.src = event.target?.result as string;
     };
@@ -283,21 +285,22 @@ export const StudentPhotoCaptureModal: React.FC<StudentPhotoCaptureModalProps> =
   };
 
   // Save photo and trigger sync to Google Sheets
-  const handleSavePhoto = async () => {
-    if (!student || !capturedPhoto) return;
+  const handleSavePhoto = async (overridePhoto?: string) => {
+    const photoToSave = overridePhoto || capturedPhoto;
+    if (!student || !photoToSave) return;
 
     setIsSaving(true);
     try {
       const primaryKey = student.studentId || student.ic || student.id;
-      const res = await syncStudentPhotoToGoogleSheets(student, capturedPhoto);
+      const res = await syncStudentPhotoToGoogleSheets(student, photoToSave);
 
-      onPhotoSaved(primaryKey, capturedPhoto);
+      onPhotoSaved(primaryKey, photoToSave);
       setSuccessToast(res.message || 'Gambar murid berjaya disimpan!');
 
       setTimeout(() => {
         setSuccessToast(null);
         onClose();
-      }, 1500);
+      }, 1200);
     } catch (err) {
       console.error('Ralat semasa menyimpan gambar:', err);
       alert('Gagal menyimpan gambar murid. Sila cuba lagi.');
@@ -439,7 +442,7 @@ export const StudentPhotoCaptureModal: React.FC<StudentPhotoCaptureModalProps> =
                 </p>
               </div>
 
-              {/* Action Buttons */}
+              {/* Action Status */}
               <div className="w-full flex items-center gap-3 pt-2">
                 <button
                   onClick={handleRetake}
@@ -450,23 +453,19 @@ export const StudentPhotoCaptureModal: React.FC<StudentPhotoCaptureModalProps> =
                   <span>Ambil Semula</span>
                 </button>
 
-                <button
-                  onClick={handleSavePhoto}
-                  disabled={isSaving}
-                  className="flex-2 py-3 px-6 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-2xl text-xs font-black transition flex items-center justify-center gap-2 border border-emerald-400 shadow-xl shadow-emerald-950/50"
-                >
+                <div className="flex-1 py-3 px-4 bg-emerald-950/70 border border-emerald-500/40 rounded-2xl flex items-center justify-center gap-2 text-xs font-bold text-emerald-300 shadow-inner">
                   {isSaving ? (
                     <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Menyimpan ke Google Sheets...</span>
+                      <RefreshCw className="w-4 h-4 animate-spin text-emerald-400" />
+                      <span>Menyimpan gambar...</span>
                     </>
                   ) : (
                     <>
-                      <Check className="w-4 h-4" />
-                      <span>Simpan & Segerak ke Google Sheets</span>
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      <span>Gambar Disimpan</span>
                     </>
                   )}
-                </button>
+                </div>
               </div>
             </div>
           ) : activeTab === 'camera' ? (
