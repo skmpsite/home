@@ -695,8 +695,26 @@ async function startServer() {
 
   app.delete("/api/students/photos/:key", (req, res) => {
     const key = req.params.key;
-    if (liveStudentPhotos[key]) {
-      delete liveStudentPhotos[key];
+    const targetRecord = liveStudentPhotos[key];
+    if (targetRecord) {
+      const targetUrl = typeof targetRecord === 'object' ? targetRecord.photoUrl : targetRecord;
+      const targetSid = typeof targetRecord === 'object' ? targetRecord.studentId : undefined;
+      const targetIc = typeof targetRecord === 'object' ? targetRecord.ic : undefined;
+
+      // Padam semua kekunci alias yang sepadan dengan rekod murid ini
+      for (const [k, v] of Object.entries(liveStudentPhotos)) {
+        const vUrl = typeof v === 'object' ? v.photoUrl : v;
+        const vSid = typeof v === 'object' ? v.studentId : undefined;
+        const vIc = typeof v === 'object' ? v.ic : undefined;
+        if (
+          k === key ||
+          (targetUrl && vUrl === targetUrl) ||
+          (targetSid && vSid === targetSid) ||
+          (targetIc && vIc === targetIc)
+        ) {
+          delete liveStudentPhotos[k];
+        }
+      }
       scheduleStudentPhotosSave();
 
       const flatPhotos: Record<string, string> = {};

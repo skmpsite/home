@@ -24,7 +24,7 @@ interface StudentPhotoCaptureModalProps {
   isOpen: boolean;
   student: FullStudentRecord | null;
   onClose: () => void;
-  onPhotoSaved: (studentKey: string, photoUrl: string) => void;
+  onPhotoSaved: (studentKey: string, photoUrl: string, student?: FullStudentRecord | null) => void;
 }
 
 export const StudentPhotoCaptureModal: React.FC<StudentPhotoCaptureModalProps> = ({
@@ -294,7 +294,7 @@ export const StudentPhotoCaptureModal: React.FC<StudentPhotoCaptureModalProps> =
       const primaryKey = student.studentId || student.ic || student.id;
       const res = await syncStudentPhotoToGoogleSheets(student, photoToSave);
 
-      onPhotoSaved(primaryKey, photoToSave);
+      onPhotoSaved(primaryKey, photoToSave, student);
       setSuccessToast(res.message || 'Gambar murid berjaya disimpan!');
 
       setTimeout(() => {

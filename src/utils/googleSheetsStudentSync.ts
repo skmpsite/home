@@ -37,38 +37,43 @@ export {
 /**
  * Penyelesai gambar murid universal yang memadankan semua kemungkinan variasi kunci
  * (studentId, ic, id, stu-studentId, stu-ic, nama murid, dsb.)
+ * Keutamaan TERTINGGI diberikan kepada foto terkini dalam photosMap/localPhotos/server.
  */
 export function resolveStudentPhoto(
   photosMap: Record<string, string> | null | undefined,
   student: { id?: string; studentId?: string; ic?: string; bil?: number; name?: string; photoUrl?: string } | null | undefined
 ): string | undefined {
   if (!student) return undefined;
+
+  // 1. SEMAK photosMap DAHULU: Ini adalah foto terkini yang baru diambil / disegerakkan
+  if (photosMap && typeof photosMap === 'object') {
+    const candidateKeys = [
+      student.studentId ? String(student.studentId).trim() : undefined,
+      student.ic ? String(student.ic).trim() : undefined,
+      student.ic ? String(student.ic).replace(/[^0-9]/g, '') : undefined,
+      student.id ? String(student.id).trim() : undefined,
+      student.id ? String(student.id).replace(/^stu-/, '') : undefined,
+      student.id ? `stu-${String(student.id).replace(/^stu-/, '')}` : undefined,
+      student.studentId ? `stu-${String(student.studentId).trim()}` : undefined,
+      student.ic ? `stu-${String(student.ic).trim()}` : undefined,
+      student.name ? String(student.name).trim().toUpperCase() : undefined
+    ].filter(Boolean) as string[];
+
+    for (const k of candidateKeys) {
+      const val = photosMap[k];
+      if (typeof val === 'string' && (val.startsWith('data:image') || val.startsWith('http'))) {
+        return val;
+      } else if (val && typeof val === 'object' && typeof (val as any).photoUrl === 'string') {
+        return (val as any).photoUrl;
+      }
+    }
+  }
+
+  // 2. Jika tiada dalam photosMap, barulah gunakan student.photoUrl asal (fallback)
   if (student.photoUrl && typeof student.photoUrl === 'string' && (student.photoUrl.startsWith('data:image') || student.photoUrl.startsWith('http'))) {
     return student.photoUrl;
   }
-  if (!photosMap || typeof photosMap !== 'object') return undefined;
 
-  const candidateKeys = [
-    student.studentId,
-    student.ic,
-    student.ic ? student.ic.replace(/[^0-9]/g, '') : undefined,
-    student.id,
-    student.id ? student.id.replace(/^stu-/, '') : undefined,
-    student.id ? `stu-${student.id.replace(/^stu-/, '')}` : undefined,
-    student.studentId ? `stu-${student.studentId}` : undefined,
-    student.ic ? `stu-${student.ic}` : undefined,
-    student.bil ? `stu-${student.bil}` : undefined,
-    student.name ? student.name.trim().toUpperCase() : undefined
-  ].filter(Boolean) as string[];
-
-  for (const k of candidateKeys) {
-    const val = photosMap[k];
-    if (typeof val === 'string' && (val.startsWith('data:image') || val.startsWith('http'))) {
-      return val;
-    } else if (val && typeof val === 'object' && typeof (val as any).photoUrl === 'string') {
-      return (val as any).photoUrl;
-    }
-  }
   return undefined;
 }
 
@@ -173,6 +178,40 @@ export function saveLocalStudentPhoto(
       localStorage.setItem(CACHE_KEY_PHOTOS, JSON.stringify(photos));
     } catch (storageErr) {
       console.warn('LocalStorage quota reached, photo kept in active memory/cloud:', storageErr);
+    }
+
+    // Kemas kini terus rekod murid dalam cache senarai murid tempatan jika wujud
+    try {
+      const rawStudents = localStorage.getItem(CACHE_KEY_STUDENTS);
+      if (rawStudents) {
+        const parsed = JSON.parse(rawStudents);
+        if (Array.isArray(parsed)) {
+          let hasChange = false;
+          const updatedList = parsed.map((s: any) => {
+            const isMatch =
+              s.id === cleanKey ||
+              s.id === studentKey ||
+              s.studentId === cleanKey ||
+              s.studentId === studentKey ||
+              s.ic === cleanKey ||
+              s.ic === studentKey ||
+              (cleanKey.startsWith('stu-') && (s.studentId === cleanKey.slice(4) || s.ic === cleanKey.slice(4))) ||
+              (extra?.studentId && s.studentId && s.studentId === extra.studentId) ||
+              (extra?.ic && s.ic && (s.ic === extra.ic || s.ic.replace(/[^0-9]/g, '') === extra.ic.replace(/[^0-9]/g, ''))) ||
+              (extra?.name && s.name && s.name.trim().toUpperCase() === extra.name.trim().toUpperCase());
+            if (isMatch) {
+              hasChange = true;
+              return { ...s, photoUrl };
+            }
+            return s;
+          });
+          if (hasChange) {
+            localStorage.setItem(CACHE_KEY_STUDENTS, JSON.stringify(updatedList));
+          }
+        }
+      }
+    } catch (cacheUpdateErr) {
+      console.warn('Failed to update student photo in cached students list:', cacheUpdateErr);
     }
 
     // 1. Broadcast kepada tab lain pada peranti ini
@@ -420,12 +459,14 @@ export function mapRowsToStudents(rows: string[][]): FullStudentRecord[] {
       id: studentId ? `stu-${studentId}` : `stu-${ic || bil}`,
       studentId,
       ic,
-      bil
+      bil,
+      name
     };
-    const photoUrl =
-      rawPhoto && (rawPhoto.startsWith('http') || rawPhoto.startsWith('data:image'))
-        ? rawPhoto
-        : resolveStudentPhoto(localPhotos, candidateRef);
+    // Keutamaan mutlak diberikan kepada foto terkini yang diambil dalam portal/aplikasi
+    const resolvedLocal = resolveStudentPhoto(localPhotos, candidateRef);
+    const photoUrl = resolvedLocal
+      ? resolvedLocal
+      : (rawPhoto && (rawPhoto.startsWith('http') || rawPhoto.startsWith('data:image')) ? rawPhoto : undefined);
 
     const student: FullStudentRecord = {
       id: studentId ? `stu-${studentId}` : `stu-${ic || bil}`,

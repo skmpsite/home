@@ -399,7 +399,7 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
 
   const handlePhotoSaved = (studentKey: string, newPhotoUrl: string, targetStudent?: FullStudentRecord | null) => {
     const clean = studentKey.replace(/\//g, '_');
-    const target = targetStudent || currentPhotoStudentRef.current;
+    const target = targetStudent || currentPhotoStudentRef.current || photoModalStudent || selectedStudent;
     setStudents((prev) =>
       prev.map((s) => {
         const isMatch =
