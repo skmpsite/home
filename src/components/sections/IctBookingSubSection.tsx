@@ -309,17 +309,6 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
   const [formStudentsCount, setFormStudentsCount] = useState<number>(30);
   const [formEquipment, setFormEquipment] = useState<string[]>(['30 PC Murid', 'Smart TV 65"']);
 
-  // Pre-fill teacher name if staff list or user info is known
-  useEffect(() => {
-    if (!formTeacherName) {
-      if (isAdmin) {
-        setFormTeacherName('Pentadbir / Guru Bertugas');
-      } else if (staffList && staffList.length > 0) {
-        setFormTeacherName(staffList[0].name);
-      }
-    }
-  }, [isAdmin, staffList, formTeacherName]);
-
   // Open booking modal for a specific slot clicked on the grid
   const handleOpenBookingForSlot = (dateStr: string, slotIdx: number) => {
     if (!isAuthorized) {
@@ -334,6 +323,7 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
     setFormDate(dateStr);
     setFormSlotStart(slotIdx);
     setFormSlotEnd(slotIdx);
+    setFormTeacherName('');
     setFormCustomSubject('');
     setFormPurpose('');
     setIsBookingModalOpen(true);
@@ -412,6 +402,7 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
 
     const updated = [...bookings, ...newRecordsToAdd];
     handleUpdateBookings(updated);
+    setFormTeacherName('');
     setIsBookingModalOpen(false);
     setToastMessage(`Berjaya menempah ${newRecordsToAdd.length} slot Makmal ICT untuk kelas ${formClass}!`);
   };
@@ -714,6 +705,7 @@ export const IctBookingSubSection: React.FC<IctBookingSubSectionProps> = ({
               setFormDate(selectedDate || weekDays[0]?.dateStr || formatDateYMD(new Date()));
               setFormSlotStart(0);
               setFormSlotEnd(0);
+              setFormTeacherName('');
               setFormCustomSubject('');
               setIsBookingModalOpen(true);
             }}
