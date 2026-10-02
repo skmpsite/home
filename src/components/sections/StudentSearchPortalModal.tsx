@@ -39,6 +39,9 @@ import {
   CheckCircle2,
   AlertCircle,
   Camera,
+  Upload,
+  Smartphone,
+  Sparkles,
   Image as ImageIcon,
   SlidersHorizontal,
   ChevronDown,
@@ -104,9 +107,11 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
   const [zoomedStudent, setZoomedStudent] = useState<FullStudentRecord | null>(null);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
-  // Direct Smartphone Camera State & Refs
+  // Direct Smartphone Camera & Gallery State & Refs
   const phoneCameraInputRef = React.useRef<HTMLInputElement | null>(null);
+  const phoneGalleryInputRef = React.useRef<HTMLInputElement | null>(null);
   const currentPhotoStudentRef = React.useRef<FullStudentRecord | null>(null);
+  const [photoOptionModalStudent, setPhotoOptionModalStudent] = useState<FullStudentRecord | null>(null);
   const [photoProcessingState, setPhotoProcessingState] = useState<{
     isProcessing: boolean;
     studentName?: string;
@@ -123,6 +128,19 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
     }
   };
 
+  const handleTriggerStudentGallery = (student: FullStudentRecord) => {
+    currentPhotoStudentRef.current = student;
+    if (phoneGalleryInputRef.current) {
+      phoneGalleryInputRef.current.value = '';
+      phoneGalleryInputRef.current.click();
+    }
+  };
+
+  const handleOpenPhotoOptions = (student: FullStudentRecord) => {
+    currentPhotoStudentRef.current = student;
+    setPhotoOptionModalStudent(student);
+  };
+
   const handleDirectPhoneCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     const targetStudent = currentPhotoStudentRef.current;
@@ -130,7 +148,7 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
     if (!file || !targetStudent) return;
 
     if (!file.type.startsWith('image/')) {
-      showToast('Sila pilih fail gambar format JPG atau PNG.');
+      showToast('Sila pilih fail gambar format JPG, PNG atau WEBP.');
       return;
     }
 
@@ -153,11 +171,15 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
             return;
           }
 
-          // Format nisbah pasport (320 x 400 - 4:5 tajam, ringan & pantas)
-          const targetWidth = 320;
-          const targetHeight = 400;
+          // Format nisbah pasport (720 x 900 - nisbah 4:5 resolusi tinggi HD, jernih & tajam)
+          const targetWidth = 720;
+          const targetHeight = 900;
           canvas.width = targetWidth;
           canvas.height = targetHeight;
+
+          // Aktifkan kualiti pemaparan kanvas tertinggi (bicubic smoothing)
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
 
           const aspect = targetWidth / targetHeight;
           let cropWidth = img.width;
@@ -172,7 +194,7 @@ export const StudentSearchPortalModal: React.FC<StudentSearchPortalModalProps> =
           const startY = (img.height - cropHeight) / 2;
 
           ctx.drawImage(img, startX, startY, cropWidth, cropHeight, 0, 0, targetWidth, targetHeight);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.78);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
 
           setPhotoProcessingState({
             isProcessing: true,
@@ -1123,15 +1145,15 @@ Alamat: ${s.fullAddress || '-'}`;
                               </div>
                             )}
 
-                            {/* Quick Camera Snapshot Button on Avatar Corner */}
+                            {/* Quick Camera / Photo Options Button on Avatar Corner */}
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleTriggerStudentCamera(student);
+                                handleOpenPhotoOptions(student);
                               }}
-                              className="absolute -bottom-1 -right-1 p-1 sm:p-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg sm:rounded-xl shadow-lg border border-emerald-300 transition active:scale-95"
-                              title="Tangkap Gambar Murid (Kamera Telefon)"
+                              className="absolute -bottom-1 -right-1 p-1 sm:p-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg sm:rounded-xl shadow-lg border border-emerald-300 transition active:scale-95 cursor-pointer"
+                              title="Foto Murid (Kamera atau Galeri Telefon)"
                             >
                               <Camera className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                             </button>
@@ -1230,14 +1252,14 @@ Alamat: ${s.fullAddress || '-'}`;
                           <span>Profil</span>
                         </button>
 
-                        {/* Camera Studio button */}
+                        {/* Camera Studio / Photo Options button */}
                         <button
                           type="button"
                           onClick={() => {
-                            handleTriggerStudentCamera(student);
+                            handleOpenPhotoOptions(student);
                           }}
-                          className="p-1.5 bg-white/10 hover:bg-emerald-600 text-slate-300 hover:text-white rounded-xl transition border border-white/10 flex items-center gap-1 text-xs font-bold px-2"
-                          title="Tangkap Gambar Murid (Kamera Telefon)"
+                          className="p-1.5 bg-white/10 hover:bg-emerald-600 text-slate-300 hover:text-white rounded-xl transition border border-white/10 flex items-center gap-1 text-xs font-bold px-2 cursor-pointer"
+                          title="Foto Murid (Kamera Telefon atau Galeri)"
                         >
                           <Camera className="w-3.5 h-3.5 text-emerald-400 group-hover:text-white" />
                           <span className="hidden sm:inline">Foto</span>
@@ -1549,18 +1571,27 @@ Alamat: ${s.fullAddress || '-'}`;
                     </div>
                   )}
 
-                  {/* Button to Capture/Change Photo */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleTriggerStudentCamera(selectedStudent);
-                    }}
-                    className="mt-2 w-full py-1 px-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[10px] font-black transition flex items-center justify-center gap-1 border border-emerald-400/60 shadow-md"
-                    title="Tangkap Gambar Murid (Kamera Telefon)"
-                  >
-                    <Camera className="w-3 h-3" />
-                    <span>{selectedStudent.photoUrl ? 'Tukar Foto' : 'Kamera Telefon'}</span>
-                  </button>
+                  {/* Buttons to Capture or Upload Photo */}
+                  <div className="mt-2 flex items-center gap-1.5 w-full">
+                    <button
+                      type="button"
+                      onClick={() => handleTriggerStudentCamera(selectedStudent)}
+                      className="flex-1 py-1.5 px-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[10px] font-black transition flex items-center justify-center gap-1 border border-emerald-400/60 shadow-md active:scale-95 cursor-pointer"
+                      title="Tangkap gambar guna kamera telefon"
+                    >
+                      <Camera className="w-3 h-3" />
+                      <span>Kamera</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleTriggerStudentGallery(selectedStudent)}
+                      className="flex-1 py-1.5 px-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-black transition flex items-center justify-center gap-1 border border-blue-400/60 shadow-md active:scale-95 cursor-pointer"
+                      title="Pilih gambar dari album / galeri telefon"
+                    >
+                      <Upload className="w-3 h-3" />
+                      <span>Galeri</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div>
@@ -1945,6 +1976,148 @@ Alamat: ${s.fullAddress || '-'}`;
         </div>
       )}
 
+      {/* Photo Options Modal: Choose Camera, Phone Gallery, or Studio */}
+      {photoOptionModalStudent && (
+        <div className="fixed inset-0 z-[95] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fadeIn">
+          <div className="bg-slate-900 border border-emerald-500/40 rounded-3xl max-w-sm w-full p-5 shadow-2xl space-y-4">
+            {/* Header with Student details */}
+            <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-14 rounded-2xl bg-slate-800 border border-emerald-400/40 overflow-hidden flex items-center justify-center flex-shrink-0">
+                  {photoOptionModalStudent.photoUrl ? (
+                    <img
+                      src={photoOptionModalStudent.photoUrl}
+                      alt={photoOptionModalStudent.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <User
+                      className={`w-6 h-6 ${
+                        photoOptionModalStudent.gender === 'LELAKI' ? 'text-blue-400' : 'text-rose-400'
+                      }`}
+                    />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                    Foto Profil Murid
+                  </span>
+                  <h4 className="text-xs sm:text-sm font-black text-white truncate mt-1 leading-snug">
+                    {photoOptionModalStudent.name}
+                  </h4>
+                  <p className="text-[10px] text-slate-400 font-mono">
+                    {photoOptionModalStudent.year} • {photoOptionModalStudent.className}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPhotoOptionModalStudent(null)}
+                className="p-1.5 rounded-xl hover:bg-white/10 text-slate-400 hover:text-white transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 font-medium">
+              Sila pilih cara untuk mengambil atau memuat naik foto murid:
+            </p>
+
+            <div className="space-y-2">
+              {/* Option 1: Native Phone Camera */}
+              <button
+                type="button"
+                onClick={() => {
+                  const s = photoOptionModalStudent;
+                  setPhotoOptionModalStudent(null);
+                  handleTriggerStudentCamera(s);
+                }}
+                className="w-full p-3 bg-emerald-600/20 hover:bg-emerald-600 border border-emerald-500/40 hover:border-emerald-400 rounded-2xl flex items-center gap-3 text-left transition group active:scale-95 cursor-pointer"
+              >
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 group-hover:bg-white group-hover:text-emerald-700 text-white flex items-center justify-center flex-shrink-0 shadow transition">
+                  <Camera className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-black text-white">Kamera Telefon (Snap Terus)</div>
+                  <div className="text-[10px] text-slate-300 group-hover:text-white/90">
+                    Buka kamera telefon untuk tangkap foto baru
+                  </div>
+                </div>
+              </button>
+
+              {/* Option 2: Phone Gallery / Storage Picker */}
+              <button
+                type="button"
+                onClick={() => {
+                  const s = photoOptionModalStudent;
+                  setPhotoOptionModalStudent(null);
+                  handleTriggerStudentGallery(s);
+                }}
+                className="w-full p-3 bg-blue-600/20 hover:bg-blue-600 border border-blue-500/40 hover:border-blue-400 rounded-2xl flex items-center gap-3 text-left transition group active:scale-95 cursor-pointer"
+              >
+                <div className="w-10 h-10 rounded-xl bg-blue-600 group-hover:bg-white group-hover:text-blue-700 text-white flex items-center justify-center flex-shrink-0 shadow transition">
+                  <Upload className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-black text-white">Galeri Telefon / Fail Simpanan</div>
+                  <div className="text-[10px] text-slate-300 group-hover:text-white/90">
+                    Muat naik gambar yang sedia tersimpan di telefon
+                  </div>
+                </div>
+              </button>
+
+              {/* Option 3: Studio Kamera Langsung */}
+              <button
+                type="button"
+                onClick={() => {
+                  const s = photoOptionModalStudent;
+                  setPhotoOptionModalStudent(null);
+                  setPhotoModalStudent(s);
+                  setIsPhotoModalOpen(true);
+                }}
+                className="w-full p-3 bg-purple-600/20 hover:bg-purple-600 border border-purple-500/40 hover:border-purple-400 rounded-2xl flex items-center gap-3 text-left transition group active:scale-95 cursor-pointer"
+              >
+                <div className="w-10 h-10 rounded-xl bg-purple-600 group-hover:bg-white group-hover:text-purple-700 text-white flex items-center justify-center flex-shrink-0 shadow transition">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-black text-white">Studio Kamera & Panduan Wajah</div>
+                  <div className="text-[10px] text-slate-300 group-hover:text-white/90">
+                    Panduan bujur muka pasport & kiraan detik
+                  </div>
+                </div>
+              </button>
+
+              {/* Option 4: View Zoom if photo exists */}
+              {photoOptionModalStudent.photoUrl && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const s = photoOptionModalStudent;
+                    setPhotoOptionModalStudent(null);
+                    handleOpenPhotoZoom(s);
+                  }}
+                  className="w-full p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl flex items-center justify-center gap-2 text-xs font-bold text-slate-200 transition cursor-pointer"
+                >
+                  <ZoomIn className="w-4 h-4 text-emerald-400" />
+                  <span>Lihat & Zum Foto Penuh (HD)</span>
+                </button>
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-white/10 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setPhotoOptionModalStudent(null)}
+                className="px-4 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 text-xs font-bold transition cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Student Photo Camera & Upload Studio Modal */}
       <StudentPhotoCaptureModal
         isOpen={isPhotoModalOpen}
@@ -1967,9 +2140,12 @@ Alamat: ${s.fullAddress || '-'}`;
         onOpenPhotoCapture={(s) => {
           handleTriggerStudentCamera(s);
         }}
+        onOpenPhotoGallery={(s) => {
+          handleTriggerStudentGallery(s);
+        }}
       />
 
-      {/* Hidden Native Phone Camera Input */}
+      {/* Hidden Native Phone Camera Input (Direct Shutter) */}
       <input
         ref={phoneCameraInputRef}
         type="file"
@@ -1978,6 +2154,16 @@ Alamat: ${s.fullAddress || '-'}`;
         onChange={handleDirectPhoneCameraCapture}
         className="hidden"
         id="student-direct-phone-camera-input"
+      />
+
+      {/* Hidden Native Phone Gallery Input (Album / Storage Picker) */}
+      <input
+        ref={phoneGalleryInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/jpg"
+        onChange={handleDirectPhoneCameraCapture}
+        className="hidden"
+        id="student-direct-phone-gallery-input"
       />
 
       {/* Floating Instant Saving Overlay for Direct Phone Camera */}

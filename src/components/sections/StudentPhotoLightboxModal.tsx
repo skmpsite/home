@@ -8,6 +8,7 @@ import {
   RotateCw,
   Download,
   Camera,
+  Upload,
   Maximize2,
   Minimize2,
   RotateCcw,
@@ -22,13 +23,15 @@ interface StudentPhotoLightboxModalProps {
   student: FullStudentRecord | null;
   onClose: () => void;
   onOpenPhotoCapture?: (student: FullStudentRecord) => void;
+  onOpenPhotoGallery?: (student: FullStudentRecord) => void;
 }
 
 export const StudentPhotoLightboxModal: React.FC<StudentPhotoLightboxModalProps> = ({
   isOpen,
   student,
   onClose,
-  onOpenPhotoCapture
+  onOpenPhotoCapture,
+  onOpenPhotoGallery
 }) => {
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [rotation, setRotation] = useState<number>(0);
@@ -386,11 +389,26 @@ export const StudentPhotoLightboxModal: React.FC<StudentPhotoLightboxModalProps>
                 onClose();
                 onOpenPhotoCapture(student);
               }}
-              className="p-2 sm:px-3.5 sm:py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-md shadow-emerald-950 cursor-pointer"
-              title="Ambil atau tukar gambar profil murid"
+              className="p-2 sm:px-3 sm:py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-md shadow-emerald-950 cursor-pointer active:scale-95"
+              title="Ambil gambar menggunakan kamera telefon"
             >
               <Camera className="w-4 h-4" />
-              <span className="hidden sm:inline">{student.photoUrl ? 'Tukar Foto' : 'Ambil Foto'}</span>
+              <span className="hidden sm:inline">Kamera</span>
+            </button>
+          )}
+
+          {onOpenPhotoGallery && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onOpenPhotoGallery(student);
+              }}
+              className="p-2 sm:px-3 sm:py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-md shadow-blue-950 cursor-pointer active:scale-95"
+              title="Pilih gambar sedia ada dari galeri telefon"
+            >
+              <Upload className="w-4 h-4" />
+              <span className="hidden sm:inline">Galeri</span>
             </button>
           )}
 

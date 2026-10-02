@@ -178,11 +178,13 @@ export const StudentPhotoCaptureModal: React.FC<StudentPhotoCaptureModalProps> =
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Set dimensions for passport portrait photo (320 x 400 - nisbah 4:5 tajam, ringan & pantas)
-    const targetWidth = 320;
-    const targetHeight = 400;
+    // Set dimensions for high-definition passport portrait photo (720 x 900 - nisbah 4:5 HD tajam & jernih)
+    const targetWidth = 720;
+    const targetHeight = 900;
     canvas.width = targetWidth;
     canvas.height = targetHeight;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
 
     const videoWidth = video.videoWidth || 640;
     const videoHeight = video.videoHeight || 480;
@@ -208,7 +210,7 @@ export const StudentPhotoCaptureModal: React.FC<StudentPhotoCaptureModalProps> =
 
     ctx.drawImage(video, startX, startY, cropWidth, cropHeight, 0, 0, targetWidth, targetHeight);
 
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.78);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
     setCapturedPhoto(dataUrl);
     stopCamera();
     handleSavePhoto(dataUrl);
@@ -248,10 +250,13 @@ export const StudentPhotoCaptureModal: React.FC<StudentPhotoCaptureModalProps> =
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        const targetWidth = 320;
-        const targetHeight = 400;
+        // Set dimensions for high-definition passport portrait photo (720 x 900 - nisbah 4:5 HD tajam & jernih)
+        const targetWidth = 720;
+        const targetHeight = 900;
         canvas.width = targetWidth;
         canvas.height = targetHeight;
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
 
         // Crop center
         const aspect = targetWidth / targetHeight;
@@ -267,7 +272,7 @@ export const StudentPhotoCaptureModal: React.FC<StudentPhotoCaptureModalProps> =
         const startY = (img.height - cropHeight) / 2;
 
         ctx.drawImage(img, startX, startY, cropWidth, cropHeight, 0, 0, targetWidth, targetHeight);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.78);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
         setCapturedPhoto(dataUrl);
         handleSavePhoto(dataUrl);
       };
@@ -376,11 +381,22 @@ export const StudentPhotoCaptureModal: React.FC<StudentPhotoCaptureModalProps> =
             <button
               type="button"
               onClick={() => nativeCameraInputRef.current?.click()}
-              className="flex-1 min-w-[130px] py-2 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 border bg-blue-600 hover:bg-blue-500 text-white border-blue-400 shadow-md active:scale-95"
+              className="flex-1 min-w-[120px] py-2 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 border bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400 shadow-md active:scale-95"
               title="Buka aplikasi kamera terus pada telefon pintar anda"
             >
-              <Smartphone className="w-4 h-4 text-yellow-300 animate-pulse" />
-              <span>Kamera Telefon (HD)</span>
+              <Smartphone className="w-4 h-4 text-yellow-300" />
+              <span>Kamera Telefon</span>
+            </button>
+
+            {/* Direct Phone Gallery / Storage Picker */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex-1 min-w-[120px] py-2 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 border bg-blue-600 hover:bg-blue-500 text-white border-blue-400 shadow-md active:scale-95"
+              title="Pilih gambar dari album / galeri telefon anda"
+            >
+              <Upload className="w-4 h-4 text-cyan-200" />
+              <span>Galeri Telefon</span>
             </button>
 
             <button
@@ -388,14 +404,14 @@ export const StudentPhotoCaptureModal: React.FC<StudentPhotoCaptureModalProps> =
                 setActiveTab('upload');
                 stopCamera();
               }}
-              className={`flex-1 min-w-[120px] py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 border ${
+              className={`flex-1 min-w-[110px] py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 border ${
                 activeTab === 'upload'
-                  ? 'bg-emerald-600 text-white border-emerald-400 shadow-md'
+                  ? 'bg-purple-600 text-white border-purple-400 shadow-md'
                   : 'bg-white/5 hover:bg-white/10 text-slate-300 border-white/10'
               }`}
             >
-              <Upload className="w-4 h-4" />
-              <span>Muat Naik Fail</span>
+              <Sparkles className="w-4 h-4" />
+              <span>Petak Seret</span>
             </button>
           </div>
         )}
