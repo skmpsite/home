@@ -1408,9 +1408,6 @@ export default function App() {
             onAddAbsenceRecord={handleAddAbsenceRecord}
             onUpdateAbsenceRecord={handleUpdateAbsenceRecord}
             onDeleteAbsenceRecord={handleDeleteAbsenceRecord}
-            pendingUbkRphList={pendingUbkRphList}
-            allUbkRphList={ubkRphList || []}
-            onOpenGbReviewModal={() => setIsGbDirectModalOpen(true)}
           />
         )}
 

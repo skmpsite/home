@@ -125,12 +125,17 @@ export const Header: React.FC<HeaderProps> = ({
             ) : userRole === 'guru_besar' ? (
               <div className="flex items-center gap-2">
                 <button
-                  onClick={onOpenTeacherPortal}
+                  onClick={onOpenGbReviewModal || onOpenTeacherPortal}
                   className="inline-flex items-center gap-1.5 text-xs font-black text-white hover:bg-amber-600 bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700 px-3.5 py-0.5 rounded-full border border-yellow-300 shadow-lg shadow-amber-950/40 transition cursor-pointer"
-                  title="Guru Besar SKMP Aktif - Akses Penuh Pentadbiran & Portal Guru"
+                  title="Peti Pengesahan e-RPH Guru Besar"
                 >
                   <Crown className="w-3.5 h-3.5 text-yellow-200" />
-                  <span>Guru Besar Aktif</span>
+                  <span>Peti e-RPH GB</span>
+                  {pendingUbkRphCount > 0 && (
+                    <span className="px-1.5 py-0.2 bg-red-600 text-white rounded-full text-[10px] font-black animate-pulse">
+                      {pendingUbkRphCount}
+                    </span>
+                  )}
                 </button>
                 <button
                   onClick={onLogout}
