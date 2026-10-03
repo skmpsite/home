@@ -151,15 +151,8 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     }
   };
 
-  // Active view tab inside Attendance portal
-  const [attendanceViewTab, setAttendanceViewTab] = useState<'borang' | 'analisis' | 'senarai'>('borang');
-
-  // Pastikan waris (bukan guru/admin) hanya melihat borang e-kehadiran
-  useEffect(() => {
-    if (!isAuthorized && attendanceViewTab !== 'borang') {
-      setAttendanceViewTab('borang');
-    }
-  }, [isAuthorized, attendanceViewTab]);
+  // Active view tab inside Attendance portal (Default: 'analisis')
+  const [attendanceViewTab, setAttendanceViewTab] = useState<'analisis' | 'senarai'>('analisis');
 
   // Selected date for live calculation (Default: Today YYYY-MM-DD)
   const [selectedDate, setSelectedDate] = useState<string>(() => {
@@ -242,6 +235,22 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
 
   // Warning modal for duplicate submission
   const [duplicateWarningRecord, setDuplicateWarningRecord] = useState<StudentAbsenceRecord | null>(null);
+
+  // Modal pop-up fit-skrin untuk Borang Makluman Ketidakhadiran Murid (Waris)
+  const [isBorangModalOpen, setIsBorangModalOpen] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const search = window.location.search || '';
+      const hash = window.location.hash || '';
+      return (
+        search.includes('borang=kehadiran') ||
+        search.includes('form=kehadiran') ||
+        search.includes('view=borang') ||
+        search.includes('action=borang') ||
+        hash.includes('#borang-kehadiran')
+      );
+    }
+    return false;
+  });
 
   // Form State for Waris Absence submission
   const [formYear, setFormYear] = useState<string>('');
@@ -900,12 +909,11 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
       params.get('view') === 'borang' ||
       params.get('form') === 'kehadiran' ||
       params.get('borang') === 'kehadiran' ||
-      params.get('subtab') === 'kehadiran' ||
-      hash.includes('borang') ||
-      hash.includes('kehadiran');
+      params.get('action') === 'borang' ||
+      hash.includes('#borang-kehadiran');
 
     if (isBorangRequested) {
-      setAttendanceViewTab('borang');
+      setIsBorangModalOpen(true);
 
       const pYear = params.get('year') || params.get('tahun');
       const pClass = params.get('class') || params.get('kelas');
@@ -915,15 +923,6 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
       if (pClass) {
         setFormClass(pClass);
       }
-
-      // Smooth scroll to the form element
-      const timer = setTimeout(() => {
-        const el = document.getElementById('borang-kehadiran-waris');
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 350);
-      return () => clearTimeout(timer);
     }
   }, []);
 
@@ -1218,79 +1217,58 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
       {/* Navigation Sub-Tabs Switcher */}
       <div className="flex flex-wrap items-center justify-between gap-2 p-1.5 bg-slate-900/80 backdrop-blur-md rounded-2xl border border-white/10">
         <div className="flex flex-wrap items-center gap-2 flex-1">
+          {/* Butang Utama: Buka Borang e-Kehadiran Pop-Up Fit Skrin */}
           <button
-            onClick={() => setAttendanceViewTab('borang')}
-            className={`flex-1 min-w-[160px] py-3 px-4 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition ${
-              attendanceViewTab === 'borang'
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 border border-emerald-400'
+            type="button"
+            onClick={() => setIsBorangModalOpen(true)}
+            className="flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition cursor-pointer bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-950/50 border border-emerald-400 active:scale-95"
+            title="Klik untuk membuka Borang Makluman Ketidakhadiran Murid (Pop-Up Fit Skrin)"
+          >
+            <FileText className="w-4 h-4 text-yellow-300" />
+            <span>Borang e-Kehadiran</span>
+            <span className="text-[10px] bg-yellow-400 text-slate-950 px-2 py-0.5 rounded-full font-black shadow-sm">
+              Isi Sini
+            </span>
+          </button>
+
+          {/* Tab Analisis Kehadiran Mengikut Kelas (Boleh dilihat oleh semua pengguna) */}
+          <button
+            type="button"
+            onClick={() => setAttendanceViewTab('analisis')}
+            className={`flex-1 sm:flex-none px-4 py-3 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition cursor-pointer ${
+              attendanceViewTab === 'analisis'
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 border border-blue-400'
                 : 'text-slate-300 hover:text-white hover:bg-white/5'
             }`}
           >
-            <FileText className="w-4 h-4" />
-            <span>Borang e-Kehadiran</span>
-            <span className="text-[10px] bg-yellow-400 text-slate-950 px-1.5 py-0.5 rounded font-black">Isi Sini</span>
+            <Building2 className="w-4 h-4" />
+            <span>Analisis Mengikut Kelas ({allClassesBreakdown.length})</span>
           </button>
 
-          {/* Tab Analisis dan Senarai Rekod KHAS untuk Admin dan Guru Sahaja */}
+          {/* Tab Senarai Rekod & Bukti Slip MC KHAS untuk Admin dan Guru Sahaja */}
           {isAuthorized && (
-            <>
-              <button
-                onClick={() => setAttendanceViewTab('analisis')}
-                className={`flex-1 min-w-[160px] py-3 px-4 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition ${
-                  attendanceViewTab === 'analisis'
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 border border-blue-400'
-                    : 'text-slate-300 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <Building2 className="w-4 h-4" />
-                <span>Analisis Mengikut Kelas ({allClassesBreakdown.length})</span>
-              </button>
-
-              <button
-                onClick={() => setAttendanceViewTab('senarai')}
-                className={`flex-1 min-w-[160px] py-3 px-4 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition ${
-                  attendanceViewTab === 'senarai'
-                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30 border border-purple-400'
-                    : 'text-slate-300 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <FileCheck className="w-4 h-4" />
-                <span>Senarai Rekod & Bukti Slip MC ({absenceRecords.length})</span>
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={() => setAttendanceViewTab('senarai')}
+              className={`flex-1 sm:flex-none px-4 py-3 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition cursor-pointer ${
+                attendanceViewTab === 'senarai'
+                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30 border border-purple-400'
+                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <FileCheck className="w-4 h-4" />
+              <span>Senarai Rekod & Bukti Slip MC ({absenceRecords.length})</span>
+            </button>
           )}
         </div>
 
-        {/* Butang Segerak Awan & Akses Status Badge */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleManualCloudSync}
-            disabled={isSyncingCloud}
-            className="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-bold text-xs flex items-center gap-1.5 border border-emerald-400/40 transition cursor-pointer shadow-sm hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
-            title="Segerakkan rekod e-kehadiran terus daripada Awan Firebase Firestore"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isSyncingCloud ? 'animate-spin text-emerald-400' : 'text-emerald-300'}`} />
-            <span>{isSyncingCloud ? 'Menyegerak...' : 'Segerak Awan'}</span>
-          </button>
-
-          {isAuthorized ? (
-            <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-[11px] font-bold text-emerald-300">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Akses Guru & Pentadbir</span>
-            </div>
-          ) : isAttendanceAuthorized ? (
-            <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-[11px] font-bold text-emerald-300">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>{currentLoggedInLabel}</span>
-            </div>
-          ) : (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-[11px] font-bold text-emerald-300 shadow-sm">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Borang Terbuka Waris</span>
-            </div>
-          )}
-        </div>
+        {/* Akses Status */}
+        {isAuthorized && (
+          <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-[11px] font-bold text-emerald-300">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Akses Guru & Pentadbir</span>
+          </div>
+        )}
       </div>
 
       {/* Cloud Sync Toast Notification */}
@@ -1302,657 +1280,639 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 1: BORANG E-KEHADIRAN WARIS                                           */}
+      {/* POP-UP MODAL BORANG E-KEHADIRAN WARIS (FIT SKRIN PENUH FOKUS)             */}
       {/* ========================================================================= */}
-      {attendanceViewTab === 'borang' && (
-        <div
-          id="borang-kehadiran-waris"
-          className="bg-slate-900/80 backdrop-blur-md rounded-3xl p-6 sm:p-8 border border-white/15 shadow-2xl text-white scroll-mt-24"
-        >
-          <div className="max-w-3xl mx-auto space-y-6">
-            <div className="border-b border-white/10 pb-5 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-              <div className="flex-1">
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/20 text-emerald-300 font-bold rounded-full text-xs mb-2 border border-emerald-500/30">
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Borang Makluman Rasmi</span>
+      {isBorangModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-0 sm:p-4 md:p-6 overflow-hidden animate-fadeIn">
+          <div className="bg-slate-900 border sm:border-emerald-500/40 w-full max-w-3xl h-full sm:h-[94vh] sm:max-h-[94vh] sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden text-white animate-scaleUp">
+            {/* Header Pop-up (Sticky di bahagian atas) */}
+            <div className="p-4 sm:p-5 bg-slate-950/95 border-b border-white/10 flex items-center justify-between gap-3 flex-shrink-0 z-10">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-300 flex-shrink-0 shadow-inner">
+                  <FileText className="w-5 h-5 text-emerald-400" />
                 </div>
-                <h4 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
-                  <span>Borang Makluman Ketidakhadiran Murid (Waris)</span>
-                </h4>
-                <p className="text-xs sm:text-sm text-slate-300 mt-1 leading-relaxed">
-                  Ibu bapa dan penjaga diminta mengisi borang ini sekiranya anak jagaan tidak dapat hadir ke sekolah. Sila
-                  lampirkan slip cuti sakit (MC) atau surat rasmi sebagai dokumen sokongan.
-                </p>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-bold border border-emerald-500/30">
+                      Borang Rasmi Waris
+                    </span>
+                    <span className="text-[10px] text-slate-400 hidden sm:inline">• Tanpa Log Masuk</span>
+                  </div>
+                  <h4 className="text-sm sm:text-base font-black text-white truncate">
+                    Borang Makluman Ketidakhadiran Murid
+                  </h4>
+                </div>
               </div>
 
-              {/* Ikon WhatsApp Ringkas & Salin Pautan */}
-              <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Butang Tindakan Header: Kongsi WhatsApp, Salin Pautan & Butang Tutup */}
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                 <button
                   type="button"
-                  id="btn-share-whatsapp-borang"
                   onClick={() => setIsShareModalOpen(true)}
-                  className="w-10 h-10 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl border border-emerald-400/40 transition active:scale-95 flex items-center justify-center shadow-lg shadow-emerald-950/50 group cursor-pointer"
+                  className="p-2 sm:px-2.5 sm:py-2 bg-emerald-600/30 hover:bg-emerald-600 text-emerald-200 hover:text-white rounded-xl border border-emerald-500/40 transition active:scale-95 flex items-center gap-1 text-xs font-bold cursor-pointer"
                   title="Kongsi Pautan Borang ke WhatsApp"
-                  aria-label="Kongsi Pautan Borang ke WhatsApp"
                 >
-                  <MessageCircle className="w-5 h-5 text-white group-hover:scale-110 transition-transform" />
+                  <MessageCircle className="w-4 h-4 text-emerald-300" />
+                  <span className="hidden md:inline">Kongsi</span>
                 </button>
 
                 <button
                   type="button"
-                  id="btn-copy-pautan-borang"
                   onClick={() => handleCopyLinkOnly()}
-                  className="w-10 h-10 bg-slate-800/90 hover:bg-slate-700 text-slate-200 hover:text-white rounded-2xl border border-white/10 transition active:scale-95 flex items-center justify-center shadow-md cursor-pointer"
-                  title="Salin Pautan Terus Borang Ini"
-                  aria-label="Salin Pautan Terus Borang Ini"
+                  className="p-2 sm:px-2.5 sm:py-2 bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white rounded-xl border border-white/10 transition active:scale-95 flex items-center gap-1 text-xs font-bold cursor-pointer"
+                  title="Salin Pautan"
                 >
                   <Copy className="w-4 h-4" />
+                  <span className="hidden md:inline">Salin</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsBorangModalOpen(false)}
+                  className="p-2 sm:px-3 sm:py-2 bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white rounded-xl border border-rose-500/30 transition active:scale-95 flex items-center gap-1 text-xs font-black cursor-pointer ml-1"
+                  title="Tutup Borang"
+                >
+                  <X className="w-4 h-4" />
+                  <span className="hidden sm:inline">Tutup</span>
                 </button>
               </div>
             </div>
 
-            {/* Status Sesi & Peringatan Terbuka Waris */}
-            {isAttendanceAuthorized ? (
-              <div className="p-3.5 sm:p-4 bg-emerald-950/70 border border-emerald-500/40 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs animate-fadeIn shadow-md">
-                <div className="flex items-center gap-2.5 text-emerald-300 font-bold">
-                  <div className="w-8 h-8 bg-emerald-500/20 border border-emerald-400/40 rounded-xl flex items-center justify-center text-emerald-300 flex-shrink-0">
+            {/* Badan Borang (Boleh Discroll Lancar - Fit Skrin) */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+              {isAttendanceAuthorized && (
+                <div className="p-3 bg-emerald-950/70 border border-emerald-500/40 rounded-2xl flex items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2 text-emerald-300 font-bold">
                     <ShieldCheck className="w-4 h-4" />
+                    <span>Disahkan: {currentLoggedInLabel}</span>
                   </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-semibold">Sesi Disahkan</span>
-                    <span className="text-white text-xs sm:text-sm font-black">
-                      {currentLoggedInLabel}
+                </div>
+              )}
+
+              {formError && (
+                <div className="p-4 bg-rose-500/20 border border-rose-500/40 rounded-2xl flex items-center gap-3 text-rose-300 text-xs sm:text-sm font-semibold animate-fadeIn">
+                  <AlertCircle className="w-5 h-5 flex-shrink-0 text-rose-400" />
+                  <span>{formError}</span>
+                </div>
+              )}
+
+              {/* BORANG MAKLUMAN MESRA TELEFON PINTAR (SMARTPHONE-OPTIMIZED) */}
+              <form onSubmit={handleSubmitAbsenceForm} className="space-y-5 sm:space-y-6">
+                {/* Bahagian 1: Pilih Tahun, Kelas & Nama Murid */}
+                <div className="bg-slate-950/50 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/10 space-y-4 shadow-lg">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                    <h5 className="text-xs sm:text-sm font-black uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+                      <GraduationCap className="w-4 h-4 text-emerald-400" />
+                      <span>1. Maklumat Tahun, Kelas & Nama Murid</span>
+                    </h5>
+                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
+                      Langkah 1/5
                     </span>
                   </div>
-                </div>
 
-                <button
-                  type="button"
-                  onClick={handleAttendanceLogout}
-                  className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-95"
-                  title="Log Keluar daripada Sesi e-Kehadiran"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span>Log Keluar</span>
-                </button>
-              </div>
-            ) : (
-              <div className="p-3.5 sm:p-4 bg-gradient-to-r from-emerald-950/70 via-slate-900 to-teal-950/60 border border-emerald-500/30 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-md animate-fadeIn">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-300 flex-shrink-0 shadow-inner">
-                    <Sparkles className="w-4 h-4 text-emerald-300" />
-                  </div>
-                  <div>
-                    <span className="text-white font-black text-xs sm:text-sm block">
-                      Borang Rasmi Waris (Tanpa Perlu Log In)
-                    </span>
-                    <span className="text-[11px] text-emerald-300 block">
-                      Terbuka terus untuk ibu bapa / penjaga SK Merbau Pulas melalui telefon pintar.
-                    </span>
-                  </div>
-                </div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/15 text-emerald-300 text-[11px] font-bold rounded-xl border border-emerald-500/30 w-fit">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Mesra Telefon Pintar (Mobile-First)</span>
-                </div>
-              </div>
-            )}
-
-            {formError && (
-              <div className="p-4 bg-rose-500/20 border border-rose-500/40 rounded-2xl flex items-center gap-3 text-rose-300 text-xs sm:text-sm font-semibold animate-fadeIn">
-                <AlertCircle className="w-5 h-5 flex-shrink-0 text-rose-400" />
-                <span>{formError}</span>
-              </div>
-            )}
-
-            {/* BORANG MAKLUMAN MESRA TELEFON PINTAR (SMARTPHONE-OPTIMIZED) */}
-            <form onSubmit={handleSubmitAbsenceForm} className="space-y-5 sm:space-y-6">
-              {/* Bahagian 1: Pilih Tahun, Kelas & Nama Murid */}
-              <div className="bg-slate-950/50 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/10 space-y-4 shadow-lg">
-                <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
-                  <h5 className="text-xs sm:text-sm font-black uppercase tracking-wider text-emerald-400 flex items-center gap-2">
-                    <GraduationCap className="w-4 h-4 text-emerald-400" />
-                    <span>1. Maklumat Tahun, Kelas & Nama Murid</span>
-                  </h5>
-                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
-                    Langkah 1/5
-                  </span>
-                </div>
-
-                {/* Pilih Tahun / Tingkatan */}
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold text-slate-300">
-                    Pilih Tahun / Tingkatan <span className="text-rose-400">*</span>
-                  </label>
-
-                  {/* Butang Sentuh Cepat untuk Telefon Pintar */}
-                  <div className="flex flex-wrap gap-1.5">
-                    {availableYears.map((yr) => {
-                      const isSelected = formYear === yr;
-                      return (
-                        <button
-                          key={yr}
-                          type="button"
-                          onClick={() => {
-                            setFormYear(yr);
-                            setFormClass('');
-                            setFormStudentId('');
-                            setFormStudentSearch('');
-                            setFormCustomStudentName('');
-                          }}
-                          className={`px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl text-xs font-black transition active:scale-95 cursor-pointer shadow-sm ${
-                            isSelected
-                              ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/40 border border-emerald-300 scale-102'
-                              : 'bg-slate-800/90 hover:bg-slate-750 text-slate-200 border border-white/10'
-                          }`}
-                        >
-                          {yr}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Pilih Kelas Murid (Muncul selepas Tahun dipilih) */}
-                {formYear && (
-                  <div className="space-y-2 pt-2 border-t border-white/5 animate-fadeIn">
+                  {/* Pilih Tahun / Tingkatan */}
+                  <div className="space-y-2">
                     <label className="block text-xs font-bold text-slate-300">
-                      Pilih Kelas Bagi <span className="text-emerald-300 font-bold">{formYear}</span> <span className="text-rose-400">*</span>
+                      Pilih Tahun / Tingkatan <span className="text-rose-400">*</span>
                     </label>
 
-                    {/* Butang Sentuh Cepat Kelas */}
-                    <div className="flex flex-wrap gap-2">
-                      {availableClassesForYear.map((cls) => {
-                        const isSelected = formClass === cls;
+                    {/* Butang Sentuh Cepat untuk Telefon Pintar */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {availableYears.map((yr) => {
+                        const isSelected = formYear === yr;
                         return (
                           <button
-                            key={cls}
+                            key={yr}
                             type="button"
                             onClick={() => {
-                              setFormClass(cls);
+                              setFormYear(yr);
+                              setFormClass('');
                               setFormStudentId('');
                               setFormStudentSearch('');
                               setFormCustomStudentName('');
                             }}
-                            className={`px-4 py-2.5 rounded-xl text-xs font-black transition active:scale-95 cursor-pointer shadow-sm ${
+                            className={`px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl text-xs font-black transition active:scale-95 cursor-pointer shadow-sm ${
                               isSelected
-                                ? 'bg-teal-400 text-slate-950 shadow-md shadow-teal-500/40 border border-teal-200 scale-102'
+                                ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/40 border border-emerald-300 scale-102'
                                 : 'bg-slate-800/90 hover:bg-slate-750 text-slate-200 border border-white/10'
                             }`}
                           >
-                            {cls}
+                            {yr}
                           </button>
                         );
                       })}
                     </div>
                   </div>
-                )}
 
-                {/* Pilih Nama Murid (Muncul selepas Kelas dipilih) */}
-                {formYear && formClass && (
-                  <div className="pt-3 border-t border-white/10 space-y-3 animate-fadeIn">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  {/* Pilih Kelas Murid (Muncul selepas Tahun dipilih) */}
+                  {formYear && (
+                    <div className="space-y-2 pt-2 border-t border-white/5 animate-fadeIn">
                       <label className="block text-xs font-bold text-slate-300">
-                        Pilih Nama Murid ({filteredStudentsForForm.length} orang dalam senarai {formYear} {formClass}) <span className="text-rose-400">*</span>
+                        Pilih Kelas Bagi <span className="text-emerald-300 font-bold">{formYear}</span> <span className="text-rose-400">*</span>
                       </label>
-                      {formStudentId !== 'TIADA_NAMA' && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFormStudentId('TIADA_NAMA');
-                            setFormStudentSearch('Tiada nama');
-                          }}
-                          className="text-[11px] font-bold text-amber-300 hover:text-amber-200 underline text-left cursor-pointer transition"
-                        >
-                          ✏️ Tiada Dalam Senarai? Taip Nama Manual
-                        </button>
-                      )}
+
+                      {/* Butang Sentuh Cepat Kelas */}
+                      <div className="flex flex-wrap gap-2">
+                        {availableClassesForYear.map((cls) => {
+                          const isSelected = formClass === cls;
+                          return (
+                            <button
+                              key={cls}
+                              type="button"
+                              onClick={() => {
+                                setFormClass(cls);
+                                setFormStudentId('');
+                                setFormStudentSearch('');
+                                setFormCustomStudentName('');
+                              }}
+                              className={`px-4 py-2.5 rounded-xl text-xs font-black transition active:scale-95 cursor-pointer shadow-sm ${
+                                isSelected
+                                ? 'bg-teal-400 text-slate-950 shadow-md shadow-teal-500/40 border border-teal-200 scale-102'
+                                : 'bg-slate-800/90 hover:bg-slate-750 text-slate-200 border border-white/10'
+                              }`}
+                            >
+                              {cls}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
+                  )}
 
-                    {/* Dropdown Nama Murid */}
-                    <select
-                      value={formStudentId}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setFormStudentId(val);
-                        if (val === 'TIADA_NAMA') {
-                          setFormStudentSearch('Tiada nama');
-                        } else {
-                          const found = effectiveStudents.find((s) => s.id === val);
-                          if (found) handleSelectStudent(found);
-                        }
-                      }}
-                      className="w-full bg-slate-900 border border-emerald-500/50 rounded-2xl px-4 py-3 text-xs sm:text-sm text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-inner"
-                      required
-                    >
-                      <option value="">-- Sentuh Di Sini Untuk Pilih Nama Anak Anda --</option>
-                      {filteredStudentsForForm.map((st) => (
-                        <option key={st.id} value={st.id}>
-                          {st.name}
-                        </option>
-                      ))}
-                      <option value="TIADA_NAMA" className="text-amber-300 font-bold">
-                        ✏️ Nama Tiada Dalam Senarai (Taip Manual)
-                      </option>
-                    </select>
-
-                    {/* Kotak nama untuk diisi sekiranya pengguna memilih "Tiada nama" */}
-                    {formStudentId === 'TIADA_NAMA' && (
-                      <div className="p-3.5 sm:p-4 bg-amber-950/40 border border-amber-500/40 rounded-2xl space-y-2 animate-fadeIn shadow-md">
-                        <div className="flex items-center justify-between">
-                          <label className="block text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                            <User className="w-3.5 h-3.5" />
-                            <span>Nama Penuh Murid <span className="text-rose-400">*</span></span>
-                          </label>
+                  {/* Pilih Nama Murid (Muncul selepas Kelas dipilih) */}
+                  {formYear && formClass && (
+                    <div className="pt-3 border-t border-white/10 space-y-3 animate-fadeIn">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                        <label className="block text-xs font-bold text-slate-300">
+                          Pilih Nama Murid ({filteredStudentsForForm.length} orang dalam senarai {formYear} {formClass}) <span className="text-rose-400">*</span>
+                        </label>
+                        {formStudentId !== 'TIADA_NAMA' && (
                           <button
                             type="button"
                             onClick={() => {
-                              setFormStudentId('');
-                              setFormCustomStudentName('');
+                              setFormStudentId('TIADA_NAMA');
+                              setFormStudentSearch('Tiada nama');
                             }}
-                            className="text-[11px] text-slate-300 hover:text-white underline cursor-pointer"
+                            className="text-[11px] font-bold text-amber-300 hover:text-amber-200 underline text-left cursor-pointer transition"
                           >
-                            Pilih Dari Senarai
+                            ✏️ Tiada Dalam Senarai? Taip Nama Manual
                           </button>
-                        </div>
-                        <input
-                          type="text"
-                          value={formCustomStudentName}
-                          onChange={(e) => setFormCustomStudentName(e.target.value)}
-                          placeholder="Sila taip nama penuh anak anda mengikut MyKid / Surat Beranak..."
-                          className="w-full bg-slate-900 border border-amber-400/50 rounded-xl px-4 py-3 text-xs sm:text-sm text-white font-bold placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400 uppercase shadow-inner"
-                          required
-                        />
-                        <p className="text-[11px] text-amber-200/80">
-                          Nama murid ini akan didaftarkan terus ke dalam rekod kehadiran kelas {formYear} {formClass}.
-                        </p>
+                        )}
                       </div>
-                    )}
 
-                    {/* Kad Profil Murid Terpilih */}
-                    {selectedStudent && formStudentId !== 'TIADA_NAMA' && (
-                      <div className="p-3.5 bg-gradient-to-r from-emerald-950/60 to-slate-900 border border-emerald-500/40 rounded-2xl text-xs flex items-center gap-3 animate-fadeIn shadow-md">
-                        <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300 font-black text-base flex-shrink-0 shadow-inner">
-                          {selectedStudent.name.charAt(0)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="font-black text-white text-xs sm:text-sm truncate">{selectedStudent.name}</p>
-                            <span className="text-[10px] bg-emerald-500/25 text-emerald-300 px-2 py-0.5 rounded font-bold border border-emerald-400/30 flex-shrink-0">
-                              {selectedStudent.year} {selectedStudent.className}
-                            </span>
+                      {/* Dropdown Nama Murid */}
+                      <select
+                        value={formStudentId}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setFormStudentId(val);
+                          if (val === 'TIADA_NAMA') {
+                            setFormStudentSearch('Tiada nama');
+                          } else {
+                            const found = effectiveStudents.find((s) => s.id === val);
+                            if (found) handleSelectStudent(found);
+                          }
+                        }}
+                        className="w-full bg-slate-900 border border-emerald-500/50 rounded-2xl px-4 py-3 text-xs sm:text-sm text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-inner"
+                        required
+                      >
+                        <option value="">-- Sentuh Di Sini Untuk Pilih Nama Anak Anda --</option>
+                        {filteredStudentsForForm.map((st) => (
+                          <option key={st.id} value={st.id}>
+                            {st.name}
+                          </option>
+                        ))}
+                        <option value="TIADA_NAMA" className="text-amber-300 font-bold">
+                          ✏️ Nama Tiada Dalam Senarai (Taip Manual)
+                        </option>
+                      </select>
+
+                      {/* Kotak nama untuk diisi sekiranya pengguna memilih "Tiada nama" */}
+                      {formStudentId === 'TIADA_NAMA' && (
+                        <div className="p-3.5 sm:p-4 bg-amber-950/40 border border-amber-500/40 rounded-2xl space-y-2 animate-fadeIn shadow-md">
+                          <div className="flex items-center justify-between">
+                            <label className="block text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                              <User className="w-3.5 h-3.5" />
+                              <span>Nama Penuh Murid <span className="text-rose-400">*</span></span>
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormStudentId('');
+                                setFormCustomStudentName('');
+                              }}
+                              className="text-[11px] text-slate-300 hover:text-white underline cursor-pointer"
+                            >
+                              Pilih Dari Senarai
+                            </button>
                           </div>
-                          <p className="text-[11px] text-slate-300 truncate mt-0.5">
-                            Guru Kelas: <strong className="text-emerald-200">{selectedStudent.classTeacher || 'Guru Kelas SKMP'}</strong>
+                          <input
+                            type="text"
+                            value={formCustomStudentName}
+                            onChange={(e) => setFormCustomStudentName(e.target.value)}
+                            placeholder="Sila taip nama penuh anak anda mengikut MyKid / Surat Beranak..."
+                            className="w-full bg-slate-900 border border-amber-400/50 rounded-xl px-4 py-3 text-xs sm:text-sm text-white font-bold placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400 uppercase shadow-inner"
+                            required
+                          />
+                          <p className="text-[11px] text-amber-200/80">
+                            Nama murid ini akan didaftarkan terus ke dalam rekod kehadiran kelas {formYear} {formClass}.
                           </p>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+                      )}
 
-              {/* Bahagian 2: Maklumat Waris / Penjaga (Sentuhan Mudah di Smartphone) */}
-              <div className="bg-slate-950/50 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/10 space-y-4 shadow-lg">
-                <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
-                  <h5 className="text-xs sm:text-sm font-black uppercase tracking-wider text-yellow-400 flex items-center gap-2">
-                    <HeartHandshake className="w-4 h-4 text-yellow-400" />
-                    <span>2. Maklumat Ibu Bapa / Waris Penjaga</span>
-                  </h5>
-                  <span className="text-[10px] bg-yellow-400/20 text-yellow-300 font-bold px-2 py-0.5 rounded-full border border-yellow-400/30">
-                    Langkah 2/5
-                  </span>
-                </div>
-
-                {/* Butang Cepat Hubungan Waris */}
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold text-slate-300">
-                    Hubungan Dengan Murid <span className="text-rose-400">*</span>
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      { label: '👩 Ibu Kandung', val: 'Ibu Kandung' },
-                      { label: '👨 Bapa Kandung', val: 'Bapa Kandung' },
-                      { label: '🛡️ Penjaga Sah', val: 'Penjaga Sah' },
-                      { label: '👵 Datuk / Nenek', val: 'Datuk / Nenek' },
-                      { label: '🤝 Lain-lain', val: 'Lain-lain' }
-                    ].map((item) => (
-                      <button
-                        key={item.val}
-                        type="button"
-                        onClick={() => setFormParentRel(item.val)}
-                        className={`px-3.5 py-2.5 rounded-xl text-xs font-black transition active:scale-95 cursor-pointer shadow-sm ${
-                          formParentRel === item.val
-                            ? 'bg-yellow-400 text-slate-950 font-black shadow-md shadow-yellow-500/30 border border-yellow-300 scale-102'
-                            : 'bg-slate-800/90 hover:bg-slate-750 text-slate-200 border border-white/10'
-                        }`}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    Sentuh salah satu pilihan di atas untuk mengesahkan hubungan anda dengan murid.
-                  </p>
-                </div>
-              </div>
-
-              {/* Bahagian 3: Tarikh & Catatan Sebab (Pantas di Telefon Pintar) */}
-              <div className="bg-slate-950/50 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/10 space-y-4 shadow-lg">
-                <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
-                  <h5 className="text-xs sm:text-sm font-black uppercase tracking-wider text-sky-400 flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-sky-400" />
-                    <span>3. Tarikh & Sebab Ketidakhadiran</span>
-                  </h5>
-                  <span className="text-[10px] bg-sky-400/20 text-sky-300 font-bold px-2 py-0.5 rounded-full border border-sky-400/30">
-                    Langkah 3/5
-                  </span>
-                </div>
-
-                {/* Pilihan Pantas Tarikh di Smartphone */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-300">
-                    Pilihan Pantas Tarikh:
-                  </label>
-                  <div className="flex flex-wrap gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setQuickDatePreset('today')}
-                      className="px-3 py-2 rounded-xl text-xs font-bold bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-400/30 transition active:scale-95 cursor-pointer shadow-sm"
-                    >
-                      📅 Hari Ini (1 Hari)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setQuickDatePreset('tomorrow')}
-                      className="px-3 py-2 rounded-xl text-xs font-bold bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-400/30 transition active:scale-95 cursor-pointer shadow-sm"
-                    >
-                      📅 Esok (1 Hari)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setQuickDatePreset('twoDays')}
-                      className="px-3 py-2 rounded-xl text-xs font-bold bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-400/30 transition active:scale-95 cursor-pointer shadow-sm"
-                    >
-                      📅 Hari Ini & Esok (2 Hari)
-                    </button>
-                  </div>
-                </div>
-
-                {/* Input Tarikh Mula & Tarikh Akhir */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                      Tarikh Mula Tidak Hadir <span className="text-rose-400">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={formDateFrom}
-                      onChange={(e) => {
-                        setFormDateFrom(e.target.value);
-                        if (!formDateTo || new Date(formDateTo) < new Date(e.target.value)) {
-                          setFormDateTo(e.target.value);
-                        }
-                      }}
-                      className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-inner"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                      Tarikh Akhir Tidak Hadir <span className="text-rose-400">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={formDateTo}
-                      min={formDateFrom}
-                      onChange={(e) => setFormDateTo(e.target.value)}
-                      className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-inner"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-xs bg-slate-900/60 px-3.5 py-2 rounded-xl border border-white/5">
-                  <span className="text-slate-400">Tempoh Kiraan:</span>
-                  <span className="font-black text-yellow-300 bg-yellow-400/10 px-2.5 py-0.5 rounded-lg border border-yellow-400/30">
-                    {calculatedDaysCount} Hari
-                  </span>
-                </div>
-
-                {/* Butang Pantas Pilihan Sebab (Satu Sentuhan di Smartphone) */}
-                <div className="space-y-2 pt-2 border-t border-white/10">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold text-slate-300">
-                      Pilihan Pantas Sebab (Sentuh Untuk Pilih):
-                    </label>
-                    <span className="text-[11px] text-emerald-400">Pantas & Automatik</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {[
-                      {
-                        label: '🤒 Demam / Tidak Sihat',
-                        cat: 'sakit' as const,
-                        text: 'Anak mengalami demam dan kurang sihat, dinasihatkan berehat dan dirawat di rumah.'
-                      },
-                      {
-                        label: '🏥 Rawatan Klinik / Hospital',
-                        cat: 'hospital' as const,
-                        text: 'Menghadiri temujanji pemeriksaan kesihatan / rawatan doktor di klinik atau hospital.'
-                      },
-                      {
-                        label: '🩹 Sakit Perut / Muntah',
-                        cat: 'sakit' as const,
-                        text: 'Mengalami sakit perut / cirit-birit dan muntah, berehat di rumah sehingga pulih.'
-                      },
-                      {
-                        label: '⚠️ Kecemasan Keluarga',
-                        cat: 'kecemasan' as const,
-                        text: 'Berlaku urusan kecemasan keluarga terdekat yang memerlukan perhatian segera.'
-                      },
-                      {
-                        label: '🚗 Urusan Keluarga Penting',
-                        cat: 'keluarga' as const,
-                        text: 'Mengikuti urusan keluarga penting di luar kawasan yang tidak dapat dielakkan.'
-                      },
-                      {
-                        label: '⛈️ Bencana / Banjir',
-                        cat: 'bencana' as const,
-                        text: 'Laluan terhalang akibat bencana banjir / cuaca buruk yang membahayakan perjalanan.'
-                      }
-                    ].map((item, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => applyQuickReason(item.cat, item.text)}
-                        className="px-2.5 py-1.5 rounded-xl text-xs bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-white/10 hover:border-emerald-400/50 transition active:scale-95 cursor-pointer"
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Catatan Terperinci Sebab Tidak Hadir */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                    Catatan / Keterangan Sebab Tidak Hadir <span className="text-rose-400">*</span>
-                  </label>
-                  <textarea
-                    value={formReasonDetails}
-                    onChange={(e) => setFormReasonDetails(e.target.value)}
-                    rows={3}
-                    placeholder="Contoh: Demam panas sejak petang semalam dan telah dibawa ke Klinik Kesihatan. Berehat di rumah..."
-                    className="w-full bg-slate-900 border border-white/20 rounded-xl p-3.5 text-xs sm:text-sm text-white font-normal focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-inner"
-                    required
-                  />
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    Anda boleh terus menyunting teks catatan di atas mengikut keadaan sebenar anak.
-                  </p>
-                </div>
-              </div>
-
-              {/* Bahagian 4: Upload Bukti Slip Cuti Sakit (Kamera Telefon & Galeri) */}
-              <div className="bg-slate-950/50 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/10 space-y-3.5 shadow-lg">
-                <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
-                  <h5 className="text-xs sm:text-sm font-black uppercase tracking-wider text-purple-400 flex items-center gap-2">
-                    <Camera className="w-4 h-4 text-purple-400" />
-                    <span>4. Bukti Slip Cuti Sakit (MC) / Surat Doktor</span>
-                  </h5>
-                  <span className="text-[10px] bg-purple-400/20 text-purple-300 font-bold px-2 py-0.5 rounded-full border border-purple-400/30">
-                    Langkah 4/5 (Pilihan)
-                  </span>
-                </div>
-
-                <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
-                  💡 <strong>Pilihan / Tidak Wajib:</strong> Sekiranya belum berjumpa doktor atau tiada slip MC, borang tetap boleh dihantar. Jika ada surat cuti sakit atau memo klinik, sila lampirkan foto di bawah:
-                </p>
-
-                {/* Hidden Native File Inputs */}
-                <input
-                  ref={mcCameraInputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                <input
-                  ref={mcGalleryInputRef}
-                  type="file"
-                  accept="image/*,application/pdf"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-
-                {formAttachmentUrl ? (
-                  <div className="p-3.5 bg-slate-900 rounded-2xl border border-emerald-500/40 flex items-center justify-between gap-3 shadow-md animate-fadeIn">
-                    <div className="flex items-center gap-3 overflow-hidden">
-                      {formAttachmentUrl.startsWith('data:image') ? (
-                        <img
-                          src={formAttachmentUrl}
-                          alt="Slip MC"
-                          className="w-14 h-14 object-cover rounded-xl border border-white/20 flex-shrink-0"
-                        />
-                      ) : (
-                        <div className="w-14 h-14 bg-purple-500/20 text-purple-300 rounded-xl flex items-center justify-center flex-shrink-0">
-                          <FileText className="w-7 h-7" />
+                      {/* Kad Profil Murid Terpilih */}
+                      {selectedStudent && formStudentId !== 'TIADA_NAMA' && (
+                        <div className="p-3.5 bg-gradient-to-r from-emerald-950/60 to-slate-900 border border-emerald-500/40 rounded-2xl text-xs flex items-center gap-3 animate-fadeIn shadow-md">
+                          <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300 font-black text-base flex-shrink-0 shadow-inner">
+                            {selectedStudent.name.charAt(0)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-black text-white text-xs sm:text-sm truncate">{selectedStudent.name}</p>
+                              <span className="text-[10px] bg-emerald-500/25 text-emerald-300 px-2 py-0.5 rounded font-bold border border-emerald-400/30 flex-shrink-0">
+                                {selectedStudent.year} {selectedStudent.className}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-300 truncate mt-0.5">
+                              Guru Kelas: <strong className="text-emerald-200">{selectedStudent.classTeacher || 'Guru Kelas SKMP'}</strong>
+                            </p>
+                          </div>
                         </div>
                       )}
-                      <div className="truncate">
-                        <p className="text-xs font-bold text-white truncate">
-                          {formAttachmentName || 'Slip_Cuti_Sakit.jpg'}
-                        </p>
-                        <p className="text-[10px] text-emerald-400 font-semibold">✓ Dokumen / foto berjaya dilampirkan</p>
-                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Bahagian 2: Maklumat Waris / Penjaga (Sentuhan Mudah di Smartphone) */}
+                <div className="bg-slate-950/50 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/10 space-y-4 shadow-lg">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                    <h5 className="text-xs sm:text-sm font-black uppercase tracking-wider text-yellow-400 flex items-center gap-2">
+                      <HeartHandshake className="w-4 h-4 text-yellow-400" />
+                      <span>2. Maklumat Ibu Bapa / Waris Penjaga</span>
+                    </h5>
+                    <span className="text-[10px] bg-yellow-400/20 text-yellow-300 font-bold px-2 py-0.5 rounded-full border border-yellow-400/30">
+                      Langkah 2/5
+                    </span>
+                  </div>
+
+                  {/* Butang Cepat Hubungan Waris */}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-slate-300">
+                      Hubungan Dengan Murid <span className="text-rose-400">*</span>
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { label: '👩 Ibu Kandung', val: 'Ibu Kandung' },
+                        { label: '👨 Bapa Kandung', val: 'Bapa Kandung' },
+                        { label: '🛡️ Penjaga Sah', val: 'Penjaga Sah' },
+                        { label: '👵 Datuk / Nenek', val: 'Datuk / Nenek' },
+                        { label: '🤝 Lain-lain', val: 'Lain-lain' }
+                      ].map((item) => (
+                        <button
+                          key={item.val}
+                          type="button"
+                          onClick={() => setFormParentRel(item.val)}
+                          className={`px-3.5 py-2.5 rounded-xl text-xs font-black transition active:scale-95 cursor-pointer shadow-sm ${
+                            formParentRel === item.val
+                              ? 'bg-yellow-400 text-slate-950 font-black shadow-md shadow-yellow-500/30 border border-yellow-300 scale-102'
+                              : 'bg-slate-800/90 hover:bg-slate-750 text-slate-200 border border-white/10'
+                          }`}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Sentuh salah satu pilihan di atas untuk mengesahkan hubungan anda dengan murid.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Bahagian 3: Tarikh & Catatan Sebab (Pantas di Telefon Pintar) */}
+                <div className="bg-slate-950/50 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/10 space-y-4 shadow-lg">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                    <h5 className="text-xs sm:text-sm font-black uppercase tracking-wider text-sky-400 flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-sky-400" />
+                      <span>3. Tarikh & Sebab Ketidakhadiran</span>
+                    </h5>
+                    <span className="text-[10px] bg-sky-400/20 text-sky-300 font-bold px-2 py-0.5 rounded-full border border-sky-400/30">
+                      Langkah 3/5
+                    </span>
+                  </div>
+
+                  {/* Pilihan Pantas Tarikh di Smartphone */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-300">
+                      Pilihan Pantas Tarikh:
+                    </label>
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setQuickDatePreset('today')}
+                        className="px-3 py-2 rounded-xl text-xs font-bold bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-400/30 transition active:scale-95 cursor-pointer shadow-sm"
+                      >
+                        📅 Hari Ini (1 Hari)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setQuickDatePreset('tomorrow')}
+                        className="px-3 py-2 rounded-xl text-xs font-bold bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-400/30 transition active:scale-95 cursor-pointer shadow-sm"
+                      >
+                        📅 Esok (1 Hari)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setQuickDatePreset('twoDays')}
+                        className="px-3 py-2 rounded-xl text-xs font-bold bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-400/30 transition active:scale-95 cursor-pointer shadow-sm"
+                      >
+                        📅 Hari Ini & Esok (2 Hari)
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Input Tarikh Mula & Tarikh Akhir */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                        Tarikh Mula Tidak Hadir <span className="text-rose-400">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={formDateFrom}
+                        onChange={(e) => {
+                          setFormDateFrom(e.target.value);
+                          if (!formDateTo || new Date(formDateTo) < new Date(e.target.value)) {
+                            setFormDateTo(e.target.value);
+                          }
+                        }}
+                        className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-inner"
+                        required
+                      />
                     </div>
 
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                        Tarikh Akhir Tidak Hadir <span className="text-rose-400">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={formDateTo}
+                        min={formDateFrom}
+                        onChange={(e) => setFormDateTo(e.target.value)}
+                        className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-inner"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs bg-slate-900/60 px-3.5 py-2 rounded-xl border border-white/5">
+                    <span className="text-slate-400">Tempoh Kiraan:</span>
+                    <span className="font-black text-yellow-300 bg-yellow-400/10 px-2.5 py-0.5 rounded-lg border border-yellow-400/30">
+                      {calculatedDaysCount} Hari
+                    </span>
+                  </div>
+
+                  {/* Butang Pantas Pilihan Sebab (Satu Sentuhan di Smartphone) */}
+                  <div className="space-y-2 pt-2 border-t border-white/10">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold text-slate-300">
+                        Pilihan Pantas Sebab (Sentuh Untuk Pilih):
+                      </label>
+                      <span className="text-[11px] text-emerald-400">Pantas & Automatik</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        {
+                          label: '🤒 Demam / Tidak Sihat',
+                          cat: 'sakit' as const,
+                          text: 'Anak mengalami demam dan kurang sihat, dinasihatkan berehat dan dirawat di rumah.'
+                        },
+                        {
+                          label: '🏥 Rawatan Klinik / Hospital',
+                          cat: 'hospital' as const,
+                          text: 'Menghadiri temujanji pemeriksaan kesihatan / rawatan doktor di klinik atau hospital.'
+                        },
+                        {
+                          label: '🩹 Sakit Perut / Muntah',
+                          cat: 'sakit' as const,
+                          text: 'Mengalami sakit perut / cirit-birit dan muntah, berehat di rumah sehingga pulih.'
+                        },
+                        {
+                          label: '⚠️ Kecemasan Keluarga',
+                          cat: 'kecemasan' as const,
+                          text: 'Berlaku urusan kecemasan keluarga terdekat yang memerlukan perhatian segera.'
+                        },
+                        {
+                          label: '🚗 Urusan Keluarga Penting',
+                          cat: 'keluarga' as const,
+                          text: 'Mengikuti urusan keluarga penting di luar kawasan yang tidak dapat dielakkan.'
+                        },
+                        {
+                          label: '⛈️ Bencana / Banjir',
+                          cat: 'bencana' as const,
+                          text: 'Laluan terhalang akibat bencana banjir / cuaca buruk yang membahayakan perjalanan.'
+                        }
+                      ].map((item, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => applyQuickReason(item.cat, item.text)}
+                          className="px-2.5 py-1.5 rounded-xl text-xs bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-white/10 hover:border-emerald-400/50 transition active:scale-95 cursor-pointer"
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Catatan Terperinci Sebab Tidak Hadir */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                      Catatan / Keterangan Sebab Tidak Hadir <span className="text-rose-400">*</span>
+                    </label>
+                    <textarea
+                      value={formReasonDetails}
+                      onChange={(e) => setFormReasonDetails(e.target.value)}
+                      rows={3}
+                      placeholder="Contoh: Demam panas sejak petang semalam dan telah dibawa ke Klinik Kesihatan. Berehat di rumah..."
+                      className="w-full bg-slate-900 border border-white/20 rounded-xl p-3.5 text-xs sm:text-sm text-white font-normal focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-inner"
+                      required
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Anda boleh terus menyunting teks catatan di atas mengikut keadaan sebenar anak.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Bahagian 4: Upload Bukti Slip Cuti Sakit (Kamera Telefon & Galeri) */}
+                <div className="bg-slate-950/50 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/10 space-y-3.5 shadow-lg">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                    <h5 className="text-xs sm:text-sm font-black uppercase tracking-wider text-purple-400 flex items-center gap-2">
+                      <Camera className="w-4 h-4 text-purple-400" />
+                      <span>4. Bukti Slip Cuti Sakit (MC) / Surat Doktor</span>
+                    </h5>
+                    <span className="text-[10px] bg-purple-400/20 text-purple-300 font-bold px-2 py-0.5 rounded-full border border-purple-400/30">
+                      Langkah 4/5 (Pilihan)
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
+                    💡 <strong>Pilihan / Tidak Wajib:</strong> Sekiranya belum berjumpa doktor atau tiada slip MC, borang tetap boleh dihantar. Jika ada surat cuti sakit atau memo klinik, sila lampirkan foto di bawah:
+                  </p>
+
+                  {/* Hidden Native File Inputs */}
+                  <input
+                    ref={mcCameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <input
+                    ref={mcGalleryInputRef}
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+
+                  {formAttachmentUrl ? (
+                    <div className="p-3.5 bg-slate-900 rounded-2xl border border-emerald-500/40 flex items-center justify-between gap-3 shadow-md animate-fadeIn">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        {formAttachmentUrl.startsWith('data:image') ? (
+                          <img
+                            src={formAttachmentUrl}
+                            alt="Slip MC"
+                            className="w-14 h-14 object-cover rounded-xl border border-white/20 flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-14 h-14 bg-purple-500/20 text-purple-300 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <FileText className="w-7 h-7" />
+                          </div>
+                        )}
+                        <div className="truncate">
+                          <p className="text-xs font-bold text-white truncate">
+                            {formAttachmentName || 'Slip_Cuti_Sakit.jpg'}
+                          </p>
+                          <p className="text-[10px] text-emerald-400 font-semibold">✓ Dokumen / foto berjaya dilampirkan</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => mcCameraInputRef.current?.click()}
+                          className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition text-xs font-bold flex items-center gap-1 cursor-pointer"
+                          title="Tukar foto"
+                        >
+                          <Camera className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Tukar</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormAttachmentUrl('');
+                            setFormAttachmentName('');
+                          }}
+                          className="p-2 bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white rounded-xl transition flex items-center gap-1 text-xs font-bold cursor-pointer"
+                          title="Padam lampiran"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Padam</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Butang 1: Kamera Telefon Terus */}
                       <button
                         type="button"
                         onClick={() => mcCameraInputRef.current?.click()}
-                        className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition text-xs font-bold flex items-center gap-1 cursor-pointer"
-                        title="Tukar foto"
+                        className="p-4 sm:p-5 bg-gradient-to-br from-emerald-950/60 to-slate-900 hover:from-emerald-900/60 hover:to-slate-855 border border-emerald-500/40 hover:border-emerald-400 rounded-2xl flex flex-col items-center justify-center gap-2 text-center transition active:scale-98 shadow-md cursor-pointer group"
                       >
-                        <Camera className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Tukar</span>
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 group-hover:bg-emerald-500/30 text-emerald-300 flex items-center justify-center transition shadow-inner">
+                          <Camera className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <span className="text-xs sm:text-sm font-black text-white block">
+                            📸 Tangkap Foto Kamera
+                          </span>
+                          <span className="text-[10.5px] text-slate-400 block mt-0.5">
+                            Ambil gambar slip MC terus dari telefon
+                          </span>
+                        </div>
                       </button>
 
+                      {/* Butang 2: Pilih Dari Galeri / Dokumen */}
                       <button
                         type="button"
-                        onClick={() => {
-                          setFormAttachmentUrl('');
-                          setFormAttachmentName('');
-                        }}
-                        className="p-2 bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white rounded-xl transition flex items-center gap-1 text-xs font-bold cursor-pointer"
-                        title="Padam lampiran"
+                        onClick={() => mcGalleryInputRef.current?.click()}
+                        className="p-4 sm:p-5 bg-gradient-to-br from-purple-950/60 to-slate-900 hover:from-purple-900/60 hover:to-slate-855 border border-purple-500/40 hover:border-purple-400 rounded-2xl flex flex-col items-center justify-center gap-2 text-center transition active:scale-98 shadow-md cursor-pointer group"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Padam</span>
+                        <div className="w-12 h-12 rounded-2xl bg-purple-500/20 group-hover:bg-purple-500/30 text-purple-300 flex items-center justify-center transition shadow-inner">
+                          <Upload className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <span className="text-xs sm:text-sm font-black text-white block">
+                            📁 Pilih Dari Galeri / PDF
+                          </span>
+                          <span className="text-[10.5px] text-slate-400 block mt-0.5">
+                            Muat naik imej tersimpan atau dokumen fail
+                          </span>
+                        </div>
                       </button>
                     </div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* Butang 1: Kamera Telefon Terus */}
-                    <button
-                      type="button"
-                      onClick={() => mcCameraInputRef.current?.click()}
-                      className="p-4 sm:p-5 bg-gradient-to-br from-emerald-950/60 to-slate-900 hover:from-emerald-900/60 hover:to-slate-850 border border-emerald-500/40 hover:border-emerald-400 rounded-2xl flex flex-col items-center justify-center gap-2 text-center transition active:scale-98 shadow-md cursor-pointer group"
-                    >
-                      <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 group-hover:bg-emerald-500/30 text-emerald-300 flex items-center justify-center transition shadow-inner">
-                        <Camera className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <span className="text-xs sm:text-sm font-black text-white block">
-                          📸 Tangkap Foto Kamera
-                        </span>
-                        <span className="text-[10.5px] text-slate-400 block mt-0.5">
-                          Ambil gambar slip MC terus dari telefon
-                        </span>
-                      </div>
-                    </button>
+                  )}
+                </div>
 
-                    {/* Butang 2: Pilih Dari Galeri / Dokumen */}
-                    <button
-                      type="button"
-                      onClick={() => mcGalleryInputRef.current?.click()}
-                      className="p-4 sm:p-5 bg-gradient-to-br from-purple-950/60 to-slate-900 hover:from-purple-900/60 hover:to-slate-850 border border-purple-500/40 hover:border-purple-400 rounded-2xl flex flex-col items-center justify-center gap-2 text-center transition active:scale-98 shadow-md cursor-pointer group"
-                    >
-                      <div className="w-12 h-12 rounded-2xl bg-purple-500/20 group-hover:bg-purple-500/30 text-purple-300 flex items-center justify-center transition shadow-inner">
-                        <Upload className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <span className="text-xs sm:text-sm font-black text-white block">
-                          📁 Pilih Dari Galeri / PDF
-                        </span>
-                        <span className="text-[10.5px] text-slate-400 block mt-0.5">
-                          Muat naik imej tersimpan atau dokumen fail
-                        </span>
-                      </div>
-                    </button>
-                  </div>
-                )}
-              </div>
+                {/* Bahagian 5: Perakuan Waris */}
+                <div className="p-4 bg-emerald-950/40 border border-emerald-500/40 rounded-2xl space-y-2 shadow-sm">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formDeclaration}
+                      onChange={(e) => setFormDeclaration(e.target.checked)}
+                      className="w-5 h-5 mt-0.5 accent-emerald-500 rounded cursor-pointer flex-shrink-0"
+                      required
+                    />
+                    <span className="text-xs text-slate-200 leading-relaxed">
+                      Saya dengan ini memperakui bahawa segala maklumat dan dokumen lampiran yang diberikan adalah benar
+                      dan sahih bagi tujuan rekod pengurusan Hal Ehwal Murid (HEM) SK Merbau Pulas.
+                    </span>
+                  </label>
+                </div>
 
-              {/* Bahagian 5: Perakuan Waris */}
-              <div className="p-4 bg-emerald-950/40 border border-emerald-500/40 rounded-2xl space-y-2 shadow-sm">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formDeclaration}
-                    onChange={(e) => setFormDeclaration(e.target.checked)}
-                    className="w-5 h-5 mt-0.5 accent-emerald-500 rounded cursor-pointer flex-shrink-0"
-                    required
-                  />
-                  <span className="text-xs text-slate-200 leading-relaxed">
-                    Saya dengan ini memperakui bahawa segala maklumat dan dokumen lampiran yang diberikan adalah benar
-                    dan sahih bagi tujuan rekod pengurusan Hal Ehwal Murid (HEM) SK Merbau Pulas.
-                  </span>
-                </label>
-              </div>
+                {/* Submit & Cancel Buttons */}
+                <div className="pt-2 space-y-2.5">
+                  <button
+                    type="submit"
+                    disabled={formSubmitting}
+                    className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white text-sm sm:text-base font-black shadow-xl shadow-emerald-950/60 border border-emerald-400/50 flex items-center justify-center gap-2.5 transition active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+                  >
+                    <Send className="w-5 h-5 text-yellow-300" />
+                    <span>
+                      {formSubmitting
+                        ? 'Menghantar Makluman Ketidakhadiran...'
+                        : 'Hantar Makluman Ketidakhadiran Sekarang'}
+                    </span>
+                  </button>
 
-              {/* Submit Button (Thumb-Friendly CTA for Smartphone) */}
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={formSubmitting}
-                  className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white text-sm sm:text-base font-black shadow-xl shadow-emerald-950/60 border border-emerald-400/50 flex items-center justify-center gap-2.5 transition active:scale-[0.98] disabled:opacity-50 cursor-pointer"
-                >
-                  <Send className="w-5 h-5 text-yellow-300" />
-                  <span>
-                    {formSubmitting
-                      ? 'Menghantar Makluman Ketidakhadiran...'
-                      : 'Hantar Makluman Ketidakhadiran Sekarang'}
-                  </span>
-                </button>
-                <p className="text-center text-[11px] text-slate-400 mt-2">
-                  ✨ Pengisian borang ini adalah 100% percuma dan diselaraskan terus kepada Guru Kelas.
-                </p>
-              </div>
-            </form>
+                  <button
+                    type="button"
+                    onClick={() => setIsBorangModalOpen(false)}
+                    className="w-full py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-bold transition cursor-pointer border border-white/10"
+                  >
+                    Batal & Tutup Paparan
+                  </button>
 
+                  <p className="text-center text-[11px] text-slate-400 mt-1">
+                    ✨ Pengisian borang ini adalah 100% percuma dan diselaraskan terus kepada Guru Kelas.
+                  </p>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
@@ -1960,7 +1920,7 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
       {/* ========================================================================= */}
       {/* TAB 2: ANALISIS & PERATUSAN KEHADIRAN MENGIKUT KELAS                      */}
       {/* ========================================================================= */}
-      {isAuthorized && attendanceViewTab === 'analisis' && (
+      {attendanceViewTab === 'analisis' && (
         <div className="space-y-6">
           <div className="bg-slate-900/80 backdrop-blur-md rounded-3xl p-6 sm:p-8 border border-white/15 shadow-2xl text-white space-y-6">
             {/* Header */}
@@ -2597,7 +2557,10 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
 
               <button
                 type="button"
-                onClick={() => setSubmittedReceipt(null)}
+                onClick={() => {
+                  setSubmittedReceipt(null);
+                  setIsBorangModalOpen(false);
+                }}
                 className="w-full sm:w-auto px-5 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition cursor-pointer"
               >
                 Tutup
