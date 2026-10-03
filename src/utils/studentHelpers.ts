@@ -244,7 +244,8 @@ export const isKedahWeekend = (
 };
 
 /**
- * Resolves whether a given date is a school holiday (custom holiday or default Friday/Saturday weekend in Kedah)
+ * Resolves whether a given date is a school holiday (custom holiday or default Friday/Saturday weekend in Kedah).
+ * If admin has cancelled the holiday for this date (isSchoolDay / category === 'ganti_sekolah'), returns undefined so attendance is processed normally.
  */
 export const getActiveSchoolHoliday = (
   dateStr: string,
@@ -252,13 +253,26 @@ export const getActiveSchoolHoliday = (
 ): SchoolHoliday | undefined => {
   if (!dateStr) return undefined;
 
-  // 1. Check custom / Takwim school holidays first
+  // 1. Check if this date has been explicitly declared as a SCHOOL DAY (Cuti dibatalkan / Hari Ganti Bersekolah)
   if (schoolHolidays && schoolHolidays.length > 0) {
-    const customMatch = schoolHolidays.find((h) => dateStr >= h.dateFrom && dateStr <= h.dateTo);
+    const schoolDayOverride = schoolHolidays.find(
+      (h) => (h.isSchoolDay || h.category === 'ganti_sekolah') && dateStr >= h.dateFrom && dateStr <= h.dateTo
+    );
+    if (schoolDayOverride) {
+      // Holiday is cancelled! This is an active schooling day.
+      return undefined;
+    }
+  }
+
+  // 2. Check custom / Takwim school holidays
+  if (schoolHolidays && schoolHolidays.length > 0) {
+    const customMatch = schoolHolidays.find(
+      (h) => !h.isSchoolDay && h.category !== 'ganti_sekolah' && dateStr >= h.dateFrom && dateStr <= h.dateTo
+    );
     if (customMatch) return customMatch;
   }
 
-  // 2. Default: Friday (Jumaat) and Saturday (Sabtu) are official weekend holidays in Kedah (Kumpulan A)
+  // 3. Default: Friday (Jumaat) and Saturday (Sabtu) are official weekend holidays in Kedah (Kumpulan A)
   const weekend = isKedahWeekend(dateStr);
   if (weekend.isWeekend) {
     return {
@@ -273,6 +287,19 @@ export const getActiveSchoolHoliday = (
   }
 
   return undefined;
+};
+
+/**
+ * Checks if a date has been explicitly marked as a replacement schooling day (holiday cancelled by admin)
+ */
+export const isReplacementSchoolDay = (
+  dateStr: string,
+  schoolHolidays?: SchoolHoliday[]
+): SchoolHoliday | undefined => {
+  if (!dateStr || !schoolHolidays || schoolHolidays.length === 0) return undefined;
+  return schoolHolidays.find(
+    (h) => (h.isSchoolDay || h.category === 'ganti_sekolah') && dateStr >= h.dateFrom && dateStr <= h.dateTo
+  );
 };
 
 

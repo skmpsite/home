@@ -448,10 +448,11 @@ export interface SchoolHoliday {
   title: string;
   dateFrom: string; // YYYY-MM-DD
   dateTo: string;   // YYYY-MM-DD
-  category?: 'peristiwa' | 'perayaan' | 'penggal' | 'umum' | 'khas';
+  category?: 'peristiwa' | 'perayaan' | 'penggal' | 'umum' | 'khas' | 'ganti_sekolah';
   description?: string;
   createdBy?: string;
   createdAt: string;
+  isSchoolDay?: boolean; // When true, this overrides weekend/holiday to be a schooling day (Hari Bersekolah)
 }
 
 export interface IctBookingRecord {

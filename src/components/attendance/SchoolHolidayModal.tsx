@@ -32,7 +32,8 @@ const CATEGORY_MAP: Record<string, { label: string; color: string }> = {
   perayaan: { label: 'Cuti Perayaan', color: 'bg-purple-500/20 text-purple-300 border-purple-400/30' },
   penggal: { label: 'Cuti Penggal', color: 'bg-blue-500/20 text-blue-300 border-blue-400/30' },
   umum: { label: 'Cuti Umum', color: 'bg-rose-500/20 text-rose-300 border-rose-400/30' },
-  khas: { label: 'Cuti Khas', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30' }
+  khas: { label: 'Cuti Khas', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30' },
+  ganti_sekolah: { label: 'Hari Bersekolah (Cuti Dibatalkan)', color: 'bg-emerald-500/25 text-emerald-300 border-emerald-400/40' }
 };
 
 const POPULAR_SUGGESTIONS = [
@@ -71,7 +72,7 @@ export const SchoolHolidayModal: React.FC<SchoolHolidayModalProps> = ({
   const [formTitle, setFormTitle] = useState<string>('');
   const [formDateFrom, setFormDateFrom] = useState<string>(() => selectedDate || new Date().toISOString().split('T')[0]);
   const [formDateTo, setFormDateTo] = useState<string>(() => selectedDate || new Date().toISOString().split('T')[0]);
-  const [formCategory, setFormCategory] = useState<'peristiwa' | 'perayaan' | 'penggal' | 'umum' | 'khas'>('peristiwa');
+  const [formCategory, setFormCategory] = useState<'peristiwa' | 'perayaan' | 'penggal' | 'umum' | 'khas' | 'ganti_sekolah'>('peristiwa');
   const [formDescription, setFormDescription] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [successToast, setSuccessToast] = useState<string | null>(null);
@@ -114,9 +115,35 @@ export const SchoolHolidayModal: React.FC<SchoolHolidayModalProps> = ({
       isWeekend: boolean;
       weekendDayName: string;
       holiday?: SchoolHoliday;
+      isCancelledHoliday: boolean;
+      replacementDay?: SchoolHoliday;
     }> = [];
 
     const todayStr = new Date().toISOString().split('T')[0];
+
+    const evaluateDate = (dStr: string, dNum: number, isCurMonth: boolean) => {
+      const override = holidays.find(
+        (h) => (h.isSchoolDay || h.category === 'ganti_sekolah') && dStr >= h.dateFrom && dStr <= h.dateTo
+      );
+      const isCancelled = !!override;
+      const holiday = isCancelled
+        ? undefined
+        : holidays.find(
+            (h) => !h.isSchoolDay && h.category !== 'ganti_sekolah' && dStr >= h.dateFrom && dStr <= h.dateTo
+          );
+      const wk = isKedahWeekend(dStr);
+      return {
+        dateStr: dStr,
+        dayNum: dNum,
+        isCurrentMonth: isCurMonth,
+        isToday: dStr === todayStr,
+        isWeekend: wk.isWeekend,
+        weekendDayName: wk.dayName,
+        holiday,
+        isCancelledHoliday: isCancelled,
+        replacementDay: override
+      };
+    };
 
     // Previous month padding
     for (let i = firstDayIndex - 1; i >= 0; i--) {
@@ -124,33 +151,13 @@ export const SchoolHolidayModal: React.FC<SchoolHolidayModalProps> = ({
       const prevM = month === 0 ? 11 : month - 1;
       const prevY = month === 0 ? year - 1 : year;
       const dateStr = `${prevY}-${String(prevM + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const holiday = holidays.find((h) => dateStr >= h.dateFrom && dateStr <= h.dateTo);
-      const wk = isKedahWeekend(dateStr);
-      days.push({
-        dateStr,
-        dayNum: d,
-        isCurrentMonth: false,
-        isToday: dateStr === todayStr,
-        isWeekend: wk.isWeekend,
-        weekendDayName: wk.dayName,
-        holiday
-      });
+      days.push(evaluateDate(dateStr, d, false));
     }
 
     // Current month days
     for (let d = 1; d <= totalDays; d++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const holiday = holidays.find((h) => dateStr >= h.dateFrom && dateStr <= h.dateTo);
-      const wk = isKedahWeekend(dateStr);
-      days.push({
-        dateStr,
-        dayNum: d,
-        isCurrentMonth: true,
-        isToday: dateStr === todayStr,
-        isWeekend: wk.isWeekend,
-        weekendDayName: wk.dayName,
-        holiday
-      });
+      days.push(evaluateDate(dateStr, d, true));
     }
 
     // Next month padding to fill rows (multiple of 7)
@@ -160,22 +167,36 @@ export const SchoolHolidayModal: React.FC<SchoolHolidayModalProps> = ({
       const nextY = month === 11 ? year + 1 : year;
       for (let d = 1; d <= remaining; d++) {
         const dateStr = `${nextY}-${String(nextM + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        const holiday = holidays.find((h) => dateStr >= h.dateFrom && dateStr <= h.dateTo);
-        const wk = isKedahWeekend(dateStr);
-        days.push({
-          dateStr,
-          dayNum: d,
-          isCurrentMonth: false,
-          isToday: dateStr === todayStr,
-          isWeekend: wk.isWeekend,
-          weekendDayName: wk.dayName,
-          holiday
-        });
+        days.push(evaluateDate(dateStr, d, false));
       }
     }
 
     return days;
   }, [currentMonthDate, holidays]);
+
+  const handleCancelHolidayForDate = (dateStr: string) => {
+    const override: SchoolHoliday = {
+      id: `schoolday-${dateStr}-${Date.now()}`,
+      title: 'Hari Bersekolah (Cuti Dibatalkan)',
+      dateFrom: dateStr,
+      dateTo: dateStr,
+      category: 'ganti_sekolah',
+      isSchoolDay: true,
+      description: `Cuti pada tarikh ${dateStr} telah dibatalkan oleh pihak pentadbiran sekolah untuk dijadikan hari persekolahan biasa. Borang e-kehadiran waris dibaca dan dikira aktif.`,
+      createdAt: new Date().toISOString()
+    };
+    const updated = [override, ...holidays];
+    onSaveHolidays(updated);
+    showToast(`Cuti pada ${dateStr} berjaya dibatalkan! Kini dijadikan Hari Bersekolah.`);
+  };
+
+  const handleRestoreHolidayForDate = (dateStr: string) => {
+    const updated = holidays.filter(
+      (h) => !( (h.isSchoolDay || h.category === 'ganti_sekolah') && dateStr >= h.dateFrom && dateStr <= h.dateTo )
+    );
+    onSaveHolidays(updated);
+    showToast(`Status cuti pada ${dateStr} telah dikembalikan.`);
+  };
 
   const handleSelectDay = (dateStr: string, existingHoliday?: SchoolHoliday) => {
     if (existingHoliday) {
@@ -240,6 +261,8 @@ export const SchoolHolidayModal: React.FC<SchoolHolidayModalProps> = ({
       return;
     }
 
+    const isSchoolDay = formCategory === 'ganti_sekolah';
+
     if (editingId) {
       const updated = holidays.map((h) => {
         if (h.id === editingId) {
@@ -249,13 +272,14 @@ export const SchoolHolidayModal: React.FC<SchoolHolidayModalProps> = ({
             dateFrom: formDateFrom,
             dateTo: formDateTo,
             category: formCategory,
+            isSchoolDay,
             description: formDescription.trim()
           };
         }
         return h;
       });
       onSaveHolidays(updated);
-      showToast(`Cuti "${formTitle}" berjaya dikemaskini.`);
+      showToast(`Rekod "${formTitle}" berjaya dikemaskini.`);
       handleCancelEdit();
     } else {
       const newHol: SchoolHoliday = {
@@ -264,12 +288,13 @@ export const SchoolHolidayModal: React.FC<SchoolHolidayModalProps> = ({
         dateFrom: formDateFrom,
         dateTo: formDateTo,
         category: formCategory,
+        isSchoolDay,
         description: formDescription.trim(),
         createdAt: new Date().toISOString()
       };
       const updated = [newHol, ...holidays].sort((a, b) => b.dateFrom.localeCompare(a.dateFrom));
       onSaveHolidays(updated);
-      showToast(`Cuti "${newHol.title}" berjaya ditandakan.`);
+      showToast(isSchoolDay ? `Hari persekolahan "${newHol.title}" berjaya disimpan.` : `Cuti "${newHol.title}" berjaya ditandakan.`);
       setFormTitle('');
       setFormDescription('');
     }
@@ -385,16 +410,18 @@ export const SchoolHolidayModal: React.FC<SchoolHolidayModalProps> = ({
                   {calendarDays.map((day) => {
                     const isSelected = formDateFrom <= day.dateStr && formDateTo >= day.dateStr;
                     const hasCustomHoliday = !!day.holiday;
-                    const isWeekendHoliday = day.isWeekend && !hasCustomHoliday;
+                    const isWeekendHoliday = day.isWeekend && !hasCustomHoliday && !day.isCancelledHoliday;
                     return (
                       <button
                         key={day.dateStr}
                         type="button"
-                        onClick={() => handleSelectDay(day.dateStr, day.holiday)}
+                        onClick={() => handleSelectDay(day.dateStr, day.holiday || day.replacementDay)}
                         className={`min-h-[58px] sm:min-h-[64px] p-1 rounded-xl text-left transition flex flex-col justify-between relative group ${
                           day.isCurrentMonth ? 'bg-white/5 hover:bg-white/10' : 'bg-white/[0.02] text-slate-500'
                         } ${
-                          hasCustomHoliday
+                          day.isCancelledHoliday
+                            ? 'border-2 border-emerald-400 bg-emerald-500/20 shadow-sm'
+                            : hasCustomHoliday
                             ? 'border-2 border-amber-400/80 bg-amber-500/15 shadow-sm'
                             : isWeekendHoliday
                             ? 'border border-amber-400/30 bg-amber-500/5 hover:bg-amber-500/10'
@@ -406,6 +433,8 @@ export const SchoolHolidayModal: React.FC<SchoolHolidayModalProps> = ({
                             className={`text-xs font-black rounded-md px-1.5 py-0.5 ${
                               day.isToday
                                 ? 'bg-emerald-500 text-slate-950'
+                                : day.isCancelledHoliday
+                                ? 'text-emerald-300 font-black'
                                 : hasCustomHoliday
                                 ? 'text-yellow-300 font-extrabold'
                                 : isWeekendHoliday
@@ -417,6 +446,9 @@ export const SchoolHolidayModal: React.FC<SchoolHolidayModalProps> = ({
                           >
                             {day.dayNum}
                           </span>
+                          {day.isCancelledHoliday && (
+                            <span className="text-[10px] text-emerald-400 font-black">✓</span>
+                          )}
                           {hasCustomHoliday && (
                             <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                           )}
@@ -425,7 +457,14 @@ export const SchoolHolidayModal: React.FC<SchoolHolidayModalProps> = ({
                           )}
                         </div>
 
-                        {hasCustomHoliday ? (
+                        {day.isCancelledHoliday ? (
+                          <div
+                            className="text-[8px] sm:text-[8.5px] font-black text-emerald-200 truncate bg-emerald-500/35 px-1 py-0.5 rounded mt-1 w-full text-center border border-emerald-400/40"
+                            title={`Cuti Dibatalkan (Hari Bersekolah): ${day.replacementDay?.title || 'Hari Bersekolah'}`}
+                          >
+                            ✓ Sekolah (Ganti)
+                          </div>
+                        ) : hasCustomHoliday ? (
                           <div
                             className="text-[9px] font-bold text-amber-200 truncate bg-amber-500/30 px-1 py-0.5 rounded mt-1 w-full text-center border border-amber-400/30"
                             title={`${day.holiday!.title} (${day.holiday!.dateFrom} - ${day.holiday!.dateTo})`}
@@ -459,24 +498,94 @@ export const SchoolHolidayModal: React.FC<SchoolHolidayModalProps> = ({
                   <span>Hari Ini</span>
                 </div>
                 <div className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-md bg-emerald-500/30 border border-emerald-400 text-emerald-300 text-[8px] text-center flex items-center justify-center font-bold">
+                    ✓
+                  </span>
+                  <span>Cuti Dibatalkan (Hari Bersekolah)</span>
+                </div>
+                <div className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded-md bg-amber-500/40 border border-amber-400/80" />
-                  <span>Cuti Takwim/Peristiwa Ditandakan</span>
+                  <span>Cuti Takwim Ditandakan</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded-md bg-amber-500/10 border border-amber-400/30 text-[8px] text-center flex items-center justify-center">
                     🏖️
                   </span>
-                  <span>Cuti Hujung Minggu (Jumaat & Sabtu - Default Kedah)</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-md ring-2 ring-emerald-400" />
-                  <span>Tarikh Dipilih</span>
+                  <span>Cuti Hujung Minggu</span>
                 </div>
               </div>
             </div>
 
             {/* Right Column: Add / Edit Form (5 cols) */}
             <div className="lg:col-span-5 space-y-4" id="holiday-edit-form">
+              {/* Quick Action: Status Tarikh Dipilih */}
+              {(() => {
+                const override = holidays.find(
+                  (h) => (h.isSchoolDay || h.category === 'ganti_sekolah') && formDateFrom >= h.dateFrom && formDateFrom <= h.dateTo
+                );
+                const isCancelled = !!override;
+                const customHoliday = holidays.find(
+                  (h) => !h.isSchoolDay && h.category !== 'ganti_sekolah' && formDateFrom >= h.dateFrom && formDateFrom <= h.dateTo
+                );
+                const weekend = isKedahWeekend(formDateFrom);
+                const isHoliday = (customHoliday || weekend.isWeekend) && !isCancelled;
+
+                if (isCancelled) {
+                  return (
+                    <div className="p-3.5 bg-emerald-500/15 border border-emerald-400/50 rounded-2xl space-y-2 shadow-sm animate-fadeIn">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-extrabold text-emerald-200">
+                          Tarikh: <strong className="text-white">{formDateFrom}</strong>
+                        </span>
+                        <span className="text-[10px] bg-emerald-400 text-slate-950 font-black px-2 py-0.5 rounded-full">
+                          Hari Bersekolah (Cuti Dibatalkan)
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-300 leading-snug">
+                        Tarikh ini ditetapkan sebagai hari persekolahan aktif. Data borang e-kehadiran waris dibaca dan dikira secara normal.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleRestoreHolidayForDate(formDateFrom)}
+                        className="w-full py-2 px-3 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 rounded-xl text-xs font-bold border border-rose-400/30 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        <span>Kembalikan Status Cuti Asal</span>
+                      </button>
+                    </div>
+                  );
+                }
+
+                if (isHoliday) {
+                  const holidayName = customHoliday ? customHoliday.title : `Cuti Hujung Minggu (${weekend.dayName})`;
+                  return (
+                    <div className="p-3.5 bg-amber-500/15 border border-amber-400/40 rounded-2xl space-y-2 shadow-sm animate-fadeIn">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-extrabold text-amber-200 truncate">
+                          Tarikh: <strong className="text-white">{formDateFrom}</strong> ({holidayName})
+                        </span>
+                        <span className="text-[10px] bg-amber-400 text-slate-950 font-black px-2 py-0.5 rounded-full flex-shrink-0">
+                          Cuti
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-300 leading-snug">
+                        Sekiranya tarikh ini dijadikan hari bersekolah, batalkan cuti agar apabila waris mengisi borang e-kehadiran, datanya dapat dibaca.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleCancelHolidayForDate(formDateFrom)}
+                        className="w-full py-2.5 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-black shadow-md border border-emerald-300 transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
+                      >
+                        <CheckCircle2 className="w-4 h-4 text-yellow-300" />
+                        <span>Batalkan Cuti Tarikh Ini (Jadikan Hari Bersekolah)</span>
+                      </button>
+                    </div>
+                  );
+                }
+
+                return null;
+              })()}
+
               <form
                 onSubmit={handleSubmit}
                 className="bg-slate-950/80 p-5 rounded-2xl border border-emerald-500/30 shadow-xl space-y-4"
@@ -578,6 +687,7 @@ export const SchoolHolidayModal: React.FC<SchoolHolidayModalProps> = ({
                     <option value="penggal">Cuti Penggal Persekolahan</option>
                     <option value="umum">Cuti Umum / Hari Kebangsaan</option>
                     <option value="khas">Cuti Khas / Bencana</option>
+                    <option value="ganti_sekolah">🟢 Cuti Dibatalkan / Hari Ganti Persekolahan (Waris Boleh Isi Kehadiran)</option>
                   </select>
                 </div>
 

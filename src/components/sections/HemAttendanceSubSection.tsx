@@ -43,7 +43,8 @@ import {
   ExternalLink,
   Link,
   CalendarCheck2,
-  RefreshCw
+  RefreshCw,
+  RotateCcw
 } from 'lucide-react';
 import { StudentRecord, StudentAbsenceRecord, SchoolHoliday, UserRole, isTeacherRole } from '../../types';
 import {
@@ -68,6 +69,7 @@ import {
   sortClassBreakdown,
   getYearTheme,
   getActiveSchoolHoliday,
+  isReplacementSchoolDay,
   isKedahWeekend
 } from '../../utils/studentHelpers';
 import { SchoolHolidayModal } from '../attendance/SchoolHolidayModal';
@@ -167,6 +169,40 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
   const activeHoliday = useMemo(() => {
     return getActiveSchoolHoliday(selectedDate, schoolHolidays);
   }, [schoolHolidays, selectedDate]);
+
+  // Check if holiday was cancelled for selectedDate (turned into active school day by admin)
+  const replacementDay = useMemo(() => {
+    return isReplacementSchoolDay(selectedDate, schoolHolidays);
+  }, [schoolHolidays, selectedDate]);
+
+  // Handler: Admin batalkan cuti pada tarikh tertentu (cth: Sabtu / cuti dijadikan hari bersekolah)
+  // supaya borang e-kehadiran waris dibaca dan dikira aktif
+  const handleCancelHolidayForDate = (targetDate: string) => {
+    if (!onSaveSchoolHolidays) return;
+    const newOverride: SchoolHoliday = {
+      id: `schoolday-${targetDate}-${Date.now()}`,
+      title: 'Hari Bersekolah (Cuti Dibatalkan)',
+      dateFrom: targetDate,
+      dateTo: targetDate,
+      category: 'ganti_sekolah',
+      isSchoolDay: true,
+      description: `Cuti pada tarikh ${targetDate} telah dibatalkan oleh pihak pentadbiran sekolah untuk dijadikan hari persekolahan biasa. Borang e-kehadiran waris dibaca dan dikira aktif.`,
+      createdAt: new Date().toISOString()
+    };
+    const updated = [newOverride, ...(schoolHolidays || [])];
+    onSaveSchoolHolidays(updated);
+    setCloudToast(`Cuti pada ${targetDate} berjaya dibatalkan! Tarikh ini kini adalah Hari Bersekolah dan data borang e-kehadiran waris akan dibaca.`);
+  };
+
+  // Handler: Kembalikan status cuti asal
+  const handleRestoreHolidayForDate = (targetDate: string) => {
+    if (!onSaveSchoolHolidays) return;
+    const updated = (schoolHolidays || []).filter(
+      (h) => !( (h.isSchoolDay || h.category === 'ganti_sekolah') && targetDate >= h.dateFrom && targetDate <= h.dateTo )
+    );
+    onSaveSchoolHolidays(updated);
+    setCloudToast(`Status cuti pada ${targetDate} telah dikembalikan.`);
+  };
 
   // Calculate Kedah School Week Days: Ahad - Sabtu (Jumaat & Sabtu are weekend holidays)
   const schoolWeekDays = useMemo(() => {
@@ -1055,14 +1091,53 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
 
             {/* Active Holiday Banner under date picker */}
             {activeHoliday && (
-              <div className="bg-amber-500/20 border border-amber-400/40 rounded-xl px-2.5 py-1.5 text-xs text-amber-200 font-bold flex items-center justify-between gap-2 shadow-sm">
+              <div className="bg-amber-500/20 border border-amber-400/40 rounded-xl px-2.5 py-1.5 text-xs text-amber-200 font-bold flex flex-wrap items-center justify-between gap-2 shadow-sm">
                 <span className="flex items-center gap-1.5 truncate">
                   <span>🏖️</span>
                   <span className="truncate">{activeHoliday.title}</span>
                 </span>
-                <span className="text-[10px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.5 rounded flex-shrink-0">
-                  {isKedahWeekend(selectedDate).isWeekend ? 'CUTI HUJUNG MINGGU' : 'CUTI SEKOLAH'}
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <span className="text-[10px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.5 rounded">
+                    {isKedahWeekend(selectedDate).isWeekend ? 'CUTI HUJUNG MINGGU' : 'CUTI SEKOLAH'}
+                  </span>
+                  {isAuthorized && (
+                    <button
+                      type="button"
+                      onClick={() => handleCancelHolidayForDate(selectedDate)}
+                      className="px-2.5 py-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-lg text-[10px] font-black shadow-md border border-emerald-300 transition active:scale-95 flex items-center gap-1 cursor-pointer"
+                      title="Batalkan cuti tarikh ini supaya dijadikan hari bersekolah dan data borang e-kehadiran waris dapat dibaca"
+                    >
+                      <CheckCircle2 className="w-3 h-3 text-yellow-300" />
+                      <span>Batalkan Cuti</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Replacement Day Banner (Hari Bersekolah - Cuti Dibatalkan) */}
+            {replacementDay && (
+              <div className="bg-emerald-500/20 border border-emerald-400/50 rounded-xl px-2.5 py-1.5 text-xs text-emerald-200 font-bold flex flex-wrap items-center justify-between gap-2 shadow-sm animate-fadeIn">
+                <span className="flex items-center gap-1.5 truncate">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                  <span className="truncate">Hari Bersekolah (Cuti Dibatalkan)</span>
                 </span>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <span className="text-[10px] bg-emerald-400 text-slate-950 font-black px-1.5 py-0.5 rounded">
+                    SEKOLAH AKTIF
+                  </span>
+                  {isAuthorized && (
+                    <button
+                      type="button"
+                      onClick={() => handleRestoreHolidayForDate(selectedDate)}
+                      className="px-2 py-0.5 bg-rose-500/20 hover:bg-rose-500/40 text-rose-300 rounded-lg text-[10px] font-bold border border-rose-400/30 transition flex items-center gap-1 cursor-pointer"
+                      title="Kembalikan status cuti asal"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Kembalikan Cuti</span>
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
@@ -1072,6 +1147,8 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                 const isActive = selectedDate === day.dateStr;
                 const holidayForDay = getActiveSchoolHoliday(day.dateStr, schoolHolidays);
                 const isDayHoliday = !!holidayForDay;
+                const isDayCancelled = !isDayHoliday && !!isReplacementSchoolDay(day.dateStr, schoolHolidays);
+
                 return (
                   <button
                     key={day.label}
@@ -1080,19 +1157,24 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                     className={`py-1.5 px-0.5 sm:px-1 rounded-lg font-bold transition text-center flex flex-col items-center justify-center relative ${
                       isActive
                         ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/40 border border-emerald-300'
+                        : isDayCancelled
+                        ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 border border-emerald-400/40'
                         : isDayHoliday
                         ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-400/40'
                         : 'bg-white/10 hover:bg-white/20 text-slate-200 border border-white/5'
                     }`}
-                    title={`${day.label} (${day.formatted})${isDayHoliday ? ` - Cuti: ${holidayForDay.title}` : ''}`}
+                    title={`${day.label} (${day.formatted})${isDayCancelled ? ' - Hari Bersekolah (Cuti Dibatalkan)' : isDayHoliday ? ` - Cuti: ${holidayForDay.title}` : ''}`}
                   >
                     <span className="leading-tight text-[9px] sm:text-[10px] truncate max-w-full">
                       <span className="hidden sm:inline">{day.label}</span>
                       <span className="sm:hidden">{day.shortLabel}</span>
                     </span>
-                    <span className={`text-[8px] sm:text-[8.5px] opacity-90 ${isActive ? 'text-slate-900 font-extrabold' : isDayHoliday ? 'text-yellow-300 font-black' : 'text-slate-400'}`}>
-                      {isDayHoliday ? 'Cuti' : day.formatted}
+                    <span className={`text-[8px] sm:text-[8.5px] opacity-90 ${isActive ? 'text-slate-900 font-extrabold' : isDayCancelled ? 'text-emerald-300 font-black' : isDayHoliday ? 'text-yellow-300 font-black' : 'text-slate-400'}`}>
+                      {isDayCancelled ? 'Ganti' : isDayHoliday ? 'Cuti' : day.formatted}
                     </span>
+                    {isDayCancelled && !isActive && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 absolute top-0.5 right-0.5" />
+                    )}
                     {isDayHoliday && !isActive && (
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-400 absolute top-0.5 right-0.5" />
                     )}
@@ -1194,13 +1276,50 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
 
         {/* Notice Info Banner */}
         {activeHoliday ? (
-          <div className="mt-4 p-3.5 bg-gradient-to-r from-amber-950/80 via-slate-900 to-amber-950/80 rounded-xl border border-amber-400/40 flex items-start gap-2.5 text-xs text-amber-200 shadow-md">
-            <Sparkles className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
-            <p>
-              <strong>{isKedahWeekend(selectedDate).isWeekend ? 'Cuti Hujung Minggu (Default Kedah):' : 'Cuti Persekolahan:'}</strong> Tarikh ini ditandakan sebagai cuti iaitu{' '}
-              <span className="text-yellow-300 font-extrabold underline">{activeHoliday.title}</span>.
-              Sistem e-Kehadiran memaparkan status kehadiran sebagai <strong>Hadir 0%</strong> dan <strong>Tidak Hadir 100%</strong> (Semua murid bercuti & tiada sesi persekolahan beroperasi).
-            </p>
+          <div className="mt-4 p-3.5 bg-gradient-to-r from-amber-950/80 via-slate-900 to-amber-950/80 rounded-2xl border border-amber-400/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-200 shadow-md">
+            <div className="flex items-start gap-2.5">
+              <Sparkles className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <strong>{isKedahWeekend(selectedDate).isWeekend ? 'Cuti Hujung Minggu (Default Kedah):' : 'Cuti Persekolahan:'}</strong> Tarikh ini ditandakan sebagai cuti iaitu{' '}
+                <span className="text-yellow-300 font-extrabold underline">{activeHoliday.title}</span>.
+                Sistem e-Kehadiran memaparkan status sebagai <strong>Cuti (0% Hadir)</strong>.
+                {isAuthorized && (
+                  <p className="text-[11px] text-amber-300/90 mt-1">
+                    Sekiranya tarikh ini dijadikan hari persekolahan ganti, sila tekan butang <strong>Batalkan Cuti</strong> agar data borang e-kehadiran yang diisi oleh waris dapat dibaca dan dikira dalam sistem.
+                  </p>
+                )}
+              </div>
+            </div>
+            {isAuthorized && (
+              <button
+                type="button"
+                onClick={() => handleCancelHolidayForDate(selectedDate)}
+                className="px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-black shadow-md border border-emerald-300 transition active:scale-95 flex items-center justify-center gap-1.5 flex-shrink-0 cursor-pointer self-start sm:self-center"
+              >
+                <CheckCircle2 className="w-4 h-4 text-yellow-300" />
+                <span>Batalkan Cuti Tarikh Ini</span>
+              </button>
+            )}
+          </div>
+        ) : replacementDay ? (
+          <div className="mt-4 p-3.5 bg-gradient-to-r from-emerald-950/80 via-slate-900 to-teal-950/80 rounded-2xl border border-emerald-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-emerald-200 shadow-md">
+            <div className="flex items-start gap-2.5">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <strong className="text-white">Hari Bersekolah (Cuti Dibatalkan):</strong> Tarikh ini telah ditetapkan sebagai hari persekolahan biasa oleh pihak pentadbiran sekolah.
+                Semua data borang e-kehadiran waris pada tarikh ini <strong>dibaca dan direkodkan aktif</strong> ke dalam analisis kehadiran.
+              </div>
+            </div>
+            {isAuthorized && (
+              <button
+                type="button"
+                onClick={() => handleRestoreHolidayForDate(selectedDate)}
+                className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/40 text-rose-300 border border-rose-400/40 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 flex-shrink-0 cursor-pointer self-start sm:self-center"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Kembalikan Cuti</span>
+              </button>
+            )}
           </div>
         ) : (
           <div className="mt-4 p-3 bg-emerald-950/60 rounded-xl border border-emerald-500/30 flex items-start gap-2.5 text-xs text-emerald-200">
@@ -1348,21 +1467,21 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
               {/* BORANG MAKLUMAN MESRA TELEFON PINTAR (SMARTPHONE-OPTIMIZED) */}
               <form onSubmit={handleSubmitAbsenceForm} className="space-y-5 sm:space-y-6">
                 {/* Bahagian 1: Pilih Tahun, Kelas & Nama Murid */}
-                <div className="bg-slate-950/50 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/10 space-y-4 shadow-lg">
+                <div className="bg-slate-950/60 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-white/10 space-y-4 shadow-lg">
                   <div className="border-b border-white/10 pb-2.5">
-                    <h5 className="text-sm sm:text-base font-black text-emerald-400 flex items-center gap-2">
-                      <GraduationCap className="w-5 h-5 text-emerald-400" />
+                    <h5 className="text-base sm:text-lg font-black text-emerald-400 flex items-center gap-2">
+                      <GraduationCap className="w-5 h-5 text-emerald-400 flex-shrink-0" />
                       <span>1. Maklumat Murid</span>
                     </h5>
                   </div>
 
                   {/* Pilih Tahun / Tingkatan */}
                   <div className="space-y-2">
-                    <label className="block text-sm font-bold text-slate-200">
+                    <label className="block text-base font-extrabold text-white">
                       Tahun / Tingkatan <span className="text-rose-400">*</span>
                     </label>
 
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2.5">
                       {availableYears.map((yr) => {
                         const isSelected = formYear === yr;
                         return (
@@ -1376,7 +1495,7 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                               setFormStudentSearch('');
                               setFormCustomStudentName('');
                             }}
-                            className={`px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl text-sm sm:text-base font-black transition active:scale-95 cursor-pointer shadow-sm ${
+                            className={`px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl text-base sm:text-lg font-black transition active:scale-95 cursor-pointer shadow-sm ${
                               isSelected
                                 ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/40 border border-emerald-300 scale-102'
                                 : 'bg-slate-800/90 hover:bg-slate-750 text-slate-200 border border-white/10'
@@ -1391,12 +1510,12 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
 
                   {/* Pilih Kelas Murid (Muncul selepas Tahun dipilih) */}
                   {formYear && (
-                    <div className="space-y-2 pt-2 border-t border-white/5 animate-fadeIn">
-                      <label className="block text-sm font-bold text-slate-200">
+                    <div className="space-y-2 pt-3 border-t border-white/10 animate-fadeIn">
+                      <label className="block text-base font-extrabold text-white">
                         Kelas ({formYear}) <span className="text-rose-400">*</span>
                       </label>
 
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2.5">
                         {availableClassesForYear.map((cls) => {
                           const isSelected = formClass === cls;
                           return (
@@ -1409,7 +1528,7 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                                 setFormStudentSearch('');
                                 setFormCustomStudentName('');
                               }}
-                              className={`px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl text-sm sm:text-base font-black transition active:scale-95 cursor-pointer shadow-sm ${
+                              className={`px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl text-base sm:text-lg font-black transition active:scale-95 cursor-pointer shadow-sm ${
                                 isSelected
                                   ? 'bg-teal-400 text-slate-950 shadow-md shadow-teal-500/40 border border-teal-200 scale-102'
                                   : 'bg-slate-800/90 hover:bg-slate-750 text-slate-200 border border-white/10'
@@ -1427,7 +1546,7 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                   {formYear && formClass && (
                     <div className="pt-3 border-t border-white/10 space-y-3 animate-fadeIn">
                       <div className="flex flex-wrap items-center justify-between gap-1.5">
-                        <label className="block text-sm font-bold text-slate-200">
+                        <label className="block text-base font-extrabold text-white">
                           Nama Murid <span className="text-rose-400">*</span>
                         </label>
                         {formStudentId !== 'TIADA_NAMA' && (
@@ -1439,7 +1558,7 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                             }}
                             className="text-xs sm:text-sm font-bold text-amber-300 hover:text-amber-200 underline cursor-pointer transition"
                           >
-                            ✏️ Tiada dalam senarai? Taip nama manual
+                            ✏️ Tiada dalam senarai? Taip manual
                           </button>
                         )}
                       </div>
@@ -1457,7 +1576,7 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                             if (found) handleSelectStudent(found);
                           }
                         }}
-                        className="w-full bg-slate-900 border border-emerald-500/50 rounded-2xl px-4 py-3.5 text-sm sm:text-base text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-inner"
+                        className="w-full bg-slate-900 border-2 border-emerald-500/60 rounded-2xl px-4 py-3.5 sm:py-4 text-base sm:text-lg text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-inner"
                         required
                       >
                         <option value="">-- Sentuh Di Sini Untuk Pilih Nama Anak --</option>
@@ -1475,7 +1594,7 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                       {formStudentId === 'TIADA_NAMA' && (
                         <div className="p-4 bg-amber-950/40 border border-amber-500/40 rounded-2xl space-y-2 animate-fadeIn shadow-md">
                           <div className="flex items-center justify-between">
-                            <label className="block text-sm font-bold text-amber-300 flex items-center gap-1.5">
+                            <label className="block text-base font-bold text-amber-300 flex items-center gap-1.5">
                               <User className="w-4 h-4" />
                               <span>Nama Penuh Murid <span className="text-rose-400">*</span></span>
                             </label>
@@ -1495,21 +1614,21 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                             value={formCustomStudentName}
                             onChange={(e) => setFormCustomStudentName(e.target.value)}
                             placeholder="Taip nama penuh anak..."
-                            className="w-full bg-slate-900 border border-amber-400/50 rounded-xl px-4 py-3 text-sm sm:text-base text-white font-bold placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400 uppercase shadow-inner"
+                            className="w-full bg-slate-900 border border-amber-400/50 rounded-xl px-4 py-3.5 text-base sm:text-lg text-white font-bold placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400 uppercase shadow-inner"
                             required
                           />
                         </div>
                       )}
 
-                      {/* Kad Profil Murid Terpilih */}
+                      {/* Kad Ringkas Murid Terpilih */}
                       {selectedStudent && formStudentId !== 'TIADA_NAMA' && (
-                        <div className="p-4 bg-gradient-to-r from-emerald-950/60 to-slate-900 border border-emerald-500/40 rounded-2xl flex items-center gap-3.5 animate-fadeIn shadow-md">
-                          <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300 font-black text-lg flex-shrink-0 shadow-inner">
+                        <div className="p-3.5 bg-gradient-to-r from-emerald-950/60 to-slate-900 border border-emerald-500/40 rounded-2xl flex items-center gap-3.5 animate-fadeIn shadow-md">
+                          <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300 font-black text-lg flex-shrink-0 shadow-inner">
                             {selectedStudent.name.charAt(0)}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <p className="font-black text-white text-sm sm:text-base truncate">{selectedStudent.name}</p>
+                              <p className="font-black text-white text-base truncate">{selectedStudent.name}</p>
                               <span className="text-xs bg-emerald-500/25 text-emerald-300 px-2.5 py-0.5 rounded font-bold border border-emerald-400/30 flex-shrink-0">
                                 {selectedStudent.year} {selectedStudent.className}
                               </span>
@@ -1525,31 +1644,30 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                 </div>
 
                 {/* Bahagian 2: Hubungan Waris */}
-                <div className="bg-slate-950/50 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/10 space-y-3.5 shadow-lg">
+                <div className="bg-slate-950/60 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-white/10 space-y-3.5 shadow-lg">
                   <div className="border-b border-white/10 pb-2.5">
-                    <h5 className="text-sm sm:text-base font-black text-yellow-400 flex items-center gap-2">
-                      <HeartHandshake className="w-5 h-5 text-yellow-400" />
-                      <span>2. Hubungan Dengan Murid</span>
+                    <h5 className="text-base sm:text-lg font-black text-yellow-400 flex items-center gap-2">
+                      <HeartHandshake className="w-5 h-5 text-yellow-400 flex-shrink-0" />
+                      <span>2. Hubungan Waris</span>
                     </h5>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="block text-sm font-bold text-slate-200">
+                    <label className="block text-base font-extrabold text-white">
                       Pilih Hubungan <span className="text-rose-400">*</span>
                     </label>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2.5">
                       {[
-                        { label: '👩 Ibu Kandung', val: 'Ibu Kandung' },
-                        { label: '👨 Bapa Kandung', val: 'Bapa Kandung' },
+                        { label: '👩 Ibu', val: 'Ibu' },
+                        { label: '👨 Bapa', val: 'Bapa' },
                         { label: '🛡️ Penjaga Sah', val: 'Penjaga Sah' },
-                        { label: '👵 Datuk / Nenek', val: 'Datuk / Nenek' },
                         { label: '🤝 Lain-lain', val: 'Lain-lain' }
                       ].map((item) => (
                         <button
                           key={item.val}
                           type="button"
                           onClick={() => setFormParentRel(item.val)}
-                          className={`px-4 py-3 rounded-xl text-sm sm:text-base font-black transition active:scale-95 cursor-pointer shadow-sm ${
+                          className={`px-5 py-3.5 rounded-xl text-base sm:text-lg font-black transition active:scale-95 cursor-pointer shadow-sm ${
                             formParentRel === item.val
                               ? 'bg-yellow-400 text-slate-950 font-black shadow-md shadow-yellow-500/30 border border-yellow-300 scale-102'
                               : 'bg-slate-800/90 hover:bg-slate-750 text-slate-200 border border-white/10'
@@ -1563,38 +1681,35 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                 </div>
 
                 {/* Bahagian 3: Tarikh & Sebab Tidak Hadir */}
-                <div className="bg-slate-950/50 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/10 space-y-4 shadow-lg">
+                <div className="bg-slate-950/60 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-white/10 space-y-4 shadow-lg">
                   <div className="border-b border-white/10 pb-2.5">
-                    <h5 className="text-sm sm:text-base font-black text-sky-400 flex items-center gap-2">
-                      <Calendar className="w-5 h-5 text-sky-400" />
-                      <span>3. Tarikh & Sebab Tidak Hadir</span>
+                    <h5 className="text-base sm:text-lg font-black text-sky-400 flex items-center gap-2">
+                      <Calendar className="w-5 h-5 text-sky-400 flex-shrink-0" />
+                      <span>3. Tarikh & Sebab Cuti</span>
                     </h5>
                   </div>
 
                   {/* Pilihan Pantas Tarikh */}
                   <div className="space-y-2">
-                    <label className="block text-sm font-bold text-slate-200">
-                      Pilihan Pantas Tarikh:
-                    </label>
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
                         onClick={() => setQuickDatePreset('today')}
-                        className="px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-400/30 transition active:scale-95 cursor-pointer shadow-sm"
+                        className="px-4 py-2.5 rounded-xl text-sm sm:text-base font-bold bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-400/30 transition active:scale-95 cursor-pointer shadow-sm"
                       >
                         📅 Hari Ini (1 Hari)
                       </button>
                       <button
                         type="button"
                         onClick={() => setQuickDatePreset('tomorrow')}
-                        className="px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-400/30 transition active:scale-95 cursor-pointer shadow-sm"
+                        className="px-4 py-2.5 rounded-xl text-sm sm:text-base font-bold bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-400/30 transition active:scale-95 cursor-pointer shadow-sm"
                       >
                         📅 Esok (1 Hari)
                       </button>
                       <button
                         type="button"
                         onClick={() => setQuickDatePreset('twoDays')}
-                        className="px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-400/30 transition active:scale-95 cursor-pointer shadow-sm"
+                        className="px-4 py-2.5 rounded-xl text-sm sm:text-base font-bold bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-400/30 transition active:scale-95 cursor-pointer shadow-sm"
                       >
                         📅 Hari Ini & Esok (2 Hari)
                       </button>
@@ -1604,7 +1719,7 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                   {/* Input Tarikh Mula & Tarikh Akhir */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <div>
-                      <label className="block text-sm font-bold text-slate-200 mb-1.5">
+                      <label className="block text-base font-bold text-slate-200 mb-1.5">
                         Tarikh Mula <span className="text-rose-400">*</span>
                       </label>
                       <input
@@ -1616,13 +1731,13 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                             setFormDateTo(e.target.value);
                           }
                         }}
-                        className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3 text-sm sm:text-base text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-inner"
+                        className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3.5 text-base sm:text-lg text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-inner"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-bold text-slate-200 mb-1.5">
+                      <label className="block text-base font-bold text-slate-200 mb-1.5">
                         Tarikh Akhir <span className="text-rose-400">*</span>
                       </label>
                       <input
@@ -1630,23 +1745,23 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                         value={formDateTo}
                         min={formDateFrom}
                         onChange={(e) => setFormDateTo(e.target.value)}
-                        className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3 text-sm sm:text-base text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-inner"
+                        className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3.5 text-base sm:text-lg text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-inner"
                         required
                       />
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between text-xs sm:text-sm bg-slate-900/60 px-4 py-2.5 rounded-xl border border-white/5">
-                    <span className="text-slate-300 font-semibold">Tempoh Tidak Hadir:</span>
-                    <span className="font-black text-yellow-300 bg-yellow-400/10 px-3 py-1 rounded-lg border border-yellow-400/30 text-sm">
+                  <div className="flex items-center justify-between text-sm bg-slate-900/60 px-4 py-2.5 rounded-xl border border-white/5">
+                    <span className="text-slate-300 font-bold">Tempoh Tidak Hadir:</span>
+                    <span className="font-black text-yellow-300 bg-yellow-400/10 px-3.5 py-1 rounded-lg border border-yellow-400/30 text-base">
                       {calculatedDaysCount} Hari
                     </span>
                   </div>
 
                   {/* Pilihan Pantas Sebab */}
                   <div className="space-y-2 pt-2 border-t border-white/10">
-                    <label className="block text-sm font-bold text-slate-200">
-                      Pilihan Sebab (Sentuh Untuk Pilih):
+                    <label className="block text-base font-extrabold text-white">
+                      Pilih Sebab <span className="text-rose-400">*</span>
                     </label>
                     <div className="flex flex-wrap gap-2">
                       {[
@@ -1661,12 +1776,7 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                           text: 'Menghadiri temujanji rawatan doktor / klinik.'
                         },
                         {
-                          label: '🩹 Sakit Perut / Muntah',
-                          cat: 'sakit' as const,
-                          text: 'Mengalami sakit perut / muntah dan berehat di rumah.'
-                        },
-                        {
-                          label: '⚠️ Kecemasan Keluarga',
+                          label: '⚠️ Urusan Kecemasan',
                           cat: 'kecemasan' as const,
                           text: 'Berlaku urusan kecemasan keluarga terdekat.'
                         },
@@ -1674,18 +1784,13 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                           label: '🚗 Urusan Keluarga',
                           cat: 'keluarga' as const,
                           text: 'Mengikuti urusan keluarga penting di luar kawasan.'
-                        },
-                        {
-                          label: '⛈️ Bencana / Banjir',
-                          cat: 'bencana' as const,
-                          text: 'Laluan terhalang akibat banjir atau cuaca buruk.'
                         }
                       ].map((item, idx) => (
                         <button
                           key={idx}
                           type="button"
                           onClick={() => applyQuickReason(item.cat, item.text)}
-                          className="px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-white/10 hover:border-emerald-400/50 transition active:scale-95 cursor-pointer"
+                          className="px-4 py-3 rounded-xl text-sm sm:text-base font-bold bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-white/10 hover:border-emerald-400/50 transition active:scale-95 cursor-pointer"
                         >
                           {item.label}
                         </button>
@@ -1695,31 +1800,31 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
 
                   {/* Catatan Terperinci Sebab Tidak Hadir */}
                   <div className="space-y-1.5">
-                    <label className="block text-sm font-bold text-slate-200">
-                      Catatan Sebab Tidak Hadir <span className="text-rose-400">*</span>
+                    <label className="block text-base font-bold text-slate-200">
+                      Catatan Ringkas Sebab <span className="text-rose-400">*</span>
                     </label>
                     <textarea
                       value={formReasonDetails}
                       onChange={(e) => setFormReasonDetails(e.target.value)}
-                      rows={3}
+                      rows={2}
                       placeholder="Contoh: Demam sejak semalam dan berehat di rumah..."
-                      className="w-full bg-slate-900 border border-white/20 rounded-xl p-4 text-sm sm:text-base text-white font-medium focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-inner"
+                      className="w-full bg-slate-900 border border-white/20 rounded-xl p-4 text-base sm:text-lg text-white font-medium focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-inner"
                       required
                     />
                   </div>
                 </div>
 
                 {/* Bahagian 4: Lampiran Slip MC (Pilihan) */}
-                <div className="bg-slate-950/50 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/10 space-y-3.5 shadow-lg">
+                <div className="bg-slate-950/60 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-white/10 space-y-3.5 shadow-lg">
                   <div className="border-b border-white/10 pb-2.5">
-                    <h5 className="text-sm sm:text-base font-black text-purple-400 flex items-center gap-2">
-                      <Camera className="w-5 h-5 text-purple-400" />
+                    <h5 className="text-base sm:text-lg font-black text-purple-400 flex items-center gap-2">
+                      <Camera className="w-5 h-5 text-purple-400 flex-shrink-0" />
                       <span>4. Lampiran Slip MC / Surat Doktor (Pilihan)</span>
                     </h5>
                   </div>
 
-                  <p className="text-xs sm:text-sm text-slate-300">
-                    Jika ada surat cuti sakit atau memo klinik, boleh lampirkan di bawah (tidak wajib):
+                  <p className="text-sm text-slate-300">
+                    Sila lampirkan jika ada dokumen atau slip cuti sakit (tidak wajib):
                   </p>
 
                   {/* Hidden Native File Inputs */}
@@ -1754,10 +1859,10 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                           </div>
                         )}
                         <div className="truncate">
-                          <p className="text-sm font-bold text-white truncate">
+                          <p className="text-base font-bold text-white truncate">
                             {formAttachmentName || 'Slip_Cuti_Sakit.jpg'}
                           </p>
-                          <p className="text-xs text-emerald-400 font-semibold">✓ Dokumen / foto dilampirkan</p>
+                          <p className="text-xs sm:text-sm text-emerald-400 font-semibold">✓ Dokumen dilampirkan</p>
                         </div>
                       </div>
 
@@ -1765,7 +1870,7 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                         <button
                           type="button"
                           onClick={() => mcCameraInputRef.current?.click()}
-                          className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition text-xs sm:text-sm font-bold flex items-center gap-1.5 cursor-pointer"
+                          className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition text-sm font-bold flex items-center gap-1.5 cursor-pointer"
                           title="Tukar foto"
                         >
                           <Camera className="w-4 h-4" />
@@ -1778,7 +1883,7 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                             setFormAttachmentUrl('');
                             setFormAttachmentName('');
                           }}
-                          className="px-3 py-2 bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white rounded-xl transition flex items-center gap-1.5 text-xs sm:text-sm font-bold cursor-pointer"
+                          className="px-3.5 py-2.5 bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white rounded-xl transition flex items-center gap-1.5 text-sm font-bold cursor-pointer"
                           title="Padam lampiran"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -1794,11 +1899,11 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                         onClick={() => mcCameraInputRef.current?.click()}
                         className="p-4 sm:p-5 bg-gradient-to-br from-emerald-950/60 to-slate-900 hover:from-emerald-900/60 hover:to-slate-800 border border-emerald-500/40 hover:border-emerald-400 rounded-2xl flex items-center justify-center gap-3 transition active:scale-98 shadow-md cursor-pointer group"
                       >
-                        <div className="w-11 h-11 rounded-xl bg-emerald-500/20 group-hover:bg-emerald-500/30 text-emerald-300 flex items-center justify-center transition shadow-inner flex-shrink-0">
+                        <div className="w-12 h-12 rounded-xl bg-emerald-500/20 group-hover:bg-emerald-500/30 text-emerald-300 flex items-center justify-center transition shadow-inner flex-shrink-0">
                           <Camera className="w-6 h-6" />
                         </div>
-                        <span className="text-sm sm:text-base font-black text-white text-left">
-                          📸 Tangkap Foto Kamera
+                        <span className="text-base sm:text-lg font-black text-white text-left">
+                          📸 Ambil Gambar Kamera
                         </span>
                       </button>
 
@@ -1808,10 +1913,10 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                         onClick={() => mcGalleryInputRef.current?.click()}
                         className="p-4 sm:p-5 bg-gradient-to-br from-purple-950/60 to-slate-900 hover:from-purple-900/60 hover:to-slate-800 border border-purple-500/40 hover:border-purple-400 rounded-2xl flex items-center justify-center gap-3 transition active:scale-98 shadow-md cursor-pointer group"
                       >
-                        <div className="w-11 h-11 rounded-xl bg-purple-500/20 group-hover:bg-purple-500/30 text-purple-300 flex items-center justify-center transition shadow-inner flex-shrink-0">
+                        <div className="w-12 h-12 rounded-xl bg-purple-500/20 group-hover:bg-purple-500/30 text-purple-300 flex items-center justify-center transition shadow-inner flex-shrink-0">
                           <Upload className="w-6 h-6" />
                         </div>
-                        <span className="text-sm sm:text-base font-black text-white text-left">
+                        <span className="text-base sm:text-lg font-black text-white text-left">
                           📁 Pilih Dari Galeri / Fail
                         </span>
                       </button>
@@ -1820,8 +1925,8 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                 </div>
 
                 {/* Bahagian 5: Perakuan Waris */}
-                <div className="p-4 bg-emerald-950/40 border border-emerald-500/40 rounded-2xl shadow-sm">
-                  <label className="flex items-center gap-3 cursor-pointer">
+                <div className="p-4 sm:p-5 bg-emerald-950/40 border border-emerald-500/40 rounded-2xl shadow-sm">
+                  <label className="flex items-center gap-3.5 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={formDeclaration}
@@ -1829,7 +1934,7 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                       className="w-6 h-6 accent-emerald-500 rounded cursor-pointer flex-shrink-0"
                       required
                     />
-                    <span className="text-sm sm:text-base font-bold text-slate-100 leading-snug">
+                    <span className="text-base sm:text-lg font-bold text-slate-100 leading-snug">
                       Saya perakukan maklumat ini adalah benar dan sah.
                     </span>
                   </label>
@@ -1840,7 +1945,7 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                   <button
                     type="submit"
                     disabled={formSubmitting}
-                    className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white text-base sm:text-lg font-black shadow-xl shadow-emerald-950/60 border border-emerald-400/50 flex items-center justify-center gap-2.5 transition active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+                    className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white text-lg sm:text-xl font-black shadow-xl shadow-emerald-950/60 border border-emerald-400/50 flex items-center justify-center gap-2.5 transition active:scale-[0.98] disabled:opacity-50 cursor-pointer"
                   >
                     <Send className="w-5 h-5 text-yellow-300" />
                     <span>
@@ -1853,13 +1958,105 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                   <button
                     type="button"
                     onClick={() => setIsBorangModalOpen(false)}
-                    className="w-full py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-sm sm:text-base font-bold transition cursor-pointer border border-white/10"
+                    className="w-full py-3.5 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-base font-bold transition cursor-pointer border border-white/10"
                   >
                     Tutup Borang
                   </button>
                 </div>
               </form>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* PAPARAN KHAS WARIS / IBU BAPA (TAMPILAN APABILA BELUM LOG MASUK)           */}
+      {/* Analisis mengikut kelas hanya muncul untuk log in guru, admin & pentadbir  */}
+      {/* ========================================================================= */}
+      {!isAuthorized && (
+        <div className="bg-slate-900/90 backdrop-blur-md rounded-3xl p-6 sm:p-10 border border-emerald-500/30 shadow-2xl text-white space-y-8 animate-fadeIn">
+          {/* Hero Banner Waris */}
+          <div className="text-center max-w-2xl mx-auto space-y-4">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs sm:text-sm font-bold">
+              <FileText className="w-4 h-4 text-emerald-400" />
+              <span>Portal Makluman e-Kehadiran Rasmi SK Merbau Pulas</span>
+            </div>
+
+            <h3 className="text-2xl sm:text-3xl font-black text-white leading-tight">
+              Maklumkan Ketidakhadiran Anak Jagaan Anda
+            </h3>
+
+            <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
+              Ibu bapa dan waris boleh mengisi borang makluman ketidakhadiran murid secara terus di sini dengan pantas, mudah dan tidak perlu log masuk.
+            </p>
+
+            {/* Giant Action Button */}
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setIsBorangModalOpen(true)}
+                className="w-full sm:w-auto px-8 py-4 sm:py-5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white text-base sm:text-lg font-black shadow-xl shadow-emerald-950/60 border border-emerald-400/50 flex items-center justify-center gap-3 transition active:scale-95 cursor-pointer mx-auto group"
+              >
+                <FileText className="w-6 h-6 text-yellow-300 group-hover:scale-110 transition" />
+                <span>Buka Borang e-Kehadiran (Sentuh Sini Untuk Isi)</span>
+                <span className="text-xs bg-yellow-400 text-slate-950 px-2.5 py-1 rounded-full font-black">
+                  Percuma & Mudah
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* 3 Langkah Mudah Panduan Waris */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-white/10">
+            <div className="p-4 sm:p-5 rounded-2xl bg-slate-950/60 border border-white/10 space-y-2">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-300 font-black text-sm flex items-center justify-center border border-emerald-400/30">
+                1
+              </div>
+              <h5 className="font-extrabold text-white text-base">Pilih Tahun & Kelas</h5>
+              <p className="text-sm text-slate-300 leading-relaxed">
+                Pilih tahun dan kelas anak anda, kemudian sentuh untuk memilih nama anak daripada senarai.
+              </p>
+            </div>
+
+            <div className="p-4 sm:p-5 rounded-2xl bg-slate-950/60 border border-white/10 space-y-2">
+              <div className="w-9 h-9 rounded-xl bg-sky-500/20 text-sky-300 font-black text-sm flex items-center justify-center border border-sky-400/30">
+                2
+              </div>
+              <h5 className="font-extrabold text-white text-base">Pilih Tarikh & Sebab</h5>
+              <p className="text-sm text-slate-300 leading-relaxed">
+                Tetapkan tarikh dan sentuh pilihan sebab seperti demam atau temujanji rawatan klinik.
+              </p>
+            </div>
+
+            <div className="p-4 sm:p-5 rounded-2xl bg-slate-950/60 border border-white/10 space-y-2">
+              <div className="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-300 font-black text-sm flex items-center justify-center border border-purple-400/30">
+                3
+              </div>
+              <h5 className="font-extrabold text-white text-base">Hantar & Simpan Resit</h5>
+              <p className="text-sm text-slate-300 leading-relaxed">
+                Sistem menjana resit perakuan rasmi secara automatik sebagai bukti makluman kepada pihak sekolah.
+              </p>
+            </div>
+          </div>
+
+          {/* Teacher/Admin Access Notice */}
+          <div className="p-4 rounded-2xl bg-blue-950/40 border border-blue-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm">
+            <div className="flex items-center gap-2.5 text-blue-200">
+              <Building2 className="w-5 h-5 text-blue-400 flex-shrink-0" />
+              <span>
+                <strong>Analisis Kehadiran Mengikut Kelas:</strong> Paparan pecahan analisis setiap kelas hanya boleh diakses oleh guru, pentadbir dan admin sekolah yang telah log masuk.
+              </span>
+            </div>
+            {onOpenLogin && (
+              <button
+                type="button"
+                onClick={onOpenLogin}
+                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold flex items-center justify-center gap-1.5 transition flex-shrink-0 cursor-pointer shadow-md"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>Log Masuk Guru / Pentadbir</span>
+              </button>
+            )}
           </div>
         </div>
       )}
