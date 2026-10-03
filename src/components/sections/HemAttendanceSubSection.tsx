@@ -1231,19 +1231,21 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
             </span>
           </button>
 
-          {/* Tab Analisis Kehadiran Mengikut Kelas (Boleh dilihat oleh semua pengguna) */}
-          <button
-            type="button"
-            onClick={() => setAttendanceViewTab('analisis')}
-            className={`flex-1 sm:flex-none px-4 py-3 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition cursor-pointer ${
-              attendanceViewTab === 'analisis'
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 border border-blue-400'
-                : 'text-slate-300 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <Building2 className="w-4 h-4" />
-            <span>Analisis Mengikut Kelas ({allClassesBreakdown.length})</span>
-          </button>
+          {/* Tab Analisis Kehadiran Mengikut Kelas (Khas Untuk Guru, Admin & Pentadbir Sahaja) */}
+          {isAuthorized && (
+            <button
+              type="button"
+              onClick={() => setAttendanceViewTab('analisis')}
+              className={`flex-1 sm:flex-none px-4 py-3 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition cursor-pointer ${
+                attendanceViewTab === 'analisis'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 border border-blue-400'
+                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <Building2 className="w-4 h-4" />
+              <span>Analisis Mengikut Kelas ({allClassesBreakdown.length})</span>
+            </button>
+          )}
 
           {/* Tab Senarai Rekod & Bukti Slip MC KHAS untuk Admin dan Guru Sahaja */}
           {isAuthorized && (
@@ -1863,9 +1865,9 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 2: ANALISIS & PERATUSAN KEHADIRAN MENGIKUT KELAS                      */}
+      {/* TAB 2: ANALISIS & PERATUSAN KEHADIRAN MENGIKUT KELAS (GURU/ADMIN SAHAJA)  */}
       {/* ========================================================================= */}
-      {attendanceViewTab === 'analisis' && (
+      {isAuthorized && attendanceViewTab === 'analisis' && (
         <div className="space-y-6">
           <div className="bg-slate-900/80 backdrop-blur-md rounded-3xl p-6 sm:p-8 border border-white/15 shadow-2xl text-white space-y-6">
             {/* Header */}
