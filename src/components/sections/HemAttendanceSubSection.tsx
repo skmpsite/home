@@ -1287,53 +1287,40 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
           <div className="bg-slate-900 border sm:border-emerald-500/40 w-full max-w-3xl h-full sm:h-[94vh] sm:max-h-[94vh] sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden text-white animate-scaleUp">
             {/* Header Pop-up (Sticky di bahagian atas) */}
             <div className="p-4 sm:p-5 bg-slate-950/95 border-b border-white/10 flex items-center justify-between gap-3 flex-shrink-0 z-10">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-300 flex-shrink-0 shadow-inner">
-                  <FileText className="w-5 h-5 text-emerald-400" />
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-300 flex-shrink-0 shadow-inner">
+                  <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />
                 </div>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-bold border border-emerald-500/30">
-                      Borang Rasmi Waris
-                    </span>
-                    <span className="text-[10px] text-slate-400 hidden sm:inline">• Tanpa Log Masuk</span>
-                  </div>
-                  <h4 className="text-sm sm:text-base font-black text-white truncate">
-                    Borang Makluman Ketidakhadiran Murid
+                  <h4 className="text-base sm:text-lg font-black text-white truncate">
+                    Borang Makluman Kehadiran
                   </h4>
+                  <p className="text-xs sm:text-sm text-emerald-300 font-bold truncate">
+                    SK Merbau Pulas (Waris / Ibu Bapa)
+                  </p>
                 </div>
               </div>
 
-              {/* Butang Tindakan Header: Kongsi WhatsApp, Salin Pautan & Butang Tutup */}
-              <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+              {/* Butang Tindakan Header */}
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsShareModalOpen(true)}
-                  className="p-2 sm:px-2.5 sm:py-2 bg-emerald-600/30 hover:bg-emerald-600 text-emerald-200 hover:text-white rounded-xl border border-emerald-500/40 transition active:scale-95 flex items-center gap-1 text-xs font-bold cursor-pointer"
+                  className="p-2 sm:px-3 sm:py-2 bg-emerald-600/30 hover:bg-emerald-600 text-emerald-200 hover:text-white rounded-xl border border-emerald-500/40 transition active:scale-95 flex items-center gap-1.5 text-xs sm:text-sm font-bold cursor-pointer"
                   title="Kongsi Pautan Borang ke WhatsApp"
                 >
                   <MessageCircle className="w-4 h-4 text-emerald-300" />
-                  <span className="hidden md:inline">Kongsi</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleCopyLinkOnly()}
-                  className="p-2 sm:px-2.5 sm:py-2 bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white rounded-xl border border-white/10 transition active:scale-95 flex items-center gap-1 text-xs font-bold cursor-pointer"
-                  title="Salin Pautan"
-                >
-                  <Copy className="w-4 h-4" />
-                  <span className="hidden md:inline">Salin</span>
+                  <span className="hidden sm:inline">Kongsi</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setIsBorangModalOpen(false)}
-                  className="p-2 sm:px-3 sm:py-2 bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white rounded-xl border border-rose-500/30 transition active:scale-95 flex items-center gap-1 text-xs font-black cursor-pointer ml-1"
+                  className="p-2 sm:px-3.5 sm:py-2 bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white rounded-xl border border-rose-500/30 transition active:scale-95 flex items-center gap-1.5 text-xs sm:text-sm font-black cursor-pointer"
                   title="Tutup Borang"
                 >
-                  <X className="w-4 h-4" />
-                  <span className="hidden sm:inline">Tutup</span>
+                  <X className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span>Tutup</span>
                 </button>
               </div>
             </div>
@@ -1341,16 +1328,16 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
             {/* Badan Borang (Boleh Discroll Lancar - Fit Skrin) */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
               {isAttendanceAuthorized && (
-                <div className="p-3 bg-emerald-950/70 border border-emerald-500/40 rounded-2xl flex items-center justify-between gap-3 text-xs">
+                <div className="p-3 bg-emerald-950/70 border border-emerald-500/40 rounded-2xl flex items-center justify-between gap-3 text-xs sm:text-sm">
                   <div className="flex items-center gap-2 text-emerald-300 font-bold">
-                    <ShieldCheck className="w-4 h-4" />
+                    <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
                     <span>Disahkan: {currentLoggedInLabel}</span>
                   </div>
                 </div>
               )}
 
               {formError && (
-                <div className="p-4 bg-rose-500/20 border border-rose-500/40 rounded-2xl flex items-center gap-3 text-rose-300 text-xs sm:text-sm font-semibold animate-fadeIn">
+                <div className="p-4 bg-rose-500/20 border border-rose-500/40 rounded-2xl flex items-center gap-3 text-rose-300 text-sm font-bold animate-fadeIn">
                   <AlertCircle className="w-5 h-5 flex-shrink-0 text-rose-400" />
                   <span>{formError}</span>
                 </div>
@@ -1360,24 +1347,20 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
               <form onSubmit={handleSubmitAbsenceForm} className="space-y-5 sm:space-y-6">
                 {/* Bahagian 1: Pilih Tahun, Kelas & Nama Murid */}
                 <div className="bg-slate-950/50 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/10 space-y-4 shadow-lg">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
-                    <h5 className="text-xs sm:text-sm font-black uppercase tracking-wider text-emerald-400 flex items-center gap-2">
-                      <GraduationCap className="w-4 h-4 text-emerald-400" />
-                      <span>1. Maklumat Tahun, Kelas & Nama Murid</span>
+                  <div className="border-b border-white/10 pb-2.5">
+                    <h5 className="text-sm sm:text-base font-black text-emerald-400 flex items-center gap-2">
+                      <GraduationCap className="w-5 h-5 text-emerald-400" />
+                      <span>1. Maklumat Murid</span>
                     </h5>
-                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
-                      Langkah 1/5
-                    </span>
                   </div>
 
                   {/* Pilih Tahun / Tingkatan */}
                   <div className="space-y-2">
-                    <label className="block text-xs font-bold text-slate-300">
-                      Pilih Tahun / Tingkatan <span className="text-rose-400">*</span>
+                    <label className="block text-sm font-bold text-slate-200">
+                      Tahun / Tingkatan <span className="text-rose-400">*</span>
                     </label>
 
-                    {/* Butang Sentuh Cepat untuk Telefon Pintar */}
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap gap-2">
                       {availableYears.map((yr) => {
                         const isSelected = formYear === yr;
                         return (
@@ -1391,7 +1374,7 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                               setFormStudentSearch('');
                               setFormCustomStudentName('');
                             }}
-                            className={`px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl text-xs font-black transition active:scale-95 cursor-pointer shadow-sm ${
+                            className={`px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl text-sm sm:text-base font-black transition active:scale-95 cursor-pointer shadow-sm ${
                               isSelected
                                 ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/40 border border-emerald-300 scale-102'
                                 : 'bg-slate-800/90 hover:bg-slate-750 text-slate-200 border border-white/10'
@@ -1407,11 +1390,10 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                   {/* Pilih Kelas Murid (Muncul selepas Tahun dipilih) */}
                   {formYear && (
                     <div className="space-y-2 pt-2 border-t border-white/5 animate-fadeIn">
-                      <label className="block text-xs font-bold text-slate-300">
-                        Pilih Kelas Bagi <span className="text-emerald-300 font-bold">{formYear}</span> <span className="text-rose-400">*</span>
+                      <label className="block text-sm font-bold text-slate-200">
+                        Kelas ({formYear}) <span className="text-rose-400">*</span>
                       </label>
 
-                      {/* Butang Sentuh Cepat Kelas */}
                       <div className="flex flex-wrap gap-2">
                         {availableClassesForYear.map((cls) => {
                           const isSelected = formClass === cls;
@@ -1425,10 +1407,10 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                                 setFormStudentSearch('');
                                 setFormCustomStudentName('');
                               }}
-                              className={`px-4 py-2.5 rounded-xl text-xs font-black transition active:scale-95 cursor-pointer shadow-sm ${
+                              className={`px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl text-sm sm:text-base font-black transition active:scale-95 cursor-pointer shadow-sm ${
                                 isSelected
-                                ? 'bg-teal-400 text-slate-950 shadow-md shadow-teal-500/40 border border-teal-200 scale-102'
-                                : 'bg-slate-800/90 hover:bg-slate-750 text-slate-200 border border-white/10'
+                                  ? 'bg-teal-400 text-slate-950 shadow-md shadow-teal-500/40 border border-teal-200 scale-102'
+                                  : 'bg-slate-800/90 hover:bg-slate-750 text-slate-200 border border-white/10'
                               }`}
                             >
                               {cls}
@@ -1442,9 +1424,9 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                   {/* Pilih Nama Murid (Muncul selepas Kelas dipilih) */}
                   {formYear && formClass && (
                     <div className="pt-3 border-t border-white/10 space-y-3 animate-fadeIn">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                        <label className="block text-xs font-bold text-slate-300">
-                          Pilih Nama Murid ({filteredStudentsForForm.length} orang dalam senarai {formYear} {formClass}) <span className="text-rose-400">*</span>
+                      <div className="flex flex-wrap items-center justify-between gap-1.5">
+                        <label className="block text-sm font-bold text-slate-200">
+                          Nama Murid <span className="text-rose-400">*</span>
                         </label>
                         {formStudentId !== 'TIADA_NAMA' && (
                           <button
@@ -1453,9 +1435,9 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                               setFormStudentId('TIADA_NAMA');
                               setFormStudentSearch('Tiada nama');
                             }}
-                            className="text-[11px] font-bold text-amber-300 hover:text-amber-200 underline text-left cursor-pointer transition"
+                            className="text-xs sm:text-sm font-bold text-amber-300 hover:text-amber-200 underline cursor-pointer transition"
                           >
-                            ✏️ Tiada Dalam Senarai? Taip Nama Manual
+                            ✏️ Tiada dalam senarai? Taip nama manual
                           </button>
                         )}
                       </div>
@@ -1473,10 +1455,10 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                             if (found) handleSelectStudent(found);
                           }
                         }}
-                        className="w-full bg-slate-900 border border-emerald-500/50 rounded-2xl px-4 py-3 text-xs sm:text-sm text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-inner"
+                        className="w-full bg-slate-900 border border-emerald-500/50 rounded-2xl px-4 py-3.5 text-sm sm:text-base text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-inner"
                         required
                       >
-                        <option value="">-- Sentuh Di Sini Untuk Pilih Nama Anak Anda --</option>
+                        <option value="">-- Sentuh Di Sini Untuk Pilih Nama Anak --</option>
                         {filteredStudentsForForm.map((st) => (
                           <option key={st.id} value={st.id}>
                             {st.name}
@@ -1489,10 +1471,10 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
 
                       {/* Kotak nama untuk diisi sekiranya pengguna memilih "Tiada nama" */}
                       {formStudentId === 'TIADA_NAMA' && (
-                        <div className="p-3.5 sm:p-4 bg-amber-950/40 border border-amber-500/40 rounded-2xl space-y-2 animate-fadeIn shadow-md">
+                        <div className="p-4 bg-amber-950/40 border border-amber-500/40 rounded-2xl space-y-2 animate-fadeIn shadow-md">
                           <div className="flex items-center justify-between">
-                            <label className="block text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                              <User className="w-3.5 h-3.5" />
+                            <label className="block text-sm font-bold text-amber-300 flex items-center gap-1.5">
+                              <User className="w-4 h-4" />
                               <span>Nama Penuh Murid <span className="text-rose-400">*</span></span>
                             </label>
                             <button
@@ -1501,7 +1483,7 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                                 setFormStudentId('');
                                 setFormCustomStudentName('');
                               }}
-                              className="text-[11px] text-slate-300 hover:text-white underline cursor-pointer"
+                              className="text-xs sm:text-sm text-slate-300 hover:text-white underline cursor-pointer"
                             >
                               Pilih Dari Senarai
                             </button>
@@ -1510,30 +1492,27 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                             type="text"
                             value={formCustomStudentName}
                             onChange={(e) => setFormCustomStudentName(e.target.value)}
-                            placeholder="Sila taip nama penuh anak anda mengikut MyKid / Surat Beranak..."
-                            className="w-full bg-slate-900 border border-amber-400/50 rounded-xl px-4 py-3 text-xs sm:text-sm text-white font-bold placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400 uppercase shadow-inner"
+                            placeholder="Taip nama penuh anak..."
+                            className="w-full bg-slate-900 border border-amber-400/50 rounded-xl px-4 py-3 text-sm sm:text-base text-white font-bold placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400 uppercase shadow-inner"
                             required
                           />
-                          <p className="text-[11px] text-amber-200/80">
-                            Nama murid ini akan didaftarkan terus ke dalam rekod kehadiran kelas {formYear} {formClass}.
-                          </p>
                         </div>
                       )}
 
                       {/* Kad Profil Murid Terpilih */}
                       {selectedStudent && formStudentId !== 'TIADA_NAMA' && (
-                        <div className="p-3.5 bg-gradient-to-r from-emerald-950/60 to-slate-900 border border-emerald-500/40 rounded-2xl text-xs flex items-center gap-3 animate-fadeIn shadow-md">
-                          <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300 font-black text-base flex-shrink-0 shadow-inner">
+                        <div className="p-4 bg-gradient-to-r from-emerald-950/60 to-slate-900 border border-emerald-500/40 rounded-2xl flex items-center gap-3.5 animate-fadeIn shadow-md">
+                          <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300 font-black text-lg flex-shrink-0 shadow-inner">
                             {selectedStudent.name.charAt(0)}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <p className="font-black text-white text-xs sm:text-sm truncate">{selectedStudent.name}</p>
-                              <span className="text-[10px] bg-emerald-500/25 text-emerald-300 px-2 py-0.5 rounded font-bold border border-emerald-400/30 flex-shrink-0">
+                              <p className="font-black text-white text-sm sm:text-base truncate">{selectedStudent.name}</p>
+                              <span className="text-xs bg-emerald-500/25 text-emerald-300 px-2.5 py-0.5 rounded font-bold border border-emerald-400/30 flex-shrink-0">
                                 {selectedStudent.year} {selectedStudent.className}
                               </span>
                             </div>
-                            <p className="text-[11px] text-slate-300 truncate mt-0.5">
+                            <p className="text-xs sm:text-sm text-slate-300 truncate mt-0.5">
                               Guru Kelas: <strong className="text-emerald-200">{selectedStudent.classTeacher || 'Guru Kelas SKMP'}</strong>
                             </p>
                           </div>
@@ -1543,22 +1522,18 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                   )}
                 </div>
 
-                {/* Bahagian 2: Maklumat Waris / Penjaga (Sentuhan Mudah di Smartphone) */}
-                <div className="bg-slate-950/50 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/10 space-y-4 shadow-lg">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
-                    <h5 className="text-xs sm:text-sm font-black uppercase tracking-wider text-yellow-400 flex items-center gap-2">
-                      <HeartHandshake className="w-4 h-4 text-yellow-400" />
-                      <span>2. Maklumat Ibu Bapa / Waris Penjaga</span>
+                {/* Bahagian 2: Hubungan Waris */}
+                <div className="bg-slate-950/50 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/10 space-y-3.5 shadow-lg">
+                  <div className="border-b border-white/10 pb-2.5">
+                    <h5 className="text-sm sm:text-base font-black text-yellow-400 flex items-center gap-2">
+                      <HeartHandshake className="w-5 h-5 text-yellow-400" />
+                      <span>2. Hubungan Dengan Murid</span>
                     </h5>
-                    <span className="text-[10px] bg-yellow-400/20 text-yellow-300 font-bold px-2 py-0.5 rounded-full border border-yellow-400/30">
-                      Langkah 2/5
-                    </span>
                   </div>
 
-                  {/* Butang Cepat Hubungan Waris */}
                   <div className="space-y-2">
-                    <label className="block text-xs font-bold text-slate-300">
-                      Hubungan Dengan Murid <span className="text-rose-400">*</span>
+                    <label className="block text-sm font-bold text-slate-200">
+                      Pilih Hubungan <span className="text-rose-400">*</span>
                     </label>
                     <div className="flex flex-wrap gap-2">
                       {[
@@ -1572,7 +1547,7 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                           key={item.val}
                           type="button"
                           onClick={() => setFormParentRel(item.val)}
-                          className={`px-3.5 py-2.5 rounded-xl text-xs font-black transition active:scale-95 cursor-pointer shadow-sm ${
+                          className={`px-4 py-3 rounded-xl text-sm sm:text-base font-black transition active:scale-95 cursor-pointer shadow-sm ${
                             formParentRel === item.val
                               ? 'bg-yellow-400 text-slate-950 font-black shadow-md shadow-yellow-500/30 border border-yellow-300 scale-102'
                               : 'bg-slate-800/90 hover:bg-slate-750 text-slate-200 border border-white/10'
@@ -1582,48 +1557,42 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                         </button>
                       ))}
                     </div>
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      Sentuh salah satu pilihan di atas untuk mengesahkan hubungan anda dengan murid.
-                    </p>
                   </div>
                 </div>
 
-                {/* Bahagian 3: Tarikh & Catatan Sebab (Pantas di Telefon Pintar) */}
+                {/* Bahagian 3: Tarikh & Sebab Tidak Hadir */}
                 <div className="bg-slate-950/50 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/10 space-y-4 shadow-lg">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
-                    <h5 className="text-xs sm:text-sm font-black uppercase tracking-wider text-sky-400 flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-sky-400" />
-                      <span>3. Tarikh & Sebab Ketidakhadiran</span>
+                  <div className="border-b border-white/10 pb-2.5">
+                    <h5 className="text-sm sm:text-base font-black text-sky-400 flex items-center gap-2">
+                      <Calendar className="w-5 h-5 text-sky-400" />
+                      <span>3. Tarikh & Sebab Tidak Hadir</span>
                     </h5>
-                    <span className="text-[10px] bg-sky-400/20 text-sky-300 font-bold px-2 py-0.5 rounded-full border border-sky-400/30">
-                      Langkah 3/5
-                    </span>
                   </div>
 
-                  {/* Pilihan Pantas Tarikh di Smartphone */}
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-300">
+                  {/* Pilihan Pantas Tarikh */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-slate-200">
                       Pilihan Pantas Tarikh:
                     </label>
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
                         onClick={() => setQuickDatePreset('today')}
-                        className="px-3 py-2 rounded-xl text-xs font-bold bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-400/30 transition active:scale-95 cursor-pointer shadow-sm"
+                        className="px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-400/30 transition active:scale-95 cursor-pointer shadow-sm"
                       >
                         📅 Hari Ini (1 Hari)
                       </button>
                       <button
                         type="button"
                         onClick={() => setQuickDatePreset('tomorrow')}
-                        className="px-3 py-2 rounded-xl text-xs font-bold bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-400/30 transition active:scale-95 cursor-pointer shadow-sm"
+                        className="px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-400/30 transition active:scale-95 cursor-pointer shadow-sm"
                       >
                         📅 Esok (1 Hari)
                       </button>
                       <button
                         type="button"
                         onClick={() => setQuickDatePreset('twoDays')}
-                        className="px-3 py-2 rounded-xl text-xs font-bold bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-400/30 transition active:scale-95 cursor-pointer shadow-sm"
+                        className="px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-400/30 transition active:scale-95 cursor-pointer shadow-sm"
                       >
                         📅 Hari Ini & Esok (2 Hari)
                       </button>
@@ -1633,8 +1602,8 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                   {/* Input Tarikh Mula & Tarikh Akhir */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <div>
-                      <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                        Tarikh Mula Tidak Hadir <span className="text-rose-400">*</span>
+                      <label className="block text-sm font-bold text-slate-200 mb-1.5">
+                        Tarikh Mula <span className="text-rose-400">*</span>
                       </label>
                       <input
                         type="date"
@@ -1645,79 +1614,76 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                             setFormDateTo(e.target.value);
                           }
                         }}
-                        className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-inner"
+                        className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3 text-sm sm:text-base text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-inner"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                        Tarikh Akhir Tidak Hadir <span className="text-rose-400">*</span>
+                      <label className="block text-sm font-bold text-slate-200 mb-1.5">
+                        Tarikh Akhir <span className="text-rose-400">*</span>
                       </label>
                       <input
                         type="date"
                         value={formDateTo}
                         min={formDateFrom}
                         onChange={(e) => setFormDateTo(e.target.value)}
-                        className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-inner"
+                        className="w-full bg-slate-900 border border-white/20 rounded-xl px-4 py-3 text-sm sm:text-base text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-inner"
                         required
                       />
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between text-xs bg-slate-900/60 px-3.5 py-2 rounded-xl border border-white/5">
-                    <span className="text-slate-400">Tempoh Kiraan:</span>
-                    <span className="font-black text-yellow-300 bg-yellow-400/10 px-2.5 py-0.5 rounded-lg border border-yellow-400/30">
+                  <div className="flex items-center justify-between text-xs sm:text-sm bg-slate-900/60 px-4 py-2.5 rounded-xl border border-white/5">
+                    <span className="text-slate-300 font-semibold">Tempoh Tidak Hadir:</span>
+                    <span className="font-black text-yellow-300 bg-yellow-400/10 px-3 py-1 rounded-lg border border-yellow-400/30 text-sm">
                       {calculatedDaysCount} Hari
                     </span>
                   </div>
 
-                  {/* Butang Pantas Pilihan Sebab (Satu Sentuhan di Smartphone) */}
+                  {/* Pilihan Pantas Sebab */}
                   <div className="space-y-2 pt-2 border-t border-white/10">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-xs font-bold text-slate-300">
-                        Pilihan Pantas Sebab (Sentuh Untuk Pilih):
-                      </label>
-                      <span className="text-[11px] text-emerald-400">Pantas & Automatik</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
+                    <label className="block text-sm font-bold text-slate-200">
+                      Pilihan Sebab (Sentuh Untuk Pilih):
+                    </label>
+                    <div className="flex flex-wrap gap-2">
                       {[
                         {
-                          label: '🤒 Demam / Tidak Sihat',
+                          label: '🤒 Demam / Kurang Sihat',
                           cat: 'sakit' as const,
-                          text: 'Anak mengalami demam dan kurang sihat, dinasihatkan berehat dan dirawat di rumah.'
+                          text: 'Anak mengalami demam dan kurang sihat, dinasihatkan berehat di rumah.'
                         },
                         {
                           label: '🏥 Rawatan Klinik / Hospital',
                           cat: 'hospital' as const,
-                          text: 'Menghadiri temujanji pemeriksaan kesihatan / rawatan doktor di klinik atau hospital.'
+                          text: 'Menghadiri temujanji rawatan doktor / klinik.'
                         },
                         {
                           label: '🩹 Sakit Perut / Muntah',
                           cat: 'sakit' as const,
-                          text: 'Mengalami sakit perut / cirit-birit dan muntah, berehat di rumah sehingga pulih.'
+                          text: 'Mengalami sakit perut / muntah dan berehat di rumah.'
                         },
                         {
                           label: '⚠️ Kecemasan Keluarga',
                           cat: 'kecemasan' as const,
-                          text: 'Berlaku urusan kecemasan keluarga terdekat yang memerlukan perhatian segera.'
+                          text: 'Berlaku urusan kecemasan keluarga terdekat.'
                         },
                         {
-                          label: '🚗 Urusan Keluarga Penting',
+                          label: '🚗 Urusan Keluarga',
                           cat: 'keluarga' as const,
-                          text: 'Mengikuti urusan keluarga penting di luar kawasan yang tidak dapat dielakkan.'
+                          text: 'Mengikuti urusan keluarga penting di luar kawasan.'
                         },
                         {
                           label: '⛈️ Bencana / Banjir',
                           cat: 'bencana' as const,
-                          text: 'Laluan terhalang akibat bencana banjir / cuaca buruk yang membahayakan perjalanan.'
+                          text: 'Laluan terhalang akibat banjir atau cuaca buruk.'
                         }
                       ].map((item, idx) => (
                         <button
                           key={idx}
                           type="button"
                           onClick={() => applyQuickReason(item.cat, item.text)}
-                          className="px-2.5 py-1.5 rounded-xl text-xs bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-white/10 hover:border-emerald-400/50 transition active:scale-95 cursor-pointer"
+                          className="px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-white/10 hover:border-emerald-400/50 transition active:scale-95 cursor-pointer"
                         >
                           {item.label}
                         </button>
@@ -1726,38 +1692,32 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                   </div>
 
                   {/* Catatan Terperinci Sebab Tidak Hadir */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                      Catatan / Keterangan Sebab Tidak Hadir <span className="text-rose-400">*</span>
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-bold text-slate-200">
+                      Catatan Sebab Tidak Hadir <span className="text-rose-400">*</span>
                     </label>
                     <textarea
                       value={formReasonDetails}
                       onChange={(e) => setFormReasonDetails(e.target.value)}
                       rows={3}
-                      placeholder="Contoh: Demam panas sejak petang semalam dan telah dibawa ke Klinik Kesihatan. Berehat di rumah..."
-                      className="w-full bg-slate-900 border border-white/20 rounded-xl p-3.5 text-xs sm:text-sm text-white font-normal focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-inner"
+                      placeholder="Contoh: Demam sejak semalam dan berehat di rumah..."
+                      className="w-full bg-slate-900 border border-white/20 rounded-xl p-4 text-sm sm:text-base text-white font-medium focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow-inner"
                       required
                     />
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      Anda boleh terus menyunting teks catatan di atas mengikut keadaan sebenar anak.
-                    </p>
                   </div>
                 </div>
 
-                {/* Bahagian 4: Upload Bukti Slip Cuti Sakit (Kamera Telefon & Galeri) */}
+                {/* Bahagian 4: Lampiran Slip MC (Pilihan) */}
                 <div className="bg-slate-950/50 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/10 space-y-3.5 shadow-lg">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
-                    <h5 className="text-xs sm:text-sm font-black uppercase tracking-wider text-purple-400 flex items-center gap-2">
-                      <Camera className="w-4 h-4 text-purple-400" />
-                      <span>4. Bukti Slip Cuti Sakit (MC) / Surat Doktor</span>
+                  <div className="border-b border-white/10 pb-2.5">
+                    <h5 className="text-sm sm:text-base font-black text-purple-400 flex items-center gap-2">
+                      <Camera className="w-5 h-5 text-purple-400" />
+                      <span>4. Lampiran Slip MC / Surat Doktor (Pilihan)</span>
                     </h5>
-                    <span className="text-[10px] bg-purple-400/20 text-purple-300 font-bold px-2 py-0.5 rounded-full border border-purple-400/30">
-                      Langkah 4/5 (Pilihan)
-                    </span>
                   </div>
 
-                  <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
-                    💡 <strong>Pilihan / Tidak Wajib:</strong> Sekiranya belum berjumpa doktor atau tiada slip MC, borang tetap boleh dihantar. Jika ada surat cuti sakit atau memo klinik, sila lampirkan foto di bawah:
+                  <p className="text-xs sm:text-sm text-slate-300">
+                    Jika ada surat cuti sakit atau memo klinik, boleh lampirkan di bawah (tidak wajib):
                   </p>
 
                   {/* Hidden Native File Inputs */}
@@ -1778,8 +1738,8 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                   />
 
                   {formAttachmentUrl ? (
-                    <div className="p-3.5 bg-slate-900 rounded-2xl border border-emerald-500/40 flex items-center justify-between gap-3 shadow-md animate-fadeIn">
-                      <div className="flex items-center gap-3 overflow-hidden">
+                    <div className="p-4 bg-slate-900 rounded-2xl border border-emerald-500/40 flex items-center justify-between gap-3 shadow-md animate-fadeIn">
+                      <div className="flex items-center gap-3.5 overflow-hidden">
                         {formAttachmentUrl.startsWith('data:image') ? (
                           <img
                             src={formAttachmentUrl}
@@ -1792,22 +1752,22 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                           </div>
                         )}
                         <div className="truncate">
-                          <p className="text-xs font-bold text-white truncate">
+                          <p className="text-sm font-bold text-white truncate">
                             {formAttachmentName || 'Slip_Cuti_Sakit.jpg'}
                           </p>
-                          <p className="text-[10px] text-emerald-400 font-semibold">✓ Dokumen / foto berjaya dilampirkan</p>
+                          <p className="text-xs text-emerald-400 font-semibold">✓ Dokumen / foto dilampirkan</p>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <div className="flex items-center gap-2 flex-shrink-0">
                         <button
                           type="button"
                           onClick={() => mcCameraInputRef.current?.click()}
-                          className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition text-xs font-bold flex items-center gap-1 cursor-pointer"
+                          className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition text-xs sm:text-sm font-bold flex items-center gap-1.5 cursor-pointer"
                           title="Tukar foto"
                         >
-                          <Camera className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Tukar</span>
+                          <Camera className="w-4 h-4" />
+                          <span>Tukar</span>
                         </button>
 
                         <button
@@ -1816,70 +1776,59 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                             setFormAttachmentUrl('');
                             setFormAttachmentName('');
                           }}
-                          className="p-2 bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white rounded-xl transition flex items-center gap-1 text-xs font-bold cursor-pointer"
+                          className="px-3 py-2 bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white rounded-xl transition flex items-center gap-1.5 text-xs sm:text-sm font-bold cursor-pointer"
                           title="Padam lampiran"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Padam</span>
+                          <Trash2 className="w-4 h-4" />
+                          <span>Padam</span>
                         </button>
                       </div>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {/* Butang 1: Kamera Telefon Terus */}
+                      {/* Butang 1: Kamera Telefon */}
                       <button
                         type="button"
                         onClick={() => mcCameraInputRef.current?.click()}
-                        className="p-4 sm:p-5 bg-gradient-to-br from-emerald-950/60 to-slate-900 hover:from-emerald-900/60 hover:to-slate-855 border border-emerald-500/40 hover:border-emerald-400 rounded-2xl flex flex-col items-center justify-center gap-2 text-center transition active:scale-98 shadow-md cursor-pointer group"
+                        className="p-4 sm:p-5 bg-gradient-to-br from-emerald-950/60 to-slate-900 hover:from-emerald-900/60 hover:to-slate-800 border border-emerald-500/40 hover:border-emerald-400 rounded-2xl flex items-center justify-center gap-3 transition active:scale-98 shadow-md cursor-pointer group"
                       >
-                        <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 group-hover:bg-emerald-500/30 text-emerald-300 flex items-center justify-center transition shadow-inner">
+                        <div className="w-11 h-11 rounded-xl bg-emerald-500/20 group-hover:bg-emerald-500/30 text-emerald-300 flex items-center justify-center transition shadow-inner flex-shrink-0">
                           <Camera className="w-6 h-6" />
                         </div>
-                        <div>
-                          <span className="text-xs sm:text-sm font-black text-white block">
-                            📸 Tangkap Foto Kamera
-                          </span>
-                          <span className="text-[10.5px] text-slate-400 block mt-0.5">
-                            Ambil gambar slip MC terus dari telefon
-                          </span>
-                        </div>
+                        <span className="text-sm sm:text-base font-black text-white text-left">
+                          📸 Tangkap Foto Kamera
+                        </span>
                       </button>
 
-                      {/* Butang 2: Pilih Dari Galeri / Dokumen */}
+                      {/* Butang 2: Pilih Dari Galeri */}
                       <button
                         type="button"
                         onClick={() => mcGalleryInputRef.current?.click()}
-                        className="p-4 sm:p-5 bg-gradient-to-br from-purple-950/60 to-slate-900 hover:from-purple-900/60 hover:to-slate-855 border border-purple-500/40 hover:border-purple-400 rounded-2xl flex flex-col items-center justify-center gap-2 text-center transition active:scale-98 shadow-md cursor-pointer group"
+                        className="p-4 sm:p-5 bg-gradient-to-br from-purple-950/60 to-slate-900 hover:from-purple-900/60 hover:to-slate-800 border border-purple-500/40 hover:border-purple-400 rounded-2xl flex items-center justify-center gap-3 transition active:scale-98 shadow-md cursor-pointer group"
                       >
-                        <div className="w-12 h-12 rounded-2xl bg-purple-500/20 group-hover:bg-purple-500/30 text-purple-300 flex items-center justify-center transition shadow-inner">
+                        <div className="w-11 h-11 rounded-xl bg-purple-500/20 group-hover:bg-purple-500/30 text-purple-300 flex items-center justify-center transition shadow-inner flex-shrink-0">
                           <Upload className="w-6 h-6" />
                         </div>
-                        <div>
-                          <span className="text-xs sm:text-sm font-black text-white block">
-                            📁 Pilih Dari Galeri / PDF
-                          </span>
-                          <span className="text-[10.5px] text-slate-400 block mt-0.5">
-                            Muat naik imej tersimpan atau dokumen fail
-                          </span>
-                        </div>
+                        <span className="text-sm sm:text-base font-black text-white text-left">
+                          📁 Pilih Dari Galeri / Fail
+                        </span>
                       </button>
                     </div>
                   )}
                 </div>
 
                 {/* Bahagian 5: Perakuan Waris */}
-                <div className="p-4 bg-emerald-950/40 border border-emerald-500/40 rounded-2xl space-y-2 shadow-sm">
-                  <label className="flex items-start gap-3 cursor-pointer">
+                <div className="p-4 bg-emerald-950/40 border border-emerald-500/40 rounded-2xl shadow-sm">
+                  <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={formDeclaration}
                       onChange={(e) => setFormDeclaration(e.target.checked)}
-                      className="w-5 h-5 mt-0.5 accent-emerald-500 rounded cursor-pointer flex-shrink-0"
+                      className="w-6 h-6 accent-emerald-500 rounded cursor-pointer flex-shrink-0"
                       required
                     />
-                    <span className="text-xs text-slate-200 leading-relaxed">
-                      Saya dengan ini memperakui bahawa segala maklumat dan dokumen lampiran yang diberikan adalah benar
-                      dan sahih bagi tujuan rekod pengurusan Hal Ehwal Murid (HEM) SK Merbau Pulas.
+                    <span className="text-sm sm:text-base font-bold text-slate-100 leading-snug">
+                      Saya perakukan maklumat ini adalah benar dan sah.
                     </span>
                   </label>
                 </div>
@@ -1889,27 +1838,23 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                   <button
                     type="submit"
                     disabled={formSubmitting}
-                    className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white text-sm sm:text-base font-black shadow-xl shadow-emerald-950/60 border border-emerald-400/50 flex items-center justify-center gap-2.5 transition active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+                    className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white text-base sm:text-lg font-black shadow-xl shadow-emerald-950/60 border border-emerald-400/50 flex items-center justify-center gap-2.5 transition active:scale-[0.98] disabled:opacity-50 cursor-pointer"
                   >
                     <Send className="w-5 h-5 text-yellow-300" />
                     <span>
                       {formSubmitting
-                        ? 'Menghantar Makluman Ketidakhadiran...'
-                        : 'Hantar Makluman Ketidakhadiran Sekarang'}
+                        ? 'Menghantar Makluman...'
+                        : 'Hantar Makluman Sekarang'}
                     </span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setIsBorangModalOpen(false)}
-                    className="w-full py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-bold transition cursor-pointer border border-white/10"
+                    className="w-full py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-sm sm:text-base font-bold transition cursor-pointer border border-white/10"
                   >
-                    Batal & Tutup Paparan
+                    Tutup Borang
                   </button>
-
-                  <p className="text-center text-[11px] text-slate-400 mt-1">
-                    ✨ Pengisian borang ini adalah 100% percuma dan diselaraskan terus kepada Guru Kelas.
-                  </p>
                 </div>
               </form>
             </div>
