@@ -158,6 +158,16 @@ export function mergeAbsenceRecords(
 }
 
 /**
+ * Cantumkan dua tatasusunan rekod ketidakhadiran dengan selamat (elak rekod baru tempatan terpadam)
+ */
+export function mergeAbsenceRecordArrays(
+  existing: StudentAbsenceRecord[],
+  incoming: StudentAbsenceRecord[]
+): StudentAbsenceRecord[] {
+  return mergeAbsenceRecords(existing || [], incoming || [], []).merged;
+}
+
+/**
  * Lakukan penyegerakan lengkap dari semua punca data (Server + Firestore + Local)
  */
 export async function syncAttendanceWithAllSources(

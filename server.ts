@@ -474,7 +474,13 @@ async function startServer() {
         console.log(`[LIVE SYNC] Updated key '${key}' from ${updatedBy || 'user'} at ${new Date().toISOString()}`);
 
         if (key === 'skmp_absence_records_v1' && Array.isArray(data)) {
-          liveAttendanceRecords = data;
+          const map = new Map<string, any>();
+          liveAttendanceRecords.forEach((r: any) => { if (r && r.id) map.set(r.id, r); });
+          data.forEach((r: any) => { if (r && r.id) map.set(r.id, r); });
+          liveAttendanceRecords = Array.from(map.values()).sort((a: any, b: any) =>
+            (b.createdAt || "").localeCompare(a.createdAt || "")
+          );
+          livePortalData['skmp_absence_records_v1'].data = liveAttendanceRecords;
           attendanceLastUpdated = now;
           scheduleAttendanceSave();
         }
@@ -506,7 +512,13 @@ async function startServer() {
           broadcastSyncUpdate(k, v, now, updatedBy);
 
           if (k === 'skmp_absence_records_v1' && Array.isArray(v)) {
-            liveAttendanceRecords = v;
+            const map = new Map<string, any>();
+            liveAttendanceRecords.forEach((r: any) => { if (r && r.id) map.set(r.id, r); });
+            v.forEach((r: any) => { if (r && r.id) map.set(r.id, r); });
+            liveAttendanceRecords = Array.from(map.values()).sort((a: any, b: any) =>
+              (b.createdAt || "").localeCompare(a.createdAt || "")
+            );
+            livePortalData['skmp_absence_records_v1'].data = liveAttendanceRecords;
             attendanceLastUpdated = now;
             scheduleAttendanceSave();
           }

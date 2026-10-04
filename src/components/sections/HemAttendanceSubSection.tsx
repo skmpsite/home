@@ -716,10 +716,7 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
         verifiedAt: new Date().toISOString()
       });
 
-      // Segerak terus ke Server API, Firestore dan siarkan ke seluruh peranti serta-merta
-      pushAbsenceRecordFully(newRecord, absenceRecords).catch((err) => {
-        console.warn('Direct push absence error:', err);
-      });
+      // Rekod telah disimpan dan disegerakkan secara automatik melalui onAddAbsenceRecord
 
       setSubmittedReceipt(newRecord);
 
@@ -750,11 +747,34 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     });
   }, [absenceRecords, selectedDate]);
 
-  // Set of absent student IDs for selected date
+  // Kira bilangan murid tidak hadir yang unik untuk tarikh terpilih
+  const uniqueAbsentStudentsCount = useMemo(() => {
+    const uniqueKeys = new Set<string>();
+    dailyAbsenceRecords.forEach((rec) => {
+      const cleanId = rec.studentId ? String(rec.studentId).replace(/^stu-/, '') : '';
+      const cleanIc = rec.studentIc && rec.studentIc !== '-' ? rec.studentIc.replace(/[^0-9]/g, '') : '';
+      const cleanName = rec.studentName ? rec.studentName.trim().toLowerCase() : '';
+      const key = cleanId || cleanIc || cleanName || rec.id;
+      uniqueKeys.add(key);
+    });
+    return uniqueKeys.size;
+  }, [dailyAbsenceRecords]);
+
+  // Set padanan murid tidak hadir untuk tarikh terpilih (ID, IC, Nama)
   const absentStudentIds = useMemo(() => {
     const ids = new Set<string>();
     dailyAbsenceRecords.forEach((rec) => {
-      ids.add(rec.studentId);
+      if (rec.studentId) {
+        ids.add(rec.studentId);
+        ids.add(String(rec.studentId).replace(/^stu-/, ''));
+        ids.add(`stu-${String(rec.studentId).replace(/^stu-/, '')}`);
+      }
+      if (rec.studentIc && rec.studentIc !== '-') {
+        ids.add(rec.studentIc.replace(/[^0-9]/g, ''));
+      }
+      if (rec.studentName) {
+        ids.add(rec.studentName.trim().toLowerCase());
+      }
     });
     return ids;
   }, [dailyAbsenceRecords]);
@@ -762,7 +782,7 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
   // Total Students Enrolment
   const totalEnrolment = students.length || 375;
   // Jika hari cuti sekolah: Hadir 0% dan Tidak Hadir 100%
-  const totalAbsentCount = activeHoliday ? totalEnrolment : absentStudentIds.size;
+  const totalAbsentCount = activeHoliday ? totalEnrolment : uniqueAbsentStudentsCount;
   const totalPresentCount = activeHoliday ? 0 : Math.max(0, totalEnrolment - totalAbsentCount);
   const overallPercentage = activeHoliday
     ? '0.0'
@@ -770,7 +790,7 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     ? ((totalPresentCount / totalEnrolment) * 100).toFixed(1)
     : '100.0';
 
-  // Classes list and breakdown
+  // Classes list and breakdown dengan padanan pintar murid (ID, IC, Nama, Manual)
   const allClassesBreakdown = useMemo(() => {
     const classMap: Record<
       string,
@@ -785,6 +805,8 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
         percentage: string;
       }
     > = {};
+
+    const matchedRecordIds = new Set<string>();
 
     students.forEach((s) => {
       const key = `${s.year} - ${s.className}`;
@@ -801,8 +823,56 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
         };
       }
       classMap[key].total += 1;
-      if (absentStudentIds.has(s.id)) {
+
+      // Padanan pintar murid tidak hadir (ID langsung, tanpa 'stu-', IC, atau nama)
+      const matchingRec = dailyAbsenceRecords.find((rec) => {
+        if (!rec) return false;
+        if (rec.studentId === s.id) return true;
+        const recCleanId = rec.studentId ? String(rec.studentId).replace(/^stu-/, '') : '';
+        const sCleanId = s.id ? String(s.id).replace(/^stu-/, '') : '';
+        if (recCleanId && sCleanId && recCleanId === sCleanId) return true;
+        const recCleanIc = rec.studentIc ? String(rec.studentIc).replace(/[^0-9]/g, '') : '';
+        const sCleanIc = s.ic ? String(s.ic).replace(/[^0-9]/g, '') : '';
+        if (recCleanIc && sCleanIc && recCleanIc === sCleanIc) return true;
+        if (rec.studentName && s.name && rec.studentName.trim().toLowerCase() === s.name.trim().toLowerCase()) return true;
+        return false;
+      });
+
+      if (matchingRec) {
+        matchedRecordIds.add(matchingRec.id);
         classMap[key].absentStudents.push(s);
+      }
+    });
+
+    // Masukkan rekod ketidakhadiran yang belum dipadankan (cth. murid manual/belum tersenarai) ke dalam kelas mereka
+    dailyAbsenceRecords.forEach((rec) => {
+      if (!matchedRecordIds.has(rec.id)) {
+        const key = `${rec.year || 'LAIN-LAIN'} - ${rec.className || 'AM'}`;
+        if (!classMap[key]) {
+          classMap[key] = {
+            year: rec.year || 'LAIN-LAIN',
+            className: rec.className || 'AM',
+            classTeacher: 'Guru Kelas',
+            total: 0,
+            absentStudents: [],
+            presentCount: 0,
+            absentCount: 0,
+            percentage: '100.0'
+          };
+        }
+        classMap[key].total += 1;
+        classMap[key].absentStudents.push({
+          id: rec.studentId || rec.id,
+          bil: 0,
+          name: rec.studentName,
+          ic: rec.studentIc || '-',
+          gender: 'LELAKI',
+          year: rec.year,
+          className: rec.className,
+          classTeacher: classMap[key]?.classTeacher || 'Guru Kelas',
+          parent1Name: rec.parentName,
+          parent1Phone: rec.parentPhone
+        });
       }
     });
 
@@ -825,7 +895,7 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     });
 
     return sortClassBreakdown(breakdownList);
-  }, [students, absentStudentIds, activeHoliday]);
+  }, [students, dailyAbsenceRecords, activeHoliday]);
 
   // Generate Direct Link to Form
   const getFormDirectUrl = (classKey?: string) => {
@@ -2293,9 +2363,22 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                         )
                         .sort((a, b) => a.name.localeCompare(b.name))
                         .map((st, idx) => {
-                          const isAbsent = absentStudentIds.has(st.id);
+                          const isAbsent =
+                            absentStudentIds.has(st.id) ||
+                            absentStudentIds.has(String(st.id).replace(/^stu-/, '')) ||
+                            (st.ic ? absentStudentIds.has(st.ic.replace(/[^0-9]/g, '')) : false) ||
+                            (st.name ? absentStudentIds.has(st.name.trim().toLowerCase()) : false);
+
                           const absenceDetails = isAbsent
-                            ? dailyAbsenceRecords.find((r) => r.studentId === st.id)
+                            ? dailyAbsenceRecords.find((r) => {
+                                if (r.studentId === st.id) return true;
+                                const rClean = r.studentId ? String(r.studentId).replace(/^stu-/, '') : '';
+                                const stClean = st.id ? String(st.id).replace(/^stu-/, '') : '';
+                                if (rClean && stClean && rClean === stClean) return true;
+                                if (r.studentIc && st.ic && r.studentIc.replace(/[^0-9]/g, '') === st.ic.replace(/[^0-9]/g, '')) return true;
+                                if (r.studentName && st.name && r.studentName.trim().toLowerCase() === st.name.trim().toLowerCase()) return true;
+                                return false;
+                              })
                             : null;
 
                           return (

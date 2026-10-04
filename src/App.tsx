@@ -96,7 +96,8 @@ import {
   startLiveAttendanceSync,
   syncAttendanceWithAllSources,
   pushAbsenceRecordFully,
-  deleteAbsenceRecordFully
+  deleteAbsenceRecordFully,
+  mergeAbsenceRecordArrays
 } from './utils/attendanceSync';
 import { initUniversalSync, syncSave, SYNC_KEYS } from './utils/universalSync';
 import { initialUbkRph } from './data/initialUbkData';
@@ -623,9 +624,10 @@ export default function App() {
       onAbsenceRecordsChange: (records) => {
         if (Array.isArray(records)) {
           setAbsenceRecords((prev) => {
-            if (JSON.stringify(prev) === JSON.stringify(records)) return prev;
-            updateIncomingLocal(KEYS.ABSENCE_RECORDS, records);
-            return records;
+            const merged = mergeAbsenceRecordArrays(prev, records);
+            if (JSON.stringify(prev) === JSON.stringify(merged)) return prev;
+            updateIncomingLocal(KEYS.ABSENCE_RECORDS, merged);
+            return merged;
           });
         }
       },
@@ -708,7 +710,7 @@ export default function App() {
       refreshFromGoogleSheets();
       syncAttendanceWithAllSources((records) => {
         if (Array.isArray(records) && records.length > 0) {
-          setAbsenceRecords(records);
+          setAbsenceRecords((prev) => mergeAbsenceRecordArrays(prev, records));
         }
       }).catch(() => {});
       fetchUbkRphFromFirestore().then((cloudRph) => {
@@ -720,7 +722,7 @@ export default function App() {
 
     // 5. Penyelarasan masa nyata pintar e-Kehadiran (Server API + Firestore + Cross-Device)
     const unsubAttendanceSync = startLiveAttendanceSync((updatedRecords) => {
-      setAbsenceRecords(updatedRecords);
+      setAbsenceRecords((prev) => mergeAbsenceRecordArrays(prev, updatedRecords));
     });
 
     // 6. Enjin Universal Sync Silang Semua Peranti (UBK, e-RPH, PIBG, HEM, Staff, Berita, dsb)
@@ -742,7 +744,9 @@ export default function App() {
       if (key === 'skmp_hem_v1') setHemData(data);
       if (key === 'skmp_nav_menu_v1') setNavigationMenu(data);
       if (key === 'skmp_teacher_links_v1') setTeacherLinks(data);
-      if (key === 'skmp_absence_records_v1') setAbsenceRecords(data);
+      if (key === 'skmp_absence_records_v1' && Array.isArray(data)) {
+        setAbsenceRecords((prev) => mergeAbsenceRecordArrays(prev, data));
+      }
       if (key === 'skmp_students_v1') setStudentsList(data);
       if (key === 'skmp_pibg_comm_v1') setPibgCommittee(data);
       if (key === 'skmp_pibg_act_v1') setPibgActivities(data);
@@ -805,13 +809,9 @@ export default function App() {
       const customEvt = e as CustomEvent<StudentAbsenceRecord[]>;
       if (Array.isArray(customEvt.detail)) {
         setAbsenceRecords((prev) => {
-          if (
-            prev.length === customEvt.detail.length &&
-            prev.every((p, idx) => p.id === customEvt.detail[idx]?.id && p.status === customEvt.detail[idx]?.status)
-          ) {
-            return prev;
-          }
-          return customEvt.detail;
+          const merged = mergeAbsenceRecordArrays(prev, customEvt.detail);
+          if (JSON.stringify(prev) === JSON.stringify(merged)) return prev;
+          return merged;
         });
       }
     };
@@ -846,7 +846,7 @@ export default function App() {
         attendanceBc = new BroadcastChannel(BROADCAST_CHANNEL_ATTENDANCE);
         attendanceBc.onmessage = (ev) => {
           if (ev.data?.type === 'ATTENDANCE_UPDATED' && Array.isArray(ev.data.records)) {
-            setAbsenceRecords(ev.data.records);
+            setAbsenceRecords((prev) => mergeAbsenceRecordArrays(prev, ev.data.records));
           }
         };
       } catch {}
@@ -1079,31 +1079,40 @@ export default function App() {
       createdAt: new Date().toISOString()
     };
 
-    const optimistic = [completeRecord, ...absenceRecords];
-    setAbsenceRecords(optimistic);
-    pushAbsenceRecordFully(completeRecord, absenceRecords).then((updated) => {
-      setAbsenceRecords(updated);
-    }).catch(() => {});
-    autoPushToCloud({ absenceRecords: optimistic });
+    setAbsenceRecords((prev) => {
+      const merged = [completeRecord, ...prev.filter((r) => r.id !== completeRecord.id)];
+      saveAbsenceRecords(merged, true, true);
+      pushAbsenceRecordFully(completeRecord, merged).then((synced) => {
+        setAbsenceRecords((p) => mergeAbsenceRecordArrays(p, synced));
+      }).catch(() => {});
+      autoPushToCloud({ absenceRecords: merged });
+      return merged;
+    });
+
     return completeRecord;
   };
 
   const handleUpdateAbsenceRecord = (updatedRecord: StudentAbsenceRecord) => {
-    const updated = absenceRecords.map((r) => (r.id === updatedRecord.id ? updatedRecord : r));
-    setAbsenceRecords(updated);
-    pushAbsenceRecordFully(updatedRecord, updated).then((synced) => {
-      setAbsenceRecords(synced);
-    }).catch(() => {});
-    autoPushToCloud({ absenceRecords: updated });
+    setAbsenceRecords((prev) => {
+      const updated = prev.map((r) => (r.id === updatedRecord.id ? updatedRecord : r));
+      saveAbsenceRecords(updated, true, true);
+      pushAbsenceRecordFully(updatedRecord, updated).then((synced) => {
+        setAbsenceRecords((p) => mergeAbsenceRecordArrays(p, synced));
+      }).catch(() => {});
+      autoPushToCloud({ absenceRecords: updated });
+      return updated;
+    });
   };
 
   const handleDeleteAbsenceRecord = (id: string) => {
-    const updated = absenceRecords.filter((r) => r.id !== id);
-    setAbsenceRecords(updated);
-    deleteAbsenceRecordFully(id, absenceRecords).then((synced) => {
-      setAbsenceRecords(synced);
-    }).catch(() => {});
-    autoPushToCloud({ absenceRecords: updated });
+    setAbsenceRecords((prev) => {
+      const updated = prev.filter((r) => r.id !== id);
+      deleteAbsenceRecordFully(id, prev).then((synced) => {
+        setAbsenceRecords(synced);
+      }).catch(() => {});
+      autoPushToCloud({ absenceRecords: updated });
+      return updated;
+    });
   };
 
   const handleSaveSchoolHolidays = (holidays: SchoolHoliday[]) => {
