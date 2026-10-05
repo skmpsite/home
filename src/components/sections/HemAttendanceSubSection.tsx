@@ -272,6 +272,9 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
   // Warning modal for duplicate submission
   const [duplicateWarningRecord, setDuplicateWarningRecord] = useState<StudentAbsenceRecord | null>(null);
 
+  // Modal pengesahan pemadaman rekod ketidakhadiran (elak sekatan iframe browser confirm)
+  const [recordToDelete, setRecordToDelete] = useState<StudentAbsenceRecord | null>(null);
+
   // Modal pop-up fit-skrin untuk Borang Makluman Ketidakhadiran Murid (Waris)
   const [isBorangModalOpen, setIsBorangModalOpen] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -2756,13 +2759,9 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                         {isAuthorized && onDeleteAbsenceRecord && (
                           <button
                             type="button"
-                            onClick={() => {
-                              if (confirm(`Adakah anda pasti ingin memadam rekod ketidakhadiran bagi ${rec.studentName}?`)) {
-                                onDeleteAbsenceRecord(rec.id);
-                              }
-                            }}
+                            onClick={() => setRecordToDelete(rec)}
                             className="p-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white transition"
-                            title="Padam rekod"
+                            title="Padam rekod ketidakhadiran ini"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -3022,6 +3021,74 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
               >
                 <CheckCircle2 className="w-4 h-4 text-emerald-200" />
                 <span>Kemaskini Rekod Sedia Ada</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 3B: PENGESAHAN PADAM REKOD KETIDAKHADIRAN OLEH ADMIN / GURU         */}
+      {/* ========================================================================= */}
+      {recordToDelete && (
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border-2 border-rose-500/60 rounded-3xl p-6 sm:p-7 max-w-md w-full text-white shadow-2xl space-y-4 animate-scaleUp">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 flex-shrink-0 shadow-lg shadow-rose-500/20">
+                <Trash2 className="w-6 h-6 text-rose-400" />
+              </div>
+              <div className="flex-1">
+                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500/20 text-rose-300 border border-rose-500/30 uppercase mb-1">
+                  <span>Tindakan Pentadbir</span>
+                </div>
+                <h4 className="text-lg font-black text-white leading-tight">
+                  Padam Rekod Kehadiran?
+                </h4>
+                <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                  Adakah anda pasti ingin memadam rekod ini? Rekod akan dikeluarkan sepenuhnya daripada pangkalan data pelayan dan paparan.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-slate-950/80 rounded-2xl border border-white/10 space-y-2 text-xs">
+              <div className="flex justify-between border-b border-white/5 pb-1.5">
+                <span className="text-slate-400">No. Rujukan:</span>
+                <span className="font-mono font-bold text-yellow-300">{recordToDelete.refNo}</span>
+              </div>
+              <div className="flex justify-between border-b border-white/5 pb-1.5">
+                <span className="text-slate-400">Nama Murid:</span>
+                <span className="font-bold text-white text-right">{recordToDelete.studentName}</span>
+              </div>
+              <div className="flex justify-between border-b border-white/5 pb-1.5">
+                <span className="text-slate-400">Kelas / Tahun:</span>
+                <span className="font-semibold text-emerald-300">{recordToDelete.year} - {recordToDelete.className}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Tarikh Terlibat:</span>
+                <span className="text-sky-300 font-semibold">{recordToDelete.dateFrom} {recordToDelete.dateTo !== recordToDelete.dateFrom ? `hingga ${recordToDelete.dateTo}` : ''}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setRecordToDelete(null)}
+                className="w-1/2 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-bold transition text-center"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onDeleteAbsenceRecord && recordToDelete) {
+                    onDeleteAbsenceRecord(recordToDelete.id);
+                  }
+                  setRecordToDelete(null);
+                }}
+                className="w-1/2 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white text-xs font-black transition shadow-lg shadow-rose-600/30 flex items-center justify-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Ya, Padam Rekod</span>
               </button>
             </div>
           </div>

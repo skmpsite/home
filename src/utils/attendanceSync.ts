@@ -2,11 +2,14 @@ import { StudentAbsenceRecord } from '../types';
 import {
   fetchAbsenceRecordsFromFirestore,
   pushAbsenceRecordsToFirestore,
-  pushSingleAbsenceRecordToFirestore
+  pushSingleAbsenceRecordToFirestore,
+  deleteAbsenceRecordFromFirestore
 } from './firebaseRealtime';
 import {
   getAbsenceRecords,
-  saveAbsenceRecords
+  saveAbsenceRecords,
+  getDeletedAbsenceIds,
+  recordDeletedAbsenceId
 } from './storage';
 
 let lastKnownServerTimestamp = 0;
@@ -101,17 +104,18 @@ export function mergeAbsenceRecords(
   firestoreList: StudentAbsenceRecord[]
 ): { merged: StudentAbsenceRecord[]; hasNewFromServerOrCloud: boolean; hasLocalOnly: boolean } {
   const map = new Map<string, StudentAbsenceRecord>();
+  const deletedIds = getDeletedAbsenceIds();
 
-  // 1. Masukkan rekod tempatan
+  // 1. Masukkan rekod tempatan (abaikan rekod yang telah dipadam)
   localList.forEach((r) => {
-    if (r && r.id) map.set(r.id, r);
+    if (r && r.id && !deletedIds.has(r.id)) map.set(r.id, r);
   });
 
   let hasNewFromServerOrCloud = false;
 
-  // 2. Gabungkan rekod pelayan (Server API)
+  // 2. Gabungkan rekod pelayan (Server API) - abaikan rekod yang telah dipadam
   serverList.forEach((r) => {
-    if (!r || !r.id) return;
+    if (!r || !r.id || deletedIds.has(r.id)) return;
     if (!map.has(r.id)) {
       map.set(r.id, r);
       hasNewFromServerOrCloud = true;
@@ -128,9 +132,9 @@ export function mergeAbsenceRecords(
     }
   });
 
-  // 3. Gabungkan rekod Firestore
+  // 3. Gabungkan rekod Firestore - abaikan rekod yang telah dipadam
   firestoreList.forEach((r) => {
-    if (!r || !r.id) return;
+    if (!r || !r.id || deletedIds.has(r.id)) return;
     if (!map.has(r.id)) {
       map.set(r.id, r);
       hasNewFromServerOrCloud = true;
@@ -249,18 +253,31 @@ export async function pushAbsenceRecordFully(
 }
 
 /**
- * Tolak padam rekod ke semua pangkalan data
+ * Tolak padam rekod ke semua pangkalan data secara serentak & kekal
  */
 export async function deleteAbsenceRecordFully(
   id: string,
   currentList: StudentAbsenceRecord[]
 ): Promise<StudentAbsenceRecord[]> {
-  const updatedList = currentList.filter((r) => r.id !== id);
+  // 1. Rekodkan ID yang dipadam ke dalam ingatan tombstone tempatan
+  recordDeletedAbsenceId(id);
+
+  // 2. Kemaskini senarai tempatan dan simpan serta-merta
+  const updatedList = (currentList || []).filter((r) => r && r.id !== id);
   saveAbsenceRecords(updatedList, true, true);
 
-  deleteAttendanceFromServer(id).catch(() => {});
+  // 3. Padam daripada Server API dan Firebase Firestore serentak
+  try {
+    await Promise.all([
+      deleteAttendanceFromServer(id).catch((e) => console.warn('[DELETE SYNC] Server delete error:', e)),
+      deleteAbsenceRecordFromFirestore(id).catch((e) => console.warn('[DELETE SYNC] Firestore delete error:', e))
+    ]);
+  } catch {
+    // Abaikan ralat rangkaian kecil
+  }
+
+  // 4. Pastikan senarai terkini disegerakkan ke Server API
   saveAttendanceToServer(updatedList).catch(() => {});
-  pushAbsenceRecordsToFirestore(updatedList).catch(() => {});
 
   return updatedList;
 }

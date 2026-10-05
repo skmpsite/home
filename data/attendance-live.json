@@ -25,30 +25,6 @@
       "dateTo": "2026-10-05"
     },
     {
-      "year": "TAHUN DUA",
-      "status": "disahkan",
-      "createdAt": "2026-10-05T05:28:01.468Z",
-      "attachmentUrl": "",
-      "id": "abs_1791178081467_va5qe",
-      "verifiedAt": "2026-10-05T05:28:01.467Z",
-      "parentPhone": "0184715396",
-      "studentIc": "180625020724",
-      "attachmentName": "",
-      "dateFrom": "2026-10-03",
-      "reasonDetails": "Mengikuti urusan keluarga penting di luar kawasan.",
-      "parentRelationship": "Ibu",
-      "studentId": "230201016111",
-      "updatedAt": "2026-10-05T05:31:20.499Z",
-      "reasonCategory": "keluarga",
-      "verifiedBy": "Waris Murid (Borang Atas Talian)",
-      "parentName": "MOHD ABU HASHIM BIN SHAFIE",
-      "dateTo": "2026-10-05",
-      "studentName": "NUR HANIS SYAQILA BINTI MOHD ABU HASHIM",
-      "className": "IBNU SINA",
-      "daysCount": 3,
-      "refNo": "KHD-20261005-4303"
-    },
-    {
       "createdAt": "2026-10-05T05:06:37.979Z",
       "verifiedAt": "2026-10-05T05:06:37.979Z",
       "attachmentUrl": "",
@@ -1388,5 +1364,5 @@
       "year": "TAHUN ENAM"
     }
   ],
-  "lastUpdated": "2026-10-05T05:36:14.816Z"
+  "lastUpdated": "2026-10-05T05:47:06.855Z"
 }

@@ -219,11 +219,40 @@ async function startServer() {
   let liveAttendanceRecords: any[] = [];
   let attendanceLastUpdated = Date.now();
 
+  const DELETED_ATTENDANCE_FILE = path.join(DATA_DIR, "deleted-attendance-ids.json");
+  let deletedAttendanceIds: Set<string> = new Set();
+
+  if (fs.existsSync(DELETED_ATTENDANCE_FILE)) {
+    try {
+      const fileData = JSON.parse(fs.readFileSync(DELETED_ATTENDANCE_FILE, "utf-8"));
+      if (Array.isArray(fileData)) {
+        deletedAttendanceIds = new Set(fileData);
+      }
+    } catch (e) {
+      console.error("Error reading deleted-attendance-ids.json:", e);
+    }
+  }
+
+  const saveDeletedAttendanceIds = () => {
+    try {
+      fs.writeFile(
+        DELETED_ATTENDANCE_FILE,
+        JSON.stringify(Array.from(deletedAttendanceIds), null, 2),
+        "utf-8",
+        (err) => {
+          if (err) console.error("Error saving deleted-attendance-ids.json:", err);
+        }
+      );
+    } catch (e) {
+      console.error("Error saving deleted-attendance-ids.json:", e);
+    }
+  };
+
   if (fs.existsSync(ATTENDANCE_FILE)) {
     try {
       const fileData = JSON.parse(fs.readFileSync(ATTENDANCE_FILE, "utf-8"));
       if (fileData && Array.isArray(fileData.records)) {
-        liveAttendanceRecords = fileData.records;
+        liveAttendanceRecords = fileData.records.filter((r: any) => r && r.id && !deletedAttendanceIds.has(r.id));
         attendanceLastUpdated = fileData.lastUpdated || Date.now();
       }
     } catch (e) {
@@ -293,12 +322,13 @@ async function startServer() {
   const portalAttendanceRecords = livePortalData['skmp_absence_records_v1']?.data;
   if (Array.isArray(portalAttendanceRecords) && portalAttendanceRecords.length > 0) {
     const map = new Map<string, any>();
-    liveAttendanceRecords.forEach((r: any) => { if (r && r.id) map.set(r.id, r); });
-    portalAttendanceRecords.forEach((r: any) => { if (r && r.id) map.set(r.id, r); });
+    liveAttendanceRecords.forEach((r: any) => { if (r && r.id && !deletedAttendanceIds.has(r.id)) map.set(r.id, r); });
+    portalAttendanceRecords.forEach((r: any) => { if (r && r.id && !deletedAttendanceIds.has(r.id)) map.set(r.id, r); });
     liveAttendanceRecords = Array.from(map.values()).sort((a: any, b: any) =>
       (b.createdAt || "").localeCompare(a.createdAt || "")
     );
   }
+  liveAttendanceRecords = liveAttendanceRecords.filter((r: any) => r && r.id && !deletedAttendanceIds.has(r.id));
   livePortalData['skmp_absence_records_v1'] = {
     data: liveAttendanceRecords,
     updatedAt: attendanceLastUpdated,
@@ -474,10 +504,8 @@ async function startServer() {
         console.log(`[LIVE SYNC] Updated key '${key}' from ${updatedBy || 'user'} at ${new Date().toISOString()}`);
 
         if (key === 'skmp_absence_records_v1' && Array.isArray(data)) {
-          const map = new Map<string, any>();
-          liveAttendanceRecords.forEach((r: any) => { if (r && r.id) map.set(r.id, r); });
-          data.forEach((r: any) => { if (r && r.id) map.set(r.id, r); });
-          liveAttendanceRecords = Array.from(map.values()).sort((a: any, b: any) =>
+          const filtered = data.filter((r: any) => r && r.id && !deletedAttendanceIds.has(r.id));
+          liveAttendanceRecords = filtered.sort((a: any, b: any) =>
             (b.createdAt || "").localeCompare(a.createdAt || "")
           );
           livePortalData['skmp_absence_records_v1'].data = liveAttendanceRecords;
@@ -512,10 +540,8 @@ async function startServer() {
           broadcastSyncUpdate(k, v, now, updatedBy);
 
           if (k === 'skmp_absence_records_v1' && Array.isArray(v)) {
-            const map = new Map<string, any>();
-            liveAttendanceRecords.forEach((r: any) => { if (r && r.id) map.set(r.id, r); });
-            v.forEach((r: any) => { if (r && r.id) map.set(r.id, r); });
-            liveAttendanceRecords = Array.from(map.values()).sort((a: any, b: any) =>
+            const filtered = v.filter((r: any) => r && r.id && !deletedAttendanceIds.has(r.id));
+            liveAttendanceRecords = filtered.sort((a: any, b: any) =>
               (b.createdAt || "").localeCompare(a.createdAt || "")
             );
             livePortalData['skmp_absence_records_v1'].data = liveAttendanceRecords;
@@ -841,14 +867,13 @@ async function startServer() {
       const { records, record } = req.body;
       let hasChanges = false;
       if (Array.isArray(records)) {
-        const map = new Map<string, any>();
-        liveAttendanceRecords.forEach((r: any) => { if (r && r.id) map.set(r.id, r); });
-        records.forEach((r: any) => { if (r && r.id) map.set(r.id, r); });
-        liveAttendanceRecords = Array.from(map.values()).sort((a: any, b: any) =>
+        // Hanya rekod yang bukan dalam deletedAttendanceIds
+        const filtered = records.filter((r: any) => r && r.id && !deletedAttendanceIds.has(r.id));
+        liveAttendanceRecords = filtered.sort((a: any, b: any) =>
           (b.createdAt || "").localeCompare(a.createdAt || "")
         );
         hasChanges = true;
-      } else if (record && record.id) {
+      } else if (record && record.id && !deletedAttendanceIds.has(record.id)) {
         const idx = liveAttendanceRecords.findIndex((r: any) => r.id === record.id);
         if (idx >= 0) {
           liveAttendanceRecords[idx] = record;
@@ -888,9 +913,12 @@ async function startServer() {
   app.delete("/api/attendance/:id", (req, res) => {
     try {
       const { id } = req.params;
+      deletedAttendanceIds.add(id);
+      saveDeletedAttendanceIds();
+
       const initialLen = liveAttendanceRecords.length;
       liveAttendanceRecords = liveAttendanceRecords.filter((r: any) => r.id !== id);
-      if (liveAttendanceRecords.length !== initialLen) {
+      if (liveAttendanceRecords.length !== initialLen || true) {
         attendanceLastUpdated = Date.now();
         scheduleAttendanceSave();
 

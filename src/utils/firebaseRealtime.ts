@@ -6,6 +6,7 @@ import {
   setDoc,
   getDoc,
   getDocs,
+  deleteDoc,
   onSnapshot
 } from './firebaseSync';
 import {
@@ -683,6 +684,47 @@ export async function pushAbsenceRecordsToFirestore(records: StudentAbsenceRecor
     return true;
   } catch (err) {
     console.warn('[FIRESTORE ERROR] Gagal menyimpan e-kehadiran ke cloud:', err);
+    return false;
+  }
+}
+
+/**
+ * Padam rekod ketidakhadiran murid secara mutlak daripada Firebase Firestore
+ */
+export async function deleteAbsenceRecordFromFirestore(id: string): Promise<boolean> {
+  if (!isFirebaseEnabled()) return false;
+  const db = getFirebaseDb();
+  if (!db) return false;
+
+  try {
+    // 1. Padam dokumen terus dari koleksi 'attendance_records/{id}'
+    await deleteDoc(doc(db, 'attendance_records', id));
+
+    // 2. Kemaskini dokumen ringkasan 'school_data/attendance_absence'
+    try {
+      const docRef = doc(db, 'school_data', 'attendance_absence');
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        const data = snap.data();
+        const records = (data?.records || data?.items || []).filter((r: any) => r.id !== id);
+        await setDoc(
+          docRef,
+          {
+            items: records,
+            records: records,
+            updatedAt: new Date().toISOString()
+          },
+          { merge: true }
+        );
+      }
+    } catch (e) {
+      console.warn('[FIRESTORE] Error updating summary after delete:', e);
+    }
+
+    console.log(`[FIRESTORE] Deleted absence record ${id} from cloud`);
+    return true;
+  } catch (err) {
+    console.warn(`[FIRESTORE ERROR] Gagal memadam rekod ${id} daripada cloud:`, err);
     return false;
   }
 }

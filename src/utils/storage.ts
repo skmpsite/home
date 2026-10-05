@@ -632,13 +632,28 @@ export function saveStudentsList(students: StudentRecord[], skipCloudPush = fals
   }
 }
 
+const DELETED_ABSENCE_IDS_KEY = 'skmp_deleted_absence_ids_v1';
+
+export function getDeletedAbsenceIds(): Set<string> {
+  const ids = getStored<string[]>(DELETED_ABSENCE_IDS_KEY, []);
+  return new Set(Array.isArray(ids) ? ids : []);
+}
+
+export function recordDeletedAbsenceId(id: string): void {
+  if (!id) return;
+  const set = getDeletedAbsenceIds();
+  set.add(id);
+  setStored(DELETED_ABSENCE_IDS_KEY, Array.from(set));
+}
+
 export function getAbsenceRecords(): StudentAbsenceRecord[] {
   const list = getStored<StudentAbsenceRecord[]>(KEYS.ABSENCE_RECORDS, initialAbsenceRecords);
   if (!Array.isArray(list)) {
     return initialAbsenceRecords;
   }
-  // Filter out any previous dummy seed records so default starts fresh at 0
-  const cleaned = list.filter((r) => r.id !== 'abs-001' && r.id !== 'abs-002' && r.id !== 'abs-003');
+  const deletedIds = getDeletedAbsenceIds();
+  // Filter out any previous dummy seed records so default starts fresh at 0, and filter deleted records
+  const cleaned = list.filter((r) => r.id !== 'abs-001' && r.id !== 'abs-002' && r.id !== 'abs-003' && !deletedIds.has(r.id));
   if (cleaned.length !== list.length) {
     setStored(KEYS.ABSENCE_RECORDS, cleaned);
   }
