@@ -1219,6 +1219,12 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                 const isDayHoliday = !!holidayForDay;
                 const isDayCancelled = !isDayHoliday && !!isReplacementSchoolDay(day.dateStr, schoolHolidays);
 
+                // Kira bilangan makluman tidak hadir waris pada hari berkenaan
+                const dayAbsentCount = absenceRecords.filter((rec) => {
+                  if (rec.status === 'ditolak') return false;
+                  return day.dateStr >= rec.dateFrom && day.dateStr <= rec.dateTo;
+                }).length;
+
                 return (
                   <button
                     key={day.label}
@@ -1233,7 +1239,7 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                         ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-400/40'
                         : 'bg-white/10 hover:bg-white/20 text-slate-200 border border-white/5'
                     }`}
-                    title={`${day.label} (${day.formatted})${isDayCancelled ? ' - Hari Bersekolah (Cuti Dibatalkan)' : isDayHoliday ? ` - Cuti: ${holidayForDay.title}` : ''}`}
+                    title={`${day.label} (${day.formatted})${isDayCancelled ? ' - Hari Bersekolah (Cuti Dibatalkan)' : isDayHoliday ? ` - Cuti: ${holidayForDay.title}` : ''}${dayAbsentCount > 0 ? ` • ${dayAbsentCount} Murid Tidak Hadir` : ''}`}
                   >
                     <span className="leading-tight text-[9px] sm:text-[10px] truncate max-w-full">
                       <span className="hidden sm:inline">{day.label}</span>
@@ -1242,6 +1248,13 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                     <span className={`text-[8px] sm:text-[8.5px] opacity-90 ${isActive ? 'text-slate-900 font-extrabold' : isDayCancelled ? 'text-emerald-300 font-black' : isDayHoliday ? 'text-yellow-300 font-black' : 'text-slate-400'}`}>
                       {isDayCancelled ? 'Ganti' : isDayHoliday ? 'Cuti' : day.formatted}
                     </span>
+                    {dayAbsentCount > 0 && !isDayHoliday && (
+                      <span className={`mt-0.5 px-1 py-0.2 rounded-full text-[7.5px] sm:text-[8px] font-black ${
+                        isActive ? 'bg-slate-950 text-emerald-300' : 'bg-rose-500 text-white'
+                      } shadow`}>
+                        {dayAbsentCount} TH
+                      </span>
+                    )}
                     {isDayCancelled && !isActive && (
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 absolute top-0.5 right-0.5" />
                     )}

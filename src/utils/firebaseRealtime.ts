@@ -348,16 +348,30 @@ export function setupFirestoreRealtimeSync(callbacks: {
 
     // 11. Rekod Ketidakhadiran Murid (Attendance Absence / e-Kehadiran - Live Cloud Sync)
     if (callbacks.onAbsenceRecordsChange) {
-      const unsub = onSnapshot(doc(db, 'school_data', 'attendance_absence'), (snap) => {
+      // 11a. Langgan koleksi 'attendance_records' (Setiap borang waris disimpan sebagai dokumen berasingan, bebas had 1MB)
+      const unsubCol = onSnapshot(collection(db, 'attendance_records'), (snap) => {
+        const list: StudentAbsenceRecord[] = [];
+        snap.forEach((d) => {
+          const item = d.data() as StudentAbsenceRecord;
+          if (item && item.id) list.push(item);
+        });
+        if (list.length > 0) {
+          callbacks.onAbsenceRecordsChange!(list);
+        }
+      }, (err) => console.warn('[FIRESTORE] Attendance Records collection sync listener:', err));
+      unsubscribers.push(unsubCol);
+
+      // 11b. Dokumen ringkasan 'school_data/attendance_absence'
+      const unsubDoc = onSnapshot(doc(db, 'school_data', 'attendance_absence'), (snap) => {
         if (snap.exists()) {
           const data = snap.data();
           const list = (data.items || data.records) as StudentAbsenceRecord[];
-          if (Array.isArray(list)) {
+          if (Array.isArray(list) && list.length > 0) {
             callbacks.onAbsenceRecordsChange!(list);
           }
         }
       }, (err) => console.warn('[FIRESTORE] Attendance Absence sync listener:', err));
-      unsubscribers.push(unsub);
+      unsubscribers.push(unsubDoc);
     }
 
     // 12. Tempahan Makmal ICT (ICT Room Bookings - Live Cloud Sync across all devices)
@@ -614,10 +628,10 @@ export async function pushSingleAbsenceRecordToFirestore(record: StudentAbsenceR
 
   try {
     const cleanRecord = cleanForFirestore(record);
-    // Simpan ke dokumen individu jika ada id
     if (cleanRecord && cleanRecord.id) {
       const itemRef = doc(db, 'attendance_records', cleanRecord.id);
       await setDoc(itemRef, { ...cleanRecord, updatedAt: new Date().toISOString() }, { merge: true });
+      console.log(`[FIRESTORE] Successfully saved individual absence record ${cleanRecord.id} (${cleanRecord.studentName})`);
     }
     return true;
   } catch (err) {
@@ -635,13 +649,36 @@ export async function pushAbsenceRecordsToFirestore(records: StudentAbsenceRecor
   if (!db) return false;
 
   try {
-    const cleanRecords = cleanForFirestore(records);
-    const docRef = doc(db, 'school_data', 'attendance_absence');
-    await setDoc(docRef, {
-      items: cleanRecords,
-      records: cleanRecords,
-      updatedAt: new Date().toISOString()
-    }, { merge: true });
+    // 1. Simpan setiap rekod ke koleksi berasingan 'attendance_records/{id}' (TIADA HAD 1MB KESELURUHAN)
+    const promises = (records || []).map((r) => {
+      if (!r || !r.id) return Promise.resolve();
+      const clean = cleanForFirestore(r);
+      return setDoc(doc(db, 'attendance_records', r.id), { ...clean, updatedAt: new Date().toISOString() }, { merge: true }).catch((e) => {
+        console.warn(`[FIRESTORE] Error saving record ${r.id} to collection:`, e);
+      });
+    });
+    await Promise.all(promises);
+
+    // 2. Simpan juga ke dokumen ringkasan 'school_data/attendance_absence' tanpa lampiran besar (elak ralat 1MB Firestore)
+    try {
+      const summaryRecords = (records || []).map((r) => {
+        const clean = cleanForFirestore(r);
+        if (clean.attachmentUrl && clean.attachmentUrl.length > 500) {
+          return { ...clean, attachmentUrl: '' };
+        }
+        return clean;
+      });
+
+      const docRef = doc(db, 'school_data', 'attendance_absence');
+      await setDoc(docRef, {
+        items: summaryRecords,
+        records: summaryRecords,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (docErr) {
+      console.warn('[FIRESTORE] Ringkasan attendance_absence melebihi had (rekod kekal selamat dalam koleksi):', docErr);
+    }
+
     console.log(`[FIRESTORE] Successfully pushed ${records.length} e-kehadiran absence records to cloud`);
     return true;
   } catch (err) {
@@ -651,7 +688,7 @@ export async function pushAbsenceRecordsToFirestore(records: StudentAbsenceRecor
 }
 
 /**
- * Dapatkan rekod e-kehadiran terkini terus daripada Firebase Firestore
+ * Dapatkan rekod e-kehadiran terkini terus daripada Firebase Firestore (Koleksi Bebas Had 'attendance_records' + Ringkasan)
  */
 export async function fetchAbsenceRecordsFromFirestore(): Promise<StudentAbsenceRecord[] | null> {
   if (!isFirebaseEnabled()) return null;
@@ -659,14 +696,38 @@ export async function fetchAbsenceRecordsFromFirestore(): Promise<StudentAbsence
   if (!db) return null;
 
   try {
-    const docRef = doc(db, 'school_data', 'attendance_absence');
-    const snap = await getDoc(docRef);
-    if (snap.exists()) {
-      const data = snap.data();
-      const list = (data.items || data.records) as StudentAbsenceRecord[];
-      if (Array.isArray(list)) {
-        return list;
+    const map = new Map<string, StudentAbsenceRecord>();
+
+    // 1. Ambil daripada koleksi dokumen individu 'attendance_records' (Setiap dokumen rekod berasingan)
+    try {
+      const snapCol = await getDocs(collection(db, 'attendance_records'));
+      snapCol.forEach((d) => {
+        const item = d.data() as StudentAbsenceRecord;
+        if (item && item.id) map.set(item.id, item);
+      });
+    } catch (colErr) {
+      console.warn('[FIRESTORE] Gagal mengambil koleksi attendance_records:', colErr);
+    }
+
+    // 2. Ambil juga daripada dokumen ringkasan 'school_data/attendance_absence'
+    try {
+      const docRef = doc(db, 'school_data', 'attendance_absence');
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        const data = snap.data();
+        const list = (data.items || data.records) as StudentAbsenceRecord[];
+        if (Array.isArray(list)) {
+          list.forEach((r) => {
+            if (r && r.id && !map.has(r.id)) map.set(r.id, r);
+          });
+        }
       }
+    } catch (docErr) {
+      console.warn('[FIRESTORE] Gagal mengambil doc attendance_absence:', docErr);
+    }
+
+    if (map.size > 0) {
+      return Array.from(map.values()).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
     }
   } catch (err) {
     console.warn('[FIRESTORE] Failed to fetch absence records:', err);
@@ -683,19 +744,19 @@ export function subscribeToAbsenceRecords(callback: (records: StudentAbsenceReco
   if (!db) return () => {};
 
   try {
-    const docRef = doc(db, 'school_data', 'attendance_absence');
-    const unsub = onSnapshot(docRef, (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        const list = (data.items || data.records) as StudentAbsenceRecord[];
-        if (Array.isArray(list)) {
-          callback(list);
-        }
+    const unsubCol = onSnapshot(collection(db, 'attendance_records'), (snap) => {
+      const list: StudentAbsenceRecord[] = [];
+      snap.forEach((d) => {
+        const item = d.data() as StudentAbsenceRecord;
+        if (item && item.id) list.push(item);
+      });
+      if (list.length > 0) {
+        callback(list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')));
       }
     }, (err) => {
-      console.warn('[FIRESTORE] Direct absence records subscription error:', err);
+      console.warn('[FIRESTORE] Direct absence records collection subscription error:', err);
     });
-    return unsub;
+    return unsubCol;
   } catch (err) {
     console.warn('[FIRESTORE] Unable to set up absence records listener:', err);
     return () => {};
