@@ -1067,6 +1067,60 @@ export default function App() {
   const handleAddAbsenceRecord = (
     newRecord: Omit<StudentAbsenceRecord, 'id' | 'refNo' | 'createdAt'>
   ): StudentAbsenceRecord => {
+    // Semak sama ada rekod aktif murid bagi tarikh yang sama telah wujud untuk mengelakkan rekod pendua
+    const cleanNewId = newRecord.studentId ? String(newRecord.studentId).replace(/^stu-/, '') : '';
+    const cleanNewIc = newRecord.studentIc && newRecord.studentIc !== '-' ? newRecord.studentIc.replace(/[^0-9]/g, '') : '';
+    const cleanNewName = (newRecord.studentName || '').trim().toLowerCase();
+
+    const existing = absenceRecords.find((r) => {
+      if (r.status === 'ditolak') return false;
+      const rCleanId = r.studentId ? String(r.studentId).replace(/^stu-/, '') : '';
+      const rCleanIc = r.studentIc && r.studentIc !== '-' ? r.studentIc.replace(/[^0-9]/g, '') : '';
+      const rCleanName = (r.studentName || '').trim().toLowerCase();
+
+      let sameStudent = false;
+      if (cleanNewId && rCleanId && !cleanNewId.startsWith('manual-') && !rCleanId.startsWith('manual-') && cleanNewId === rCleanId) {
+        sameStudent = true;
+      }
+      if (!sameStudent && cleanNewIc && rCleanIc && cleanNewIc === rCleanIc) {
+        sameStudent = true;
+      }
+      if (!sameStudent && cleanNewName && rCleanName && cleanNewName === rCleanName) {
+        if (!r.className || !newRecord.className || r.className.toLowerCase() === newRecord.className.toLowerCase()) {
+          sameStudent = true;
+        }
+      }
+
+      if (!sameStudent) return false;
+
+      // Semak tarikh bertindih
+      return !(newRecord.dateTo < r.dateFrom || newRecord.dateFrom > r.dateTo);
+    });
+
+    if (existing) {
+      // Kemaskini rekod sedia ada dan jangan cipta rekod pendua
+      const updatedExisting: StudentAbsenceRecord = {
+        ...existing,
+        ...newRecord,
+        id: existing.id,
+        refNo: existing.refNo,
+        createdAt: existing.createdAt,
+        updatedAt: new Date().toISOString()
+      };
+
+      setAbsenceRecords((prev) => {
+        const updated = prev.map((r) => (r.id === existing.id ? updatedExisting : r));
+        saveAbsenceRecords(updated, true, true);
+        pushAbsenceRecordFully(updatedExisting, updated).then((synced) => {
+          setAbsenceRecords((p) => mergeAbsenceRecordArrays(p, synced));
+        }).catch(() => {});
+        autoPushToCloud({ absenceRecords: updated });
+        return updated;
+      });
+
+      return updatedExisting;
+    }
+
     const id = `abs_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const yyyymmdd = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const randNum = Math.floor(1000 + Math.random() * 9000);

@@ -485,15 +485,21 @@ export const HemSection: React.FC<HemSectionProps> = ({
     const todayStr = `${yyyy}-${mm}-${dd}`;
 
     const totalStudents = students.length || 375;
-    const absentIds = new Set<string>();
+    const absentKeys = new Set<string>();
     absenceRecords.forEach((rec) => {
       if (rec.status !== 'ditolak' && todayStr >= rec.dateFrom && todayStr <= rec.dateTo) {
-        absentIds.add(rec.studentId);
+        const cleanId = rec.studentId && !String(rec.studentId).startsWith('manual-')
+          ? String(rec.studentId).replace(/^stu-/, '')
+          : '';
+        const cleanIc = rec.studentIc && rec.studentIc !== '-' ? rec.studentIc.replace(/[^0-9]/g, '') : '';
+        const cleanName = rec.studentName ? `${rec.studentName.trim().toLowerCase()}_${(rec.className || '').toLowerCase()}` : '';
+        const key = cleanIc || cleanId || cleanName || rec.studentId;
+        absentKeys.add(key);
       }
     });
 
     const isHoliday = !!todayHoliday;
-    const absentCount = isHoliday ? totalStudents : absentIds.size;
+    const absentCount = isHoliday ? totalStudents : absentKeys.size;
     const presentCount = isHoliday ? 0 : Math.max(0, totalStudents - absentCount);
     const percentage = isHoliday ? '0.0' : totalStudents > 0 ? ((presentCount / totalStudents) * 100).toFixed(1) : '100.0';
 

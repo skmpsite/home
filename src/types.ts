@@ -441,6 +441,7 @@ export interface StudentAbsenceRecord {
   verifiedAt?: string;
   notes?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface SchoolHoliday {

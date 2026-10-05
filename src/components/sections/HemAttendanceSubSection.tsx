@@ -662,14 +662,44 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     }
 
     // Semak jika borang makluman murid ini telah dihantar sebelum ini bagi tarikh yang sama/bertindih
+    const targetStudentId = isManualStudent ? '' : (selectedStudent?.id || formStudentId || '');
+    const cleanTargetId = targetStudentId ? String(targetStudentId).replace(/^stu-/, '') : '';
+    const cleanTargetIc = !isManualStudent && selectedStudent?.ic && selectedStudent.ic !== '-'
+      ? selectedStudent.ic.replace(/[^0-9]/g, '')
+      : '';
+    const cleanTargetName = (isManualStudent ? formCustomStudentName : selectedStudent?.name || '')
+      .trim()
+      .toLowerCase();
+
     const existingDuplicate = absenceRecords.find((rec) => {
       if (rec.status === 'ditolak') return false;
-      if (isManualStudent) {
-        if (rec.studentName.trim().toLowerCase() !== formCustomStudentName.trim().toLowerCase()) return false;
-        if (rec.className !== formClass || rec.year !== formYear) return false;
-      } else {
-        if (rec.studentId !== selectedStudent.id) return false;
+
+      let isSameStudent = false;
+
+      // 1. Padanan ID murid (dengan atau tanpa awalan 'stu-')
+      const recCleanId = rec.studentId ? String(rec.studentId).replace(/^stu-/, '') : '';
+      if (cleanTargetId && recCleanId && !recCleanId.startsWith('manual-') && recCleanId === cleanTargetId) {
+        isSameStudent = true;
       }
+
+      // 2. Padanan No. Kad Pengenalan (IC) murid
+      const recCleanIc = rec.studentIc && rec.studentIc !== '-' ? rec.studentIc.replace(/[^0-9]/g, '') : '';
+      if (!isSameStudent && cleanTargetIc && recCleanIc && cleanTargetIc === recCleanIc) {
+        isSameStudent = true;
+      }
+
+      // 3. Padanan Nama Penuh dan Kelas murid
+      const recCleanName = rec.studentName ? rec.studentName.trim().toLowerCase() : '';
+      if (!isSameStudent && cleanTargetName && recCleanName && cleanTargetName === recCleanName) {
+        const classMatch = (!rec.className || !formClass || rec.className.toLowerCase() === formClass.toLowerCase());
+        const yearMatch = (!rec.year || !formYear || rec.year.toLowerCase() === formYear.toLowerCase());
+        if (classMatch && yearMatch) {
+          isSameStudent = true;
+        }
+      }
+
+      if (!isSameStudent) return false;
+
       // Semak pertindihan tarikh: [formDateFrom, formDateTo] dan [rec.dateFrom, rec.dateTo]
       return !(formDateTo < rec.dateFrom || formDateFrom > rec.dateTo);
     });
@@ -737,6 +767,40 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     }
   };
 
+  // Fungsi mengemas kini rekod sedia ada sekiranya waris ingin menyertakan MC atau mengemas kini catatan
+  const handleUpdateExistingRecord = () => {
+    if (!duplicateWarningRecord) return;
+
+    const updated: StudentAbsenceRecord = {
+      ...duplicateWarningRecord,
+      reasonCategory: formReasonCategory || duplicateWarningRecord.reasonCategory,
+      reasonDetails: formReasonDetails.trim() || duplicateWarningRecord.reasonDetails,
+      parentName: formParentName.trim() || duplicateWarningRecord.parentName,
+      parentPhone: formParentPhone.trim() || duplicateWarningRecord.parentPhone,
+      parentRelationship: formParentRel || duplicateWarningRecord.parentRelationship,
+      attachmentUrl: formAttachmentUrl || duplicateWarningRecord.attachmentUrl,
+      attachmentName: formAttachmentName || duplicateWarningRecord.attachmentName,
+      updatedAt: new Date().toISOString()
+    };
+
+    if (onUpdateAbsenceRecord) {
+      onUpdateAbsenceRecord(updated);
+    }
+
+    setDuplicateWarningRecord(null);
+    setSubmittedReceipt(updated);
+
+    // Reset form
+    setFormStudentId('');
+    setFormStudentSearch('');
+    setFormCustomStudentName('');
+    setFormReasonDetails('');
+    setFormAttachmentUrl('');
+    setFormAttachmentName('');
+    setFormDeclaration(false);
+    setFormError('');
+  };
+
   // ----------------------------------------------------
   // ATTENDANCE CALCULATIONS FOR THE SELECTED DATE
   // ----------------------------------------------------
@@ -747,14 +811,16 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     });
   }, [absenceRecords, selectedDate]);
 
-  // Kira bilangan murid tidak hadir yang unik untuk tarikh terpilih
+  // Kira bilangan murid tidak hadir yang unik untuk tarikh terpilih (Pencegahan kiraan berulang)
   const uniqueAbsentStudentsCount = useMemo(() => {
     const uniqueKeys = new Set<string>();
     dailyAbsenceRecords.forEach((rec) => {
-      const cleanId = rec.studentId ? String(rec.studentId).replace(/^stu-/, '') : '';
+      const cleanId = rec.studentId && !String(rec.studentId).startsWith('manual-')
+        ? String(rec.studentId).replace(/^stu-/, '')
+        : '';
       const cleanIc = rec.studentIc && rec.studentIc !== '-' ? rec.studentIc.replace(/[^0-9]/g, '') : '';
-      const cleanName = rec.studentName ? rec.studentName.trim().toLowerCase() : '';
-      const key = cleanId || cleanIc || cleanName || rec.id;
+      const cleanName = rec.studentName ? `${rec.studentName.trim().toLowerCase()}_${(rec.className || '').toLowerCase()}` : '';
+      const key = cleanIc || cleanId || cleanName || rec.id;
       uniqueKeys.add(key);
     });
     return uniqueKeys.size;
@@ -791,6 +857,7 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     : '100.0';
 
   // Classes list and breakdown dengan padanan pintar murid (ID, IC, Nama, Manual)
+  // Menjamin murid yang sama tidak akan dimasukkan lebih daripada sekali ke dalam senarai murid tidak hadir
   const allClassesBreakdown = useMemo(() => {
     const classMap: Record<
       string,
@@ -825,21 +892,24 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
       classMap[key].total += 1;
 
       // Padanan pintar murid tidak hadir (ID langsung, tanpa 'stu-', IC, atau nama)
-      const matchingRec = dailyAbsenceRecords.find((rec) => {
+      // Cari SEMUA rekod yang padan untuk murid ini agar rekod pendua tidak terlepas ke gelung bawah
+      const sCleanId = s.id ? String(s.id).replace(/^stu-/, '') : '';
+      const sCleanIc = s.ic ? String(s.ic).replace(/[^0-9]/g, '') : '';
+      const sCleanName = s.name ? s.name.trim().toLowerCase() : '';
+
+      const matchingRecs = dailyAbsenceRecords.filter((rec) => {
         if (!rec) return false;
         if (rec.studentId === s.id) return true;
         const recCleanId = rec.studentId ? String(rec.studentId).replace(/^stu-/, '') : '';
-        const sCleanId = s.id ? String(s.id).replace(/^stu-/, '') : '';
-        if (recCleanId && sCleanId && recCleanId === sCleanId) return true;
+        if (recCleanId && sCleanId && !recCleanId.startsWith('manual-') && recCleanId === sCleanId) return true;
         const recCleanIc = rec.studentIc ? String(rec.studentIc).replace(/[^0-9]/g, '') : '';
-        const sCleanIc = s.ic ? String(s.ic).replace(/[^0-9]/g, '') : '';
         if (recCleanIc && sCleanIc && recCleanIc === sCleanIc) return true;
-        if (rec.studentName && s.name && rec.studentName.trim().toLowerCase() === s.name.trim().toLowerCase()) return true;
+        if (rec.studentName && sCleanName && rec.studentName.trim().toLowerCase() === sCleanName) return true;
         return false;
       });
 
-      if (matchingRec) {
-        matchedRecordIds.add(matchingRec.id);
+      if (matchingRecs.length > 0) {
+        matchingRecs.forEach((m) => matchedRecordIds.add(m.id));
         classMap[key].absentStudents.push(s);
       }
     });
@@ -860,19 +930,40 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
             percentage: '100.0'
           };
         }
-        classMap[key].total += 1;
-        classMap[key].absentStudents.push({
-          id: rec.studentId || rec.id,
-          bil: 0,
-          name: rec.studentName,
-          ic: rec.studentIc || '-',
-          gender: 'LELAKI',
-          year: rec.year,
-          className: rec.className,
-          classTeacher: classMap[key]?.classTeacher || 'Guru Kelas',
-          parent1Name: rec.parentName,
-          parent1Phone: rec.parentPhone
+
+        // Semak sama ada murid ini sudah ada dalam senarai absentStudents kelas ini untuk mengelakkan nama berganda
+        const recCleanId = rec.studentId ? String(rec.studentId).replace(/^stu-/, '') : '';
+        const recCleanIc = rec.studentIc ? String(rec.studentIc).replace(/[^0-9]/g, '') : '';
+        const recCleanName = rec.studentName ? rec.studentName.trim().toLowerCase() : '';
+
+        const alreadyInList = classMap[key].absentStudents.some((existing) => {
+          const exCleanId = existing.id ? String(existing.id).replace(/^stu-/, '') : '';
+          const exCleanIc = existing.ic ? String(existing.ic).replace(/[^0-9]/g, '') : '';
+          const exCleanName = existing.name ? existing.name.trim().toLowerCase() : '';
+
+          if (recCleanId && exCleanId && !recCleanId.startsWith('manual-') && recCleanId === exCleanId) return true;
+          if (recCleanIc && exCleanIc && recCleanIc === exCleanIc) return true;
+          if (recCleanName && exCleanName && recCleanName === exCleanName) return true;
+          return false;
         });
+
+        matchedRecordIds.add(rec.id);
+
+        if (!alreadyInList) {
+          classMap[key].total += 1;
+          classMap[key].absentStudents.push({
+            id: rec.studentId || rec.id,
+            bil: 0,
+            name: rec.studentName,
+            ic: rec.studentIc || '-',
+            gender: 'LELAKI',
+            year: rec.year,
+            className: rec.className,
+            classTeacher: classMap[key]?.classTeacher || 'Guru Kelas',
+            parent1Name: rec.parentName,
+            parent1Phone: rec.parentPhone
+          });
+        }
       }
     });
 
@@ -2916,13 +3007,21 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-2">
               <button
                 type="button"
                 onClick={() => setDuplicateWarningRecord(null)}
-                className="w-full py-3 rounded-2xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-black text-xs transition shadow-xl shadow-rose-600/30"
+                className="w-full sm:w-1/2 py-3 rounded-2xl bg-white/10 hover:bg-white/15 text-slate-200 font-bold text-xs transition border border-white/10 text-center"
               >
-                Faham & Tutup Makluman
+                Batal / Rekod Dah Ada
+              </button>
+              <button
+                type="button"
+                onClick={handleUpdateExistingRecord}
+                className="w-full sm:w-1/2 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs transition shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-1.5"
+              >
+                <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                <span>Kemaskini Rekod Sedia Ada</span>
               </button>
             </div>
           </div>
