@@ -221,6 +221,27 @@ export const getStudentClassCode = (student: { year?: string; className?: string
 };
 
 /**
+ * Dapatkan tarikh rasmi hari ini mengikut zon masa Malaysia (Asia/Kuala_Lumpur, GMT+8)
+ * Format sentiasa YYYY-MM-DD
+ */
+export const getMalaysiaTodayDateStr = (date: Date = new Date()): string => {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kuala_Lumpur',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    return formatter.format(date);
+  } catch {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+};
+
+/**
  * Helper to check if a date string (YYYY-MM-DD) or Date is a weekend in Kedah (Jumaat = 5, Sabtu = 6)
  */
 export const isKedahWeekend = (

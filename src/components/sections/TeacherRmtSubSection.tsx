@@ -33,7 +33,7 @@ interface TeacherRmtSubSectionProps {
   students?: StudentRecord[];
   onAddAbsenceRecord?: (
     record: Omit<StudentAbsenceRecord, 'id' | 'refNo' | 'createdAt'>
-  ) => StudentAbsenceRecord;
+  ) => StudentAbsenceRecord | Promise<StudentAbsenceRecord>;
 }
 
 // Susunan hierarki kelas: IBNU SINA dahulu, kemudian IBNU KHALDUN

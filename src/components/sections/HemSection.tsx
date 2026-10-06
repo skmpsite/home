@@ -67,7 +67,7 @@ import {
   findPkPentadbiranStaff,
   findPkKokurikulumStaff
 } from '../../utils/staffHelpers';
-import { getActiveSchoolHoliday } from '../../utils/studentHelpers';
+import { getActiveSchoolHoliday, getMalaysiaTodayDateStr } from '../../utils/studentHelpers';
 import { loadHemData, saveHemData, loadPibgCommittee } from '../../utils/storage';
 import {
   EditStatsModal,
@@ -90,8 +90,8 @@ interface HemSectionProps {
   onSaveSchoolHolidays?: (holidays: SchoolHoliday[]) => void;
   onAddAbsenceRecord?: (
     record: Omit<StudentAbsenceRecord, 'id' | 'refNo' | 'createdAt'>
-  ) => StudentAbsenceRecord;
-  onUpdateAbsenceRecord?: (record: StudentAbsenceRecord) => void;
+  ) => StudentAbsenceRecord | Promise<StudentAbsenceRecord>;
+  onUpdateAbsenceRecord?: (record: StudentAbsenceRecord) => void | Promise<any>;
   onDeleteAbsenceRecord?: (id: string) => void;
   initialSubTab?: 'semua' | 'kehadiran' | 'ubk' | 'pibg' | 'disiplin' | 'kebajikan' | '3k';
   newsList?: NewsItem[];
@@ -468,21 +468,13 @@ export const HemSection: React.FC<HemSectionProps> = ({
 
   // Check if today is a school holiday (or default weekend Friday & Saturday in Kedah)
   const todayHoliday = useMemo(() => {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    const todayStr = `${yyyy}-${mm}-${dd}`;
+    const todayStr = getMalaysiaTodayDateStr();
     return getActiveSchoolHoliday(todayStr, schoolHolidays);
   }, [schoolHolidays]);
 
   // Today's attendance summary for HEM Sub-tab highlight
   const todayAttendanceStats = useMemo(() => {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    const todayStr = `${yyyy}-${mm}-${dd}`;
+    const todayStr = getMalaysiaTodayDateStr();
 
     const totalStudents = students.length || 375;
     const absentKeys = new Set<string>();

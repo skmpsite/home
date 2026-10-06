@@ -60,8 +60,8 @@ interface TeacherSectionProps {
   absenceRecords?: StudentAbsenceRecord[];
   onAddAbsenceRecord?: (
     record: Omit<StudentAbsenceRecord, 'id' | 'refNo' | 'createdAt'>
-  ) => StudentAbsenceRecord;
-  onUpdateAbsenceRecord?: (record: StudentAbsenceRecord) => void;
+  ) => StudentAbsenceRecord | Promise<StudentAbsenceRecord>;
+  onUpdateAbsenceRecord?: (record: StudentAbsenceRecord) => void | Promise<any>;
   onDeleteAbsenceRecord?: (id: string) => void;
 }
 

@@ -236,18 +236,25 @@ export async function pushAbsenceRecordFully(
   // 2. Simpan setempat dan siarkan satu kali secara bersih
   saveAbsenceRecords(updatedList, true, true);
 
-  // 3. Tolak ke Server API Express di latar belakang
-  saveAttendanceToServer(updatedList, record).catch((err) => {
+  // 3. Tolak ke Server API Express dan Firebase Firestore
+  const serverPromise = saveAttendanceToServer(updatedList, record).catch((err) => {
     console.warn('[ATTENDANCE SYNC] Error pushing to server API:', err);
+    return false;
   });
 
-  // 4. Tolak ke Firebase Firestore di latar belakang
-  pushSingleAbsenceRecordToFirestore(record).catch((err) => {
+  // 4. Tolak ke Firebase Firestore (hanya rekod individu ini, elak tolak pukal 70+ dokumen yang menghabiskan kuota harian)
+  const firestorePromise = pushSingleAbsenceRecordToFirestore(record).catch((err) => {
     console.warn('[ATTENDANCE SYNC] Error pushing single to Firestore:', err);
+    return false;
   });
-  pushAbsenceRecordsToFirestore(updatedList).catch((err) => {
-    console.warn('[ATTENDANCE SYNC] Error pushing bulk to Firestore:', err);
-  });
+
+  // Tunggu penghantaran disahkan (dengan had masa 3.5 saat agar tidak menyekat peranti luar talian)
+  try {
+    await Promise.race([
+      Promise.allSettled([serverPromise, firestorePromise]),
+      new Promise((resolve) => setTimeout(resolve, 3500))
+    ]);
+  } catch {}
 
   return updatedList;
 }

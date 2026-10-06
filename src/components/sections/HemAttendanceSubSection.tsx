@@ -70,7 +70,8 @@ import {
   getYearTheme,
   getActiveSchoolHoliday,
   isReplacementSchoolDay,
-  isKedahWeekend
+  isKedahWeekend,
+  getMalaysiaTodayDateStr
 } from '../../utils/studentHelpers';
 import { SchoolHolidayModal } from '../attendance/SchoolHolidayModal';
 
@@ -81,8 +82,8 @@ interface HemAttendanceSubSectionProps {
   onSaveSchoolHolidays?: (holidays: SchoolHoliday[]) => void;
   onAddAbsenceRecord: (
     record: Omit<StudentAbsenceRecord, 'id' | 'refNo' | 'createdAt'>
-  ) => StudentAbsenceRecord;
-  onUpdateAbsenceRecord?: (record: StudentAbsenceRecord) => void;
+  ) => StudentAbsenceRecord | Promise<StudentAbsenceRecord>;
+  onUpdateAbsenceRecord?: (record: StudentAbsenceRecord) => void | Promise<any>;
   onDeleteAbsenceRecord?: (id: string) => void;
   isAdmin?: boolean;
   isTeacher?: boolean;
@@ -156,13 +157,9 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
   // Active view tab inside Attendance portal (Default: 'analisis')
   const [attendanceViewTab, setAttendanceViewTab] = useState<'analisis' | 'senarai'>('analisis');
 
-  // Selected date for live calculation (Default: Today YYYY-MM-DD)
+  // Selected date for live calculation (Default: Today YYYY-MM-DD in Malaysia GMT+8)
   const [selectedDate, setSelectedDate] = useState<string>(() => {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
+    return getMalaysiaTodayDateStr();
   });
 
   // Check if selectedDate falls within any School Holiday range (or default weekend Friday & Saturday in Kedah)
@@ -298,18 +295,10 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
   const [formStudentSearch, setFormStudentSearch] = useState<string>('');
   const [formCustomStudentName, setFormCustomStudentName] = useState<string>('');
   const [formDateFrom, setFormDateFrom] = useState<string>(() => {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
+    return getMalaysiaTodayDateStr();
   });
   const [formDateTo, setFormDateTo] = useState<string>(() => {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
+    return getMalaysiaTodayDateStr();
   });
   const [formReasonCategory, setFormReasonCategory] = useState<
     'sakit' | 'hospital' | 'kecemasan' | 'keluarga' | 'bencana' | 'lain'
@@ -358,6 +347,24 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     setFormReasonCategory(category);
     setFormReasonDetails(detailsText);
   };
+
+  // Semakan Status Makluman Murid khas untuk Waris (Pengesahan data tanpa log masuk)
+  const [warisCheckQuery, setWarisCheckQuery] = useState<string>('');
+
+  const warisCheckResults = useMemo(() => {
+    const q = warisCheckQuery.trim().toLowerCase();
+    if (!q || q.length < 2) return [];
+    const cleanQ = q.replace(/[^a-z0-9]/g, '');
+
+    return absenceRecords.filter((rec) => {
+      if (rec.status === 'ditolak') return false;
+      const nameMatch = (rec.studentName || '').toLowerCase().includes(q);
+      const icMatch = rec.studentIc && rec.studentIc !== '-' && rec.studentIc.replace(/[^0-9]/g, '').includes(cleanQ);
+      const classMatch = (rec.className || '').toLowerCase().includes(q);
+      const refMatch = (rec.refNo || '').toLowerCase().includes(q);
+      return nameMatch || icMatch || classMatch || refMatch;
+    }).slice(0, 10);
+  }, [absenceRecords, warisCheckQuery]);
 
   // ----------------------------------------------------
   // PENGESAHAN & LOG MASUK E-KEHADIRAN
@@ -625,7 +632,7 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
   }, [formDateFrom, formDateTo]);
 
   // Submit Absence Form
-  const handleSubmitAbsenceForm = (e: React.FormEvent) => {
+  const handleSubmitAbsenceForm = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
 
@@ -721,7 +728,7 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
       const studentYear = isManualStudent ? formYear : selectedStudent.year;
       const studentClass = isManualStudent ? formClass : selectedStudent.className;
 
-      const newRecord = onAddAbsenceRecord({
+      const newRecord = await onAddAbsenceRecord({
         studentId,
         studentName,
         studentIc,
@@ -771,7 +778,7 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
   };
 
   // Fungsi mengemas kini rekod sedia ada sekiranya waris ingin menyertakan MC atau mengemas kini catatan
-  const handleUpdateExistingRecord = () => {
+  const handleUpdateExistingRecord = async () => {
     if (!duplicateWarningRecord) return;
 
     const updated: StudentAbsenceRecord = {
@@ -787,7 +794,7 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     };
 
     if (onUpdateAbsenceRecord) {
-      onUpdateAbsenceRecord(updated);
+      await onUpdateAbsenceRecord(updated);
     }
 
     setDuplicateWarningRecord(null);
@@ -2181,6 +2188,137 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                 </span>
               </button>
             </div>
+          </div>
+
+          {/* Semakan Pengesahan Rekod Murid Khas untuk Waris */}
+          <div className="bg-slate-950/70 p-5 sm:p-7 rounded-2xl sm:rounded-3xl border border-emerald-500/40 shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2.5">
+                <Search className="w-5 h-5 text-emerald-400" />
+                <div>
+                  <h4 className="font-extrabold text-white text-base sm:text-lg">
+                    Semak Status Makluman Anak Jagaan Anda
+                  </h4>
+                  <p className="text-xs text-slate-300">
+                    Masukkan nama murid atau No. MyKid/Surat Beranak untuk mengesahkan rekod ketidakhadiran telah selamat diterima pihak sekolah.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleManualCloudSync}
+                disabled={isSyncingCloud}
+                className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-xl text-xs text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 self-start sm:self-center transition cursor-pointer"
+                title="Segerak rekod awan terkini"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncingCloud ? 'animate-spin' : ''}`} />
+                <span>{isSyncingCloud ? 'Menyegerak...' : 'Segerak Data Terkini'}</span>
+              </button>
+            </div>
+
+            <div className="relative">
+              <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={warisCheckQuery}
+                onChange={(e) => setWarisCheckQuery(e.target.value)}
+                placeholder="Taip nama anak anda atau MyKid (cth: Irfan / Athif / 123456)..."
+                className="w-full pl-12 pr-10 py-3.5 bg-slate-900/90 border border-emerald-500/40 focus:border-emerald-400 rounded-2xl text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/30 transition shadow-inner"
+              />
+              {warisCheckQuery && (
+                <button
+                  type="button"
+                  onClick={() => setWarisCheckQuery('')}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white bg-white/10 hover:bg-white/20 rounded-lg transition"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Hasil Carian Waris */}
+            {warisCheckQuery.trim().length >= 2 ? (
+              <div className="space-y-3 pt-2">
+                {warisCheckResults.length === 0 ? (
+                  <div className="p-4 bg-amber-500/10 border border-amber-400/30 rounded-2xl text-amber-200 text-xs sm:text-sm flex items-start gap-2.5">
+                    <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold">Tiada rekod ketidakhadiran dikesan bagi carian "{warisCheckQuery}".</p>
+                      <p className="text-slate-300 mt-1">
+                        Sekiranya anda belum mengisi borang hari ini, sila tekan butang hijau <strong>"Buka Borang e-Kehadiran"</strong> di atas. Jika anda baru sahaja mengisi borang, sila klik <strong>"Segerak Data Terkini"</strong>.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    <p className="text-xs text-emerald-300 font-bold flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      <span>{warisCheckResults.length} rekod makluman anak anda ditemui:</span>
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {warisCheckResults.map((rec) => (
+                        <div
+                          key={rec.id}
+                          className="p-4 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/40 border border-emerald-500/40 shadow-lg space-y-2.5"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <h5 className="font-black text-white text-sm sm:text-base leading-snug">
+                                {rec.studentName}
+                              </h5>
+                              <p className="text-xs text-emerald-400 font-bold mt-0.5">
+                                {rec.year} • {rec.className}
+                              </p>
+                            </div>
+                            <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 rounded-full text-[10px] font-black flex-shrink-0 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                              <span>DISAHKAN</span>
+                            </span>
+                          </div>
+
+                          <div className="text-xs text-slate-300 space-y-1 bg-slate-950/60 p-2.5 rounded-xl border border-white/5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-400">Tarikh Tidak Hadir:</span>
+                              <span className="font-extrabold text-yellow-300">
+                                {rec.dateFrom} {rec.dateTo !== rec.dateFrom ? `hingga ${rec.dateTo}` : ''}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-400">Sebab Makluman:</span>
+                              <span className="font-medium text-white truncate max-w-[180px]">
+                                {rec.reasonDetails || rec.reasonCategory}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-400">No. Rujukan:</span>
+                              <span className="font-mono text-emerald-300 text-[11px]">
+                                {rec.refNo || rec.id}
+                              </span>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setSubmittedReceipt(rec)}
+                            className="w-full py-2 bg-emerald-600/80 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+                          >
+                            <FileCheck className="w-3.5 h-3.5 text-yellow-300" />
+                            <span>Buka Slip / Resit Rasmi Sekolah</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-3 bg-white/5 rounded-xl text-xs text-slate-300 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <span>
+                  Tip: Waris boleh menaip nama anak pada bila-bila masa untuk menyemak dan mencetak semula <strong>Slip Resit Perakuan Rasmi Sekolah</strong>.
+                </span>
+              </div>
+            )}
           </div>
 
           {/* 3 Langkah Mudah Panduan Waris */}

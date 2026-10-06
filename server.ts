@@ -1,7 +1,6 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 
 let genAIClient: GoogleGenAI | null = null;
@@ -141,7 +140,7 @@ const INITIAL_DEFAULT_CONFIG = {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
   app.use(express.json({ limit: "20mb" }));
   app.use(express.urlencoded({ extended: true, limit: "20mb" }));
@@ -334,6 +333,60 @@ async function startServer() {
     updatedAt: attendanceLastUpdated,
     updatedBy: 'server_init'
   };
+
+  // Segerakkan data e-Kehadiran daripada Firebase Firestore Cloud ke memori pelayan semasa permulaan
+  const syncAttendanceFromCloudFirestore = async () => {
+    try {
+      const resp = await fetch("https://firestore.googleapis.com/v1/projects/sk-merbau-pulas-db/databases/(default)/documents/attendance_records?pageSize=300");
+      if (!resp.ok) return;
+      const json: any = await resp.json();
+      const docs = json.documents || [];
+      if (!Array.isArray(docs) || docs.length === 0) return;
+
+      const recordMap = new Map<string, any>();
+      liveAttendanceRecords.forEach((r: any) => {
+        if (r && r.id && !deletedAttendanceIds.has(r.id)) recordMap.set(r.id, r);
+      });
+
+      let addedCount = 0;
+      docs.forEach((docItem: any) => {
+        const fields = docItem.fields || {};
+        const id = fields.id?.stringValue || docItem.name?.split("/").pop();
+        if (!id || deletedAttendanceIds.has(id)) return;
+
+        const recordObj: any = { id };
+        for (const [key, valObj] of Object.entries(fields)) {
+          const val: any = valObj;
+          if (val.stringValue !== undefined) recordObj[key] = val.stringValue;
+          else if (val.integerValue !== undefined) recordObj[key] = parseInt(val.integerValue, 10);
+          else if (val.booleanValue !== undefined) recordObj[key] = val.booleanValue;
+        }
+
+        if (!recordMap.has(id)) {
+          recordMap.set(id, recordObj);
+          addedCount++;
+        }
+      });
+
+      if (addedCount > 0) {
+        liveAttendanceRecords = Array.from(recordMap.values()).sort((a: any, b: any) =>
+          (b.createdAt || "").localeCompare(a.createdAt || "")
+        );
+        attendanceLastUpdated = Date.now();
+        scheduleAttendanceSave();
+        livePortalData['skmp_absence_records_v1'] = {
+          data: liveAttendanceRecords,
+          updatedAt: attendanceLastUpdated,
+          updatedBy: 'cloud_sync'
+        };
+        schedulePortalSyncSave();
+        console.log(`[FIRESTORE CLOUD SYNC] Successfully loaded and merged ${addedCount} records from cloud (Total: ${liveAttendanceRecords.length})`);
+      }
+    } catch (e) {
+      // Abaikan ralat jika di luar talian atau kuota
+    }
+  };
+  syncAttendanceFromCloudFirestore();
 
   // Gabungkan dan segerakkan data foto murid antara student-photos-live.json dan portal-live-sync.json
   const portalPhotosData = livePortalData['skmp_student_photos_v1']?.data;
@@ -866,24 +919,55 @@ async function startServer() {
     try {
       const { records, record } = req.body;
       let hasChanges = false;
-      if (Array.isArray(records)) {
-        // Hanya rekod yang bukan dalam deletedAttendanceIds
-        const filtered = records.filter((r: any) => r && r.id && !deletedAttendanceIds.has(r.id));
-        liveAttendanceRecords = filtered.sort((a: any, b: any) =>
-          (b.createdAt || "").localeCompare(a.createdAt || "")
-        );
-        hasChanges = true;
-      } else if (record && record.id && !deletedAttendanceIds.has(record.id)) {
-        const idx = liveAttendanceRecords.findIndex((r: any) => r.id === record.id);
-        if (idx >= 0) {
-          liveAttendanceRecords[idx] = record;
-        } else {
-          liveAttendanceRecords.unshift(record);
+
+      // Gunakan Map untuk mengelakkan pemadaman rekod peranti lain secara tidak sengaja (Union Merge by ID)
+      const recordMap = new Map<string, any>();
+      liveAttendanceRecords.forEach((r: any) => {
+        if (r && r.id && !deletedAttendanceIds.has(r.id)) {
+          recordMap.set(r.id, r);
         }
-        hasChanges = true;
+      });
+
+      // 1. Jika ada satu rekod spesifik yang dihantar (cth: borang waris baru dihantar)
+      if (record && record.id && !deletedAttendanceIds.has(record.id)) {
+        if (!recordMap.has(record.id)) {
+          recordMap.set(record.id, record);
+          hasChanges = true;
+        } else {
+          const exist = recordMap.get(record.id);
+          recordMap.set(record.id, { ...exist, ...record });
+          hasChanges = true;
+        }
+      }
+
+      // 2. Jika ada senarai rekod pukal dihantar (cth: background sync)
+      if (Array.isArray(records)) {
+        records.forEach((r: any) => {
+          if (r && r.id && !deletedAttendanceIds.has(r.id)) {
+            if (!recordMap.has(r.id)) {
+              recordMap.set(r.id, r);
+              hasChanges = true;
+            } else {
+              const exist = recordMap.get(r.id);
+              // Kemaskini jika ada maklumat lebih baharu
+              if (
+                (r.updatedAt && (!exist.updatedAt || r.updatedAt > exist.updatedAt)) ||
+                (r.status && r.status !== exist.status) ||
+                (r.verifiedAt && !exist.verifiedAt) ||
+                (r.attachmentUrl && !exist.attachmentUrl)
+              ) {
+                recordMap.set(r.id, { ...exist, ...r });
+                hasChanges = true;
+              }
+            }
+          }
+        });
       }
 
       if (hasChanges) {
+        liveAttendanceRecords = Array.from(recordMap.values()).sort((a: any, b: any) =>
+          (b.createdAt || "").localeCompare(a.createdAt || "")
+        );
         attendanceLastUpdated = Date.now();
         scheduleAttendanceSave();
 
@@ -902,7 +986,8 @@ async function startServer() {
       return res.json({
         success: true,
         count: liveAttendanceRecords.length,
-        lastUpdated: attendanceLastUpdated
+        lastUpdated: attendanceLastUpdated,
+        receivedId: record?.id || null
       });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
@@ -1516,6 +1601,7 @@ KEUPAYAAN ILMU & JAWAPAN MENYELURUH (GEMINI OMNISCIENCE):
     (fs.existsSync(path.join(process.cwd(), "dist", "index.html")) && process.env.NODE_ENV !== "development");
 
   if (!isProduction) {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
