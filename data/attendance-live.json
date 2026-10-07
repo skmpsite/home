@@ -1,6 +1,29 @@
 {
   "records": [
     {
+      "id": "abs_1728277200000_fatin",
+      "refNo": "KHD-20261007-4954",
+      "studentId": "250202287562",
+      "studentName": "FATIN NUR ATIKAH BINTI ABDUL",
+      "studentIc": "191015020528",
+      "year": "TAHUN SATU",
+      "className": "IBNU KHALDUN",
+      "dateFrom": "2026-10-07",
+      "dateTo": "2026-10-07",
+      "daysCount": 1,
+      "reasonCategory": "sakit",
+      "reasonDetails": "Anak mengalami demam dan kurang sihat, dinasihatkan berehat di rumah.",
+      "parentName": "NURUL NAZUA BINTI MOHD RADZI",
+      "parentPhone": "01111241237",
+      "parentRelationship": "Ibu",
+      "attachmentUrl": "",
+      "attachmentName": "",
+      "status": "disahkan",
+      "verifiedBy": "Waris Murid (Borang Atas Talian)",
+      "verifiedAt": "2026-10-07T01:39:00.000Z",
+      "createdAt": "2026-10-07T01:39:00.000Z"
+    },
+    {
       "id": "abs_1791248760000_3430",
       "refNo": "KHD-20261006-3430",
       "studentId": "260203160315",
@@ -1560,5 +1583,5 @@
       "year": "TAHUN ENAM"
     }
   ],
-  "lastUpdated": 1791253422234
+  "lastUpdated": 1791350140911
 }

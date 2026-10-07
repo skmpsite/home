@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { getBackendApiUrl } from '../../utils/apiConfig';
 import {
   Bot,
   X,
@@ -403,7 +404,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
       isPlayingAudioRef.current = true;
 
       // Hantar teks ke pelayan yang akan mencantumkan semua segmen MP3 menjadi SATU fail audio lengkap
-      const audioUrl = `/api/tts?text=${encodeURIComponent(textToSpeak)}`;
+      const audioUrl = getBackendApiUrl(`/api/tts?text=${encodeURIComponent(textToSpeak)}`);
       audio.src = audioUrl;
 
       audio.onended = () => {
@@ -619,7 +620,7 @@ export const SweetbotWidget: React.FC<SweetbotWidgetProps> = ({
         text: m.text
       }));
 
-      const res = await fetch('/api/chat', {
+      const res = await fetch(getBackendApiUrl('/api/chat'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

@@ -9,7 +9,8 @@ import {
   FeedbackEntry,
   SignageSlide,
   SignageConfig,
-  TeacherLinkItem
+  TeacherLinkItem,
+  StudentAbsenceRecord
 } from '../types';
 import { DEFAULT_GAS_URL } from '../config';
 import { initialTeacherLinks } from '../data/initialData';
@@ -86,6 +87,55 @@ export async function syncFeedbackToGoogleSheets(entry: FeedbackEntry): Promise<
     return true;
   } catch (err) {
     console.error('Gagal menghantar maklum balas ke Google Sheets:', err);
+    return false;
+  }
+}
+
+/**
+ * Automatisasi penghantaran Rekod e-Kehadiran terus ke Google Sheet
+ */
+export async function syncAttendanceToGoogleSheets(record: StudentAbsenceRecord): Promise<boolean> {
+  const url = getGasWebAppUrl();
+  if (!url) {
+    return false;
+  }
+
+  try {
+    await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8'
+      },
+      mode: 'no-cors',
+      body: JSON.stringify({
+        action: 'submitAttendance',
+        data: {
+          id: record.id,
+          refNo: record.refNo,
+          studentId: record.studentId,
+          studentName: record.studentName,
+          studentIc: record.studentIc,
+          year: record.year,
+          className: record.className,
+          dateFrom: record.dateFrom,
+          dateTo: record.dateTo,
+          daysCount: record.daysCount,
+          reasonCategory: record.reasonCategory,
+          reasonDetails: record.reasonDetails,
+          parentName: record.parentName,
+          parentPhone: record.parentPhone,
+          parentRelationship: record.parentRelationship,
+          status: record.status,
+          verifiedBy: record.verifiedBy,
+          verifiedAt: record.verifiedAt,
+          createdAt: record.createdAt
+        }
+      })
+    });
+    console.log('[GOOGLE SHEETS] e-Kehadiran berjaya disegerakkan ke Google Sheets:', record.studentName);
+    return true;
+  } catch (err) {
+    console.warn('[GOOGLE SHEETS] Gagal menyegerakkan e-kehadiran ke Google Sheets:', err);
     return false;
   }
 }

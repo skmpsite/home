@@ -1,4 +1,5 @@
 import { IctBookingRecord } from '../types';
+import { getBackendApiUrl } from './apiConfig';
 import {
   pushIctBookingsToFirestore,
   fetchIctBookingsFromFirestore,
@@ -318,7 +319,7 @@ export async function fetchLiveIctBookings(): Promise<{ bookings: IctBookingReco
 
   // 2. Try Server API (/api/ict-bookings)
   try {
-    const res = await fetch('/api/ict-bookings', {
+    const res = await fetch(getBackendApiUrl('/api/ict-bookings'), {
       headers: { 'Accept': 'application/json' }
     });
     const contentType = res.headers.get('content-type') || '';
@@ -359,7 +360,7 @@ export async function syncIctBookingsToServer(bookings: IctBookingRecord[]): Pro
 
   // 2. Push to Express server endpoint as secondary persistence
   try {
-    const res = await fetch('/api/ict-bookings', {
+    const res = await fetch(getBackendApiUrl('/api/ict-bookings'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

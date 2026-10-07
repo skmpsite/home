@@ -11,6 +11,8 @@ import {
   getDeletedAbsenceIds,
   recordDeletedAbsenceId
 } from './storage';
+import { getBackendApiUrl } from './apiConfig';
+import { syncAttendanceToGoogleSheets } from './googleSheetsSync';
 
 let lastKnownServerTimestamp = 0;
 let isSyncInProgress = false;
@@ -20,7 +22,8 @@ let isSyncInProgress = false;
  */
 export async function fetchAttendanceFromServer(): Promise<{ records: StudentAbsenceRecord[]; lastUpdated: number } | null> {
   try {
-    const res = await fetch('/api/attendance', {
+    const url = getBackendApiUrl('/api/attendance');
+    const res = await fetch(url, {
       headers: { Accept: 'application/json' },
       cache: 'no-store'
     });
@@ -49,7 +52,8 @@ export async function saveAttendanceToServer(
   singleRecord?: StudentAbsenceRecord
 ): Promise<boolean> {
   try {
-    const res = await fetch('/api/attendance', {
+    const url = getBackendApiUrl('/api/attendance');
+    const res = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -78,7 +82,8 @@ export async function saveAttendanceToServer(
  */
 export async function deleteAttendanceFromServer(id: string): Promise<boolean> {
   try {
-    const res = await fetch(`/api/attendance/${encodeURIComponent(id)}`, {
+    const url = getBackendApiUrl(`/api/attendance/${encodeURIComponent(id)}`);
+    const res = await fetch(url, {
       method: 'DELETE',
       headers: { Accept: 'application/json' }
     });
@@ -248,10 +253,13 @@ export async function pushAbsenceRecordFully(
     return false;
   });
 
+  // 5. Tolak ke Google Sheets (Sandaran awan Google Apps Script tanpa had kuota)
+  const sheetsPromise = syncAttendanceToGoogleSheets(record).catch(() => false);
+
   // Tunggu penghantaran disahkan (dengan had masa 3.5 saat agar tidak menyekat peranti luar talian)
   try {
     await Promise.race([
-      Promise.allSettled([serverPromise, firestorePromise]),
+      Promise.allSettled([serverPromise, firestorePromise, sheetsPromise]),
       new Promise((resolve) => setTimeout(resolve, 3500))
     ]);
   } catch {}

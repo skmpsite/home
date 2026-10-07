@@ -1,6 +1,7 @@
 import { SignageSlide, SignageConfig } from '../types';
 import { saveSignageSlides, saveSignageConfig } from './storage';
 import { syncBulkDataToGoogleSheets } from './googleSheetsSync';
+import { getBackendApiUrl } from './apiConfig';
 
 /**
  * Menyimpan dan menyiarkan perubahan slaid / video ke SEMUA peranti dan Smart TV secara serta-merta
@@ -15,7 +16,7 @@ export async function broadcastLiveSignage(
 
   try {
     // 2. Hantar ke pelayan API Utama (/api/signage) untuk penyiaran langsung kepada semua Smart TV
-    const res = await fetch('/api/signage', {
+    const res = await fetch(getBackendApiUrl('/api/signage'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -52,7 +53,7 @@ export async function fetchLiveSignageFromServer(): Promise<{
   lastUpdated: number;
 } | null> {
   try {
-    const res = await fetch(`/api/signage?_t=${Date.now()}`);
+    const res = await fetch(getBackendApiUrl(`/api/signage?_t=${Date.now()}`));
     if (res.ok) {
       const data = await res.json();
       if (data && data.success && Array.isArray(data.slides)) {

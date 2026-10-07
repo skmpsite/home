@@ -203,7 +203,9 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
 
   // Calculate Kedah School Week Days: Ahad - Sabtu (Jumaat & Sabtu are weekend holidays)
   const schoolWeekDays = useMemo(() => {
-    const now = new Date();
+    const todayStr = getMalaysiaTodayDateStr();
+    const parts = todayStr.split('-');
+    const now = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
     const dayOfWeek = now.getDay(); // 0 is Sunday, 1 is Monday ...
     const sunday = new Date(now);
     sunday.setDate(now.getDate() - dayOfWeek);
@@ -1533,6 +1535,19 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
               Isi Sini
             </span>
           </button>
+
+          {/* Butang Pantas Log Masuk Semak Kehadiran bagi Guru / Pentadbir yang belum log masuk */}
+          {!isAuthorized && onOpenLogin && (
+            <button
+              type="button"
+              onClick={onOpenLogin}
+              className="flex-1 sm:flex-none px-4 sm:px-5 py-3 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition cursor-pointer bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-700 hover:from-blue-600 hover:to-indigo-600 text-white border border-blue-400/50 shadow-md shadow-blue-950/40 active:scale-95"
+              title="Log masuk untuk melihat analisis mengikut kelas dan rekod murid tidak hadir"
+            >
+              <LogIn className="w-4 h-4 text-yellow-300" />
+              <span>Semak Analisis Kelas (Log Masuk Guru)</span>
+            </button>
+          )}
 
           {/* Tab Analisis Kehadiran Mengikut Kelas (Khas Untuk Guru, Admin & Pentadbir Sahaja) */}
           {isAuthorized && (

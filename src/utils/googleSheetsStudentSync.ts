@@ -1,6 +1,7 @@
 import { FullStudentRecord } from '../types';
 import { initialStudentsData } from '../data/studentsData';
 import { syncSave, SYNC_KEYS } from './universalSync';
+import { getBackendApiUrl } from './apiConfig';
 import {
   pushStudentsToFirestore,
   fetchStudentsFromFirestore,
@@ -82,7 +83,7 @@ export function resolveStudentPhoto(
  */
 export async function fetchStudentPhotosFromServer(): Promise<Record<string, string> | null> {
   try {
-    const res = await fetch('/api/students/photos');
+    const res = await fetch(getBackendApiUrl('/api/students/photos'));
     if (res.ok) {
       const data = await res.json();
       const result: Record<string, string> = {};
@@ -240,7 +241,7 @@ export function saveLocalStudentPhoto(
     });
 
     // 4. Hantar ke endpoint khusus Express Server (/api/students/photos) untuk fail kekal
-    fetch('/api/students/photos', {
+    fetch(getBackendApiUrl('/api/students/photos'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

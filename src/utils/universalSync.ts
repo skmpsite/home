@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { getBackendApiUrl } from './apiConfig';
 import {
   pushUbkRphToFirestore,
   pushUbkRptToFirestore,
@@ -182,7 +183,7 @@ export async function syncSave<T>(
 
   // 3. Hantar ke pelayan pusat (/api/sync/save) untuk disegerakkan ke semua peranti lain
   try {
-    const res = await fetch('/api/sync/save', {
+    const res = await fetch(getBackendApiUrl('/api/sync/save'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -253,7 +254,7 @@ export async function fetchAllServerData(): Promise<boolean> {
   isSyncInProgress = true;
 
   try {
-    const res = await fetch('/api/sync/all');
+    const res = await fetch(getBackendApiUrl('/api/sync/all'));
     if (res.ok) {
       const json = await res.json();
       if (json && json.success && json.data) {
@@ -353,7 +354,7 @@ async function pollServerUpdates(): Promise<void> {
     return;
   }
   try {
-    const res = await fetch(`/api/sync/poll?since=${lastPollTimestamp}`);
+    const res = await fetch(getBackendApiUrl(`/api/sync/poll?since=${lastPollTimestamp}`));
     if (res.ok) {
       const json = await res.json();
       if (json && json.hasUpdates && json.updates) {
@@ -392,7 +393,7 @@ function connectSse() {
   }
 
   try {
-    eventSource = new EventSource('/api/sync/stream');
+    eventSource = new EventSource(getBackendApiUrl('/api/sync/stream'));
 
     eventSource.onopen = () => {
       isConnected = true;
