@@ -23,7 +23,11 @@ import {
   setFirebaseEnabled,
   getFirebaseDb,
   FirebaseCustomConfig,
-  DEFAULT_FIREBASE_CONFIG
+  DEFAULT_FIREBASE_CONFIG,
+  collection,
+  getDocs,
+  limit,
+  query
 } from '../../utils/firebaseSync';
 import { syncAllDataToFirestore } from '../../utils/firebaseRealtime';
 import {
@@ -127,7 +131,6 @@ export const FirebaseManager: React.FC<FirebaseManagerProps> = ({
         throw new Error('Gagal memulakan Firebase App. Semak Project ID & API Key.');
       }
       
-      const { collection, getDocs, limit, query } = await import('firebase/firestore');
       const testQuery = query(collection(db, 'school_data'), limit(1));
       await getDocs(testQuery);
 
