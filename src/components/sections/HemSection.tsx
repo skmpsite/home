@@ -479,7 +479,9 @@ export const HemSection: React.FC<HemSectionProps> = ({
     const totalStudents = students.length || 375;
     const absentKeys = new Set<string>();
     absenceRecords.forEach((rec) => {
-      if (rec.status !== 'ditolak' && todayStr >= rec.dateFrom && todayStr <= rec.dateTo) {
+      const dFrom = rec.dateFrom || (rec.createdAt ? rec.createdAt.slice(0, 10) : '');
+      const dTo = rec.dateTo || dFrom;
+      if (rec.status !== 'ditolak' && dFrom && todayStr >= dFrom && todayStr <= dTo) {
         const cleanId = rec.studentId && !String(rec.studentId).startsWith('manual-')
           ? String(rec.studentId).replace(/^stu-/, '')
           : '';

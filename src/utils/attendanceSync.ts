@@ -305,7 +305,7 @@ export function startLiveAttendanceSync(
   // 1. Lakukan penyegerakan awal segera sekali sahaja
   syncAttendanceWithAllSources(onUpdate);
 
-  // 2. Polling Server API yang sangat ringan (setiap 10 saat, hanya jika tab aktif)
+  // 2. Polling Server API yang sangat ringan (setiap 5 saat, hanya jika tab aktif)
   const interval = setInterval(async () => {
     if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
       return; // Jimat bateri & memori bila tab tidak aktif
@@ -313,19 +313,21 @@ export function startLiveAttendanceSync(
 
     try {
       const serverRes = await fetchAttendanceFromServer();
-      if (serverRes && serverRes.lastUpdated > lastKnownServerTimestamp) {
-        lastKnownServerTimestamp = serverRes.lastUpdated;
-        const local = getAbsenceRecords();
-        const { merged, hasNewFromServerOrCloud } = mergeAbsenceRecords(local, serverRes.records, []);
-        if (hasNewFromServerOrCloud || merged.length !== local.length) {
-          saveAbsenceRecords(merged, true, false);
-          onUpdate(merged);
+      if (serverRes && Array.isArray(serverRes.records)) {
+        if (serverRes.lastUpdated > lastKnownServerTimestamp || lastKnownServerTimestamp === 0) {
+          lastKnownServerTimestamp = Math.max(lastKnownServerTimestamp, serverRes.lastUpdated);
+          const local = getAbsenceRecords();
+          const { merged, hasNewFromServerOrCloud } = mergeAbsenceRecords(local, serverRes.records, []);
+          if (hasNewFromServerOrCloud || merged.length !== local.length) {
+            saveAbsenceRecords(merged, true, false);
+            onUpdate(merged);
+          }
         }
       }
     } catch {
       // Abaikan ralat sementara
     }
-  }, 10000);
+  }, 5000);
 
   // 3. Semak pantas apabila tetingkap difokuskan semula atau peranti kembali online
   let lastFocusSync = 0;

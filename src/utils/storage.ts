@@ -648,16 +648,33 @@ export function recordDeletedAbsenceId(id: string): void {
 
 export function getAbsenceRecords(): StudentAbsenceRecord[] {
   const list = getStored<StudentAbsenceRecord[]>(KEYS.ABSENCE_RECORDS, initialAbsenceRecords);
-  if (!Array.isArray(list)) {
-    return initialAbsenceRecords;
-  }
   const deletedIds = getDeletedAbsenceIds();
-  // Filter out any previous dummy seed records so default starts fresh at 0, and filter deleted records
-  const cleaned = list.filter((r) => r.id !== 'abs-001' && r.id !== 'abs-002' && r.id !== 'abs-003' && !deletedIds.has(r.id));
-  if (cleaned.length !== list.length) {
-    setStored(KEYS.ABSENCE_RECORDS, cleaned);
+  
+  const map = new Map<string, StudentAbsenceRecord>();
+  // 1. Muatkan rekod awal rasmi (termasuk rekod harian terkini)
+  if (Array.isArray(initialAbsenceRecords)) {
+    initialAbsenceRecords.forEach((r) => {
+      if (r && r.id && !deletedIds.has(r.id)) {
+        map.set(r.id, r);
+      }
+    });
   }
-  return cleaned;
+
+  // 2. Gabungkan rekod simpanan tempatan pengguna
+  if (Array.isArray(list)) {
+    list.forEach((r) => {
+      if (r && r.id && !deletedIds.has(r.id)) {
+        map.set(r.id, r);
+      }
+    });
+  }
+
+  const merged = Array.from(map.values())
+    .filter((r) => r.id !== 'abs-001' && r.id !== 'abs-002' && r.id !== 'abs-003')
+    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+
+  setStored(KEYS.ABSENCE_RECORDS, merged);
+  return merged;
 }
 
 let isDispatchingAttendance = false;

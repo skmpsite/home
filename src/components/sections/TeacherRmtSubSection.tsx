@@ -144,7 +144,10 @@ export const TeacherRmtSubSection: React.FC<TeacherRmtSubSectionProps> = ({
     if (!absenceRecords || absenceRecords.length === 0) return [];
     return absenceRecords.filter((rec) => {
       if (rec.status === 'ditolak') return false;
-      return attendanceDate >= rec.dateFrom && attendanceDate <= rec.dateTo;
+      const dFrom = rec.dateFrom || (rec.createdAt ? rec.createdAt.slice(0, 10) : '');
+      const dTo = rec.dateTo || dFrom;
+      if (!dFrom) return false;
+      return attendanceDate >= dFrom && attendanceDate <= dTo;
     });
   }, [absenceRecords, attendanceDate]);
 
