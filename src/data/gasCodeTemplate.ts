@@ -53,6 +53,10 @@ var SHEETS_CONFIG = {
   SIGNAGE_CONFIG: {
     name: "Konfigurasi_Signage",
     headers: ["Kunci", "Nilai"]
+  },
+  KEHADIRAN: {
+    name: "Kehadiran_Murid",
+    headers: ["ID", "No_Rujukan", "ID_Murid", "Nama_Murid", "No_KP", "Tahun", "Kelas", "Tarikh_Mula", "Tarikh_Tamat", "Bil_Hari", "Kategori_Sebab", "Catatan_Sebab", "Nama_Waris", "Telefon_Waris", "Hubungan", "Status", "Disahkan_Oleh", "Tarikh_Masa_Sah", "Tarikh_Cipta"]
   }
 };
 
@@ -69,6 +73,25 @@ function doGet(e) {
     if (action === "getData" || action === "getSchoolData") {
       var schoolData = getSchoolData();
       return ContentService.createTextOutput(schoolData)
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === "submitAttendance") {
+      var rawAtt = (e && e.parameter && (e.parameter.data || e.parameter.payload)) || "";
+      var attObj = {};
+      if (rawAtt) {
+        try { attObj = JSON.parse(decodeURIComponent(rawAtt)); } catch(pErr){ attObj = e.parameter; }
+      } else {
+        attObj = e.parameter || {};
+      }
+      var resAtt = submitAttendance(attObj);
+      return ContentService.createTextOutput(JSON.stringify(resAtt))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === "getAttendance" || action === "getAbsenceRecords") {
+      var attList = getAttendanceData();
+      return ContentService.createTextOutput(JSON.stringify(attList))
         .setMimeType(ContentService.MimeType.JSON);
     }
 
@@ -119,6 +142,19 @@ function doPost(e) {
     if (action === "submitFeedback") {
       var res = submitFeedback(contents.data || contents);
       return ContentService.createTextOutput(JSON.stringify(res))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === "submitAttendance") {
+      var resAtt = submitAttendance(contents.data || contents);
+      return ContentService.createTextOutput(JSON.stringify(resAtt))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === "syncBulkAttendance") {
+      var recList = contents.records || contents.data || contents.payload || [];
+      var resBulkAtt = handleBulkAttendanceSync(recList);
+      return ContentService.createTextOutput(JSON.stringify(resBulkAtt))
         .setMimeType(ContentService.MimeType.JSON);
     }
 
@@ -610,6 +646,172 @@ function getSchoolData() {
     }
   }
   return JSON.stringify(result);
+}
+
+/**
+ * Menyimpan atau Mengemas Kini Rekod e-Kehadiran Murid ke Google Sheets
+ */
+function submitAttendance(data) {
+  autoSetupDatabaseSheets();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(SHEETS_CONFIG.KEHADIRAN.name);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEETS_CONFIG.KEHADIRAN.name);
+    sheet.appendRow(SHEETS_CONFIG.KEHADIRAN.headers);
+  }
+
+  var id = data.id || ("abs_" + new Date().getTime());
+  var refNo = data.refNo || ("KHD-" + Utilities.formatDate(new Date(), "Asia/Kuala_Lumpur", "yyyyMMdd") + "-" + Math.floor(1000 + Math.random() * 9000));
+  var tarikhCipta = data.createdAt || Utilities.formatDate(new Date(), "Asia/Kuala_Lumpur", "yyyy-MM-dd HH:mm:ss");
+
+  var lastRow = sheet.getLastRow();
+  var rowIndex = -1;
+  if (lastRow > 1) {
+    var ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    for (var i = 0; i < ids.length; i++) {
+      if (ids[i][0] && String(ids[i][0]) === String(id)) {
+        rowIndex = i + 2;
+        break;
+      }
+    }
+  }
+
+  var row = [
+    id,
+    refNo,
+    data.studentId || "",
+    data.studentName || "",
+    data.studentIc || "-",
+    data.year || "",
+    data.className || "",
+    data.dateFrom || "",
+    data.dateTo || "",
+    Number(data.daysCount) || 1,
+    data.reasonCategory || "Lain-lain",
+    data.reasonDetails || "",
+    data.parentName || "",
+    data.parentPhone || "",
+    data.parentRelationship || "Waris",
+    data.status || "disahkan",
+    data.verifiedBy || "Waris Murid (Borang Atas Talian)",
+    data.verifiedAt || tarikhCipta,
+    tarikhCipta
+  ];
+
+  if (rowIndex > 0) {
+    sheet.getRange(rowIndex, 1, 1, row.length).setValues([row]);
+  } else {
+    sheet.appendRow(row);
+  }
+
+  return { success: true, message: "Rekod ketidakhadiran berjaya disimpan ke Google Sheets!", id: id, refNo: refNo };
+}
+
+/**
+ * Menyimpan Senarai Rekod e-Kehadiran secara Pukal (Bulk Sync) ke Google Sheets
+ */
+function handleBulkAttendanceSync(records) {
+  if (!Array.isArray(records) || records.length === 0) {
+    return { success: true, message: "Tiada rekod untuk disegerakkan." };
+  }
+  autoSetupDatabaseSheets();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(SHEETS_CONFIG.KEHADIRAN.name);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEETS_CONFIG.KEHADIRAN.name);
+    sheet.appendRow(SHEETS_CONFIG.KEHADIRAN.headers);
+  }
+
+  var existingMap = {};
+  var lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    var existingIds = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    for (var i = 0; i < existingIds.length; i++) {
+      if (existingIds[i][0]) {
+        existingMap[String(existingIds[i][0])] = i + 2;
+      }
+    }
+  }
+
+  var newRows = [];
+  for (var j = 0; j < records.length; j++) {
+    var r = records[j];
+    if (!r) continue;
+    var rowData = [
+      r.id || ("abs_" + j),
+      r.refNo || ("KHD-" + j),
+      r.studentId || "",
+      r.studentName || "",
+      r.studentIc || "-",
+      r.year || "",
+      r.className || "",
+      r.dateFrom || "",
+      r.dateTo || "",
+      Number(r.daysCount) || 1,
+      r.reasonCategory || "Lain-lain",
+      r.reasonDetails || "",
+      r.parentName || "",
+      r.parentPhone || "",
+      r.parentRelationship || "Waris",
+      r.status || "disahkan",
+      r.verifiedBy || "Waris Murid (Borang Atas Talian)",
+      r.verifiedAt || "",
+      r.createdAt || new Date().toISOString()
+    ];
+
+    if (existingMap[r.id]) {
+      sheet.getRange(existingMap[r.id], 1, 1, rowData.length).setValues([rowData]);
+    } else {
+      newRows.push(rowData);
+    }
+  }
+
+  if (newRows.length > 0) {
+    sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, SHEETS_CONFIG.KEHADIRAN.headers.length).setValues(newRows);
+  }
+
+  return { success: true, count: records.length, message: records.length + " rekod ketidakhadiran berjaya disegerakkan ke Google Sheets!" };
+}
+
+/**
+ * Membaca Senarai Rekod e-Kehadiran daripada Google Sheets
+ */
+function getAttendanceData() {
+  autoSetupDatabaseSheets();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(SHEETS_CONFIG.KEHADIRAN.name);
+  if (!sheet || sheet.getLastRow() <= 1) {
+    return { success: true, records: [] };
+  }
+  var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, SHEETS_CONFIG.KEHADIRAN.headers.length).getValues();
+  var records = [];
+  for (var i = 0; i < data.length; i++) {
+    var r = data[i];
+    if (r[0] || r[3]) {
+      records.push({
+        id: String(r[0] || ""),
+        refNo: String(r[1] || ""),
+        studentId: String(r[2] || ""),
+        studentName: String(r[3] || ""),
+        studentIc: String(r[4] || "-"),
+        year: String(r[5] || ""),
+        className: String(r[6] || ""),
+        dateFrom: String(r[7] || ""),
+        dateTo: String(r[8] || ""),
+        daysCount: Number(r[9]) || 1,
+        reasonCategory: String(r[10] || "Lain-lain"),
+        reasonDetails: String(r[11] || ""),
+        parentName: String(r[12] || ""),
+        parentPhone: String(r[13] || ""),
+        parentRelationship: String(r[14] || "Waris"),
+        status: String(r[15] || "disahkan"),
+        verifiedBy: String(r[16] || ""),
+        verifiedAt: String(r[17] || ""),
+        createdAt: String(r[18] || "")
+      });
+    }
+  }
+  return { success: true, records: records };
 }
 `;
 

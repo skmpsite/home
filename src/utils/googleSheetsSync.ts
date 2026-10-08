@@ -92,7 +92,7 @@ export async function syncFeedbackToGoogleSheets(entry: FeedbackEntry): Promise<
 }
 
 /**
- * Automatisasi penghantaran Rekod e-Kehadiran terus ke Google Sheet
+ * Automatisasi penghantaran Rekod e-Kehadiran terus ke Google Sheet (Sandaran Awan)
  */
 export async function syncAttendanceToGoogleSheets(record: StudentAbsenceRecord): Promise<boolean> {
   const url = getGasWebAppUrl();
@@ -100,7 +100,30 @@ export async function syncAttendanceToGoogleSheets(record: StudentAbsenceRecord)
     return false;
   }
 
+  const payload = {
+    id: record.id,
+    refNo: record.refNo,
+    studentId: record.studentId,
+    studentName: record.studentName,
+    studentIc: record.studentIc || '-',
+    year: record.year,
+    className: record.className,
+    dateFrom: record.dateFrom,
+    dateTo: record.dateTo,
+    daysCount: record.daysCount,
+    reasonCategory: record.reasonCategory,
+    reasonDetails: record.reasonDetails,
+    parentName: record.parentName,
+    parentPhone: record.parentPhone,
+    parentRelationship: record.parentRelationship || 'Waris',
+    status: record.status || 'disahkan',
+    verifiedBy: record.verifiedBy || 'Waris Murid (Borang Atas Talian)',
+    verifiedAt: record.verifiedAt || new Date().toISOString(),
+    createdAt: record.createdAt || new Date().toISOString()
+  };
+
   try {
+    // 1. Cubaan utama POST ke Google Apps Script (no-cors membenarkan permintaan melepasi sekatan pelayar)
     await fetch(url, {
       method: 'POST',
       headers: {
@@ -109,35 +132,92 @@ export async function syncAttendanceToGoogleSheets(record: StudentAbsenceRecord)
       mode: 'no-cors',
       body: JSON.stringify({
         action: 'submitAttendance',
-        data: {
-          id: record.id,
-          refNo: record.refNo,
-          studentId: record.studentId,
-          studentName: record.studentName,
-          studentIc: record.studentIc,
-          year: record.year,
-          className: record.className,
-          dateFrom: record.dateFrom,
-          dateTo: record.dateTo,
-          daysCount: record.daysCount,
-          reasonCategory: record.reasonCategory,
-          reasonDetails: record.reasonDetails,
-          parentName: record.parentName,
-          parentPhone: record.parentPhone,
-          parentRelationship: record.parentRelationship,
-          status: record.status,
-          verifiedBy: record.verifiedBy,
-          verifiedAt: record.verifiedAt,
-          createdAt: record.createdAt
-        }
+        data: payload
       })
     });
+
+    // 2. Sandaran GET query param sekiranya pelayar peranti menyekat redirect POST Apps Script
+    try {
+      const encoded = encodeURIComponent(JSON.stringify(payload));
+      const separator = url.includes('?') ? '&' : '?';
+      const getUrl = `${url}${separator}action=submitAttendance&data=${encoded}&_t=${Date.now()}`;
+      fetch(getUrl, { method: 'GET', mode: 'no-cors', cache: 'no-store' }).catch(() => {});
+    } catch {}
+
     console.log('[GOOGLE SHEETS] e-Kehadiran berjaya disegerakkan ke Google Sheets:', record.studentName);
     return true;
   } catch (err) {
     console.warn('[GOOGLE SHEETS] Gagal menyegerakkan e-kehadiran ke Google Sheets:', err);
     return false;
   }
+}
+
+/**
+ * Automatisasi penghantaran rekod ketidakhadiran pukal ke Google Sheets
+ */
+export async function syncBulkAttendanceToGoogleSheets(records: StudentAbsenceRecord[]): Promise<boolean> {
+  const url = getGasWebAppUrl();
+  if (!url || !Array.isArray(records) || records.length === 0) return false;
+
+  try {
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      mode: 'no-cors',
+      body: JSON.stringify({
+        action: 'syncBulkAttendance',
+        records: records.map((r) => ({
+          id: r.id,
+          refNo: r.refNo,
+          studentId: r.studentId,
+          studentName: r.studentName,
+          studentIc: r.studentIc || '-',
+          year: r.year,
+          className: r.className,
+          dateFrom: r.dateFrom,
+          dateTo: r.dateTo,
+          daysCount: r.daysCount,
+          reasonCategory: r.reasonCategory,
+          reasonDetails: r.reasonDetails,
+          parentName: r.parentName,
+          parentPhone: r.parentPhone,
+          parentRelationship: r.parentRelationship,
+          status: r.status,
+          verifiedBy: r.verifiedBy,
+          verifiedAt: r.verifiedAt,
+          createdAt: r.createdAt
+        }))
+      })
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Dapatkan rekod ketidakhadiran terus daripada spreadsheet Google Sheets
+ */
+export async function fetchAttendanceRecordsFromGoogleSheets(): Promise<StudentAbsenceRecord[]> {
+  const url = getGasWebAppUrl();
+  if (!url) return [];
+  try {
+    const separator = url.includes('?') ? '&' : '?';
+    const getUrl = `${url}${separator}action=getAttendance&_t=${Date.now()}`;
+    const res = await fetch(getUrl, {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store'
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.success && Array.isArray(data.records)) {
+        return data.records as StudentAbsenceRecord[];
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return [];
 }
 
 /**
@@ -247,6 +327,7 @@ export function parseSchoolDataFromSheets(rawData: any): {
   signageSlides?: SignageSlide[];
   signageConfig?: Partial<SignageConfig>;
   teacherLinks?: TeacherLinkItem[];
+  attendanceRecords?: StudentAbsenceRecord[];
 } {
   if (!rawData || typeof rawData !== 'object') return {};
 
@@ -258,6 +339,7 @@ export function parseSchoolDataFromSheets(rawData: any): {
     signageSlides?: SignageSlide[];
     signageConfig?: Partial<SignageConfig>;
     teacherLinks?: TeacherLinkItem[];
+    attendanceRecords?: StudentAbsenceRecord[];
   } = {};
 
   // 1. Takwim Sekolah
@@ -644,6 +726,40 @@ export function parseSchoolDataFromSheets(rawData: any): {
       }
 
       parsed.teacherLinks = validTeacherLinks.sort((a, b) => (a.order || 0) - (b.order || 0));
+    }
+  }
+
+  // 8. Rekod e-Kehadiran Murid (Sandaran & Pengemaskinian dari Google Sheets)
+  const attendanceRows = rawData.Kehadiran_Murid || rawData.attendanceRecords || rawData.Kehadiran || rawData.e_kehadiran;
+  if (Array.isArray(attendanceRows) && attendanceRows.length > 0) {
+    const validAttendance: StudentAbsenceRecord[] = attendanceRows
+      .filter((row: any) => row && (row.ID || row.Nama_Murid || row.studentName || row.id))
+      .map((row: any, idx: number) => {
+        return {
+          id: String(row.ID || row.id || `abs-sheet-${idx + 1}`),
+          refNo: String(row.No_Rujukan || row.refNo || `KHD-${idx + 1}`),
+          studentId: String(row.ID_Murid || row.studentId || ''),
+          studentName: String(row.Nama_Murid || row.studentName || ''),
+          studentIc: String(row.No_KP || row.studentIc || '-'),
+          year: String(row.Tahun || row.year || ''),
+          className: String(row.Kelas || row.className || ''),
+          dateFrom: String(row.Tarikh_Mula || row.dateFrom || ''),
+          dateTo: String(row.Tarikh_Tamat || row.dateTo || ''),
+          daysCount: Number(row.Bil_Hari || row.daysCount) || 1,
+          reasonCategory: (row.Kategori_Sebab || row.reasonCategory || 'Lain-lain') as any,
+          reasonDetails: String(row.Catatan_Sebab || row.reasonDetails || ''),
+          parentName: String(row.Nama_Waris || row.parentName || ''),
+          parentPhone: String(row.Telefon_Waris || row.parentPhone || ''),
+          parentRelationship: String(row.Hubungan || row.parentRelationship || 'Waris'),
+          status: (row.Status || row.status || 'disahkan') as any,
+          verifiedBy: String(row.Disahkan_Oleh || row.verifiedBy || 'Waris Murid (Borang Atas Talian)'),
+          verifiedAt: String(row.Tarikh_Masa_Sah || row.verifiedAt || ''),
+          createdAt: String(row.Tarikh_Cipta || row.createdAt || new Date().toISOString())
+        };
+      });
+
+    if (validAttendance.length > 0) {
+      parsed.attendanceRecords = validAttendance;
     }
   }
 

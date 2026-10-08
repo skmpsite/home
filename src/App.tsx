@@ -498,6 +498,16 @@ export default function App() {
             return prev;
           });
         }
+        if (parsed.attendanceRecords && parsed.attendanceRecords.length > 0) {
+          setAbsenceRecords((prev) => {
+            const merged = mergeAbsenceRecordArrays(prev, parsed.attendanceRecords!);
+            if (JSON.stringify(prev) !== JSON.stringify(merged)) {
+              saveAbsenceRecords(merged, true, false);
+              return merged;
+            }
+            return prev;
+          });
+        }
         if (parsed.profileUpdates) {
           setProfile((prev) => {
             const updated = { ...prev, ...parsed.profileUpdates };

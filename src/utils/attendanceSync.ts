@@ -12,7 +12,11 @@ import {
   recordDeletedAbsenceId
 } from './storage';
 import { getBackendApiUrl } from './apiConfig';
-import { syncAttendanceToGoogleSheets } from './googleSheetsSync';
+import {
+  syncAttendanceToGoogleSheets,
+  syncBulkAttendanceToGoogleSheets,
+  fetchAttendanceRecordsFromGoogleSheets
+} from './googleSheetsSync';
 
 let lastKnownServerTimestamp = 0;
 let isSyncInProgress = false;
@@ -106,7 +110,8 @@ export async function deleteAttendanceFromServer(id: string): Promise<boolean> {
 export function mergeAbsenceRecords(
   localList: StudentAbsenceRecord[],
   serverList: StudentAbsenceRecord[],
-  firestoreList: StudentAbsenceRecord[]
+  firestoreList: StudentAbsenceRecord[],
+  sheetsList: StudentAbsenceRecord[] = []
 ): { merged: StudentAbsenceRecord[]; hasNewFromServerOrCloud: boolean; hasLocalOnly: boolean } {
   const map = new Map<string, StudentAbsenceRecord>();
   const deletedIds = getDeletedAbsenceIds();
@@ -118,8 +123,7 @@ export function mergeAbsenceRecords(
 
   let hasNewFromServerOrCloud = false;
 
-  // 2. Gabungkan rekod pelayan (Server API) - abaikan rekod yang telah dipadam
-  serverList.forEach((r) => {
+  const mergeItem = (r: StudentAbsenceRecord) => {
     if (!r || !r.id || deletedIds.has(r.id)) return;
     if (!map.has(r.id)) {
       map.set(r.id, r);
@@ -129,32 +133,24 @@ export function mergeAbsenceRecords(
       if (
         (r.verifiedAt && !existing.verifiedAt) ||
         (r.status !== existing.status) ||
-        (r.createdAt > existing.createdAt)
+        (r.createdAt > existing.createdAt) ||
+        (r.attachmentUrl && !existing.attachmentUrl) ||
+        (r.reasonDetails && !existing.reasonDetails)
       ) {
         map.set(r.id, { ...existing, ...r });
         hasNewFromServerOrCloud = true;
       }
     }
-  });
+  };
 
-  // 3. Gabungkan rekod Firestore - abaikan rekod yang telah dipadam
-  firestoreList.forEach((r) => {
-    if (!r || !r.id || deletedIds.has(r.id)) return;
-    if (!map.has(r.id)) {
-      map.set(r.id, r);
-      hasNewFromServerOrCloud = true;
-    } else {
-      const existing = map.get(r.id)!;
-      if (
-        (r.verifiedAt && !existing.verifiedAt) ||
-        (r.status !== existing.status) ||
-        (r.createdAt > existing.createdAt)
-      ) {
-        map.set(r.id, { ...existing, ...r });
-        hasNewFromServerOrCloud = true;
-      }
-    }
-  });
+  // 2. Gabungkan rekod pelayan (Server API)
+  serverList.forEach(mergeItem);
+
+  // 3. Gabungkan rekod Google Sheets (Sandaran rasmi spreadsheet sekolah)
+  sheetsList.forEach(mergeItem);
+
+  // 4. Gabungkan rekod Firestore
+  firestoreList.forEach(mergeItem);
 
   const merged = Array.from(map.values()).sort((a, b) => {
     return (b.createdAt || '').localeCompare(a.createdAt || '');
@@ -173,11 +169,11 @@ export function mergeAbsenceRecordArrays(
   existing: StudentAbsenceRecord[],
   incoming: StudentAbsenceRecord[]
 ): StudentAbsenceRecord[] {
-  return mergeAbsenceRecords(existing || [], incoming || [], []).merged;
+  return mergeAbsenceRecords(existing || [], incoming || [], [], []).merged;
 }
 
 /**
- * Lakukan penyegerakan lengkap dari semua punca data (Server + Firestore + Local)
+ * Lakukan penyegerakan lengkap dari semua punca data (Server + Google Sheets + Firestore + Local)
  */
 export async function syncAttendanceWithAllSources(
   onUpdateCallback?: (records: StudentAbsenceRecord[]) => void
@@ -190,9 +186,10 @@ export async function syncAttendanceWithAllSources(
   try {
     const local = getAbsenceRecords();
 
-    // Fetch serentak daripada Server API dan Firestore
-    const [serverRes, firestoreList] = await Promise.all([
+    // Fetch serentak daripada Server API, Google Sheets dan Firestore
+    const [serverRes, sheetsList, firestoreList] = await Promise.all([
       fetchAttendanceFromServer(),
+      fetchAttendanceRecordsFromGoogleSheets().catch(() => []),
       fetchAbsenceRecordsFromFirestore().catch(() => null)
     ]);
 
@@ -204,16 +201,18 @@ export async function syncAttendanceWithAllSources(
     const { merged, hasNewFromServerOrCloud, hasLocalOnly } = mergeAbsenceRecords(
       local,
       serverList,
-      firestoreList || []
+      firestoreList || [],
+      sheetsList || []
     );
 
-    // Jika ada rekod tempatan yang belum disegerakkan ke pelayan/cloud
+    // Jika ada rekod tempatan yang belum disegerakkan ke pelayan/Google Sheets/cloud
     if (hasLocalOnly && merged.length > 0) {
       saveAttendanceToServer(merged).catch(() => {});
       pushAbsenceRecordsToFirestore(merged).catch(() => {});
+      syncBulkAttendanceToGoogleSheets(merged).catch(() => {});
     }
 
-    // Jika data pelayan/cloud membawa rekod baru ke peranti ini
+    // Jika data pelayan/cloud/Google Sheets membawa rekod baru ke peranti ini
     if (hasNewFromServerOrCloud || merged.length !== local.length) {
       saveAbsenceRecords(merged, true, false); // simpan tanpa duplicate event
       if (onUpdateCallback) onUpdateCallback(merged);

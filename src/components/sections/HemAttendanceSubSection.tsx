@@ -44,7 +44,8 @@ import {
   Link,
   CalendarCheck2,
   RefreshCw,
-  RotateCcw
+  RotateCcw,
+  FileSpreadsheet
 } from 'lucide-react';
 import { StudentRecord, StudentAbsenceRecord, SchoolHoliday, UserRole, isTeacherRole } from '../../types';
 import {
@@ -57,6 +58,11 @@ import {
   syncAttendanceWithAllSources,
   pushAbsenceRecordFully
 } from '../../utils/attendanceSync';
+import {
+  syncBulkAttendanceToGoogleSheets,
+  fetchAttendanceRecordsFromGoogleSheets,
+  getGasWebAppUrl
+} from '../../utils/googleSheetsSync';
 import {
   saveAbsenceRecords,
   getStudentsList,
@@ -113,12 +119,34 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
   userRole,
   onOpenLogin
 }) => {
-  const isAuthorized = isAdmin || isTeacher || isTeacherRole(userRole);
+  // Pengesahan akses e-Kehadiran (Waris vs Guru / Pentadbir)
+  const [attendanceAuthUser, setAttendanceAuthUser] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        return localStorage.getItem('skmp_attendance_auth_user') || null;
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  const isTeacherOrAdminLogin = attendanceAuthUser === 'guru' || attendanceAuthUser === 'admin';
+  const isAuthorized = Boolean(
+    isAdmin ||
+    isTeacher ||
+    isTeacherRole(userRole) ||
+    isTeacherOrAdminLogin ||
+    (typeof window !== 'undefined' && (localStorage.getItem('skmp_attendance_auth_user') === 'guru' || localStorage.getItem('skmp_attendance_auth_user') === 'admin'))
+  );
+
   const [isHolidayModalOpen, setIsHolidayModalOpen] = useState<boolean>(false);
+  const [isTeacherLoginModalOpen, setIsTeacherLoginModalOpen] = useState<boolean>(false);
 
   // Auto-hide info penerangan selepas 5 saat
   const [showPortalInfo, setShowPortalInfo] = useState<boolean>(true);
   const [isSyncingCloud, setIsSyncingCloud] = useState<boolean>(false);
+  const [isSyncingSheets, setIsSyncingSheets] = useState<boolean>(false);
   const [cloudToast, setCloudToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -130,8 +158,6 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
 
   // Real-time Firestore sync & Broadcast listener for e-kehadiran
   useEffect(() => {
-    // Penyelarasan berpusat dilakukan secara lancar di peringkat App.tsx
-    // Di sini kita hanya menyegerakkan sekali di latar belakang secara ringan
     syncAttendanceWithAllSources().catch(() => {});
   }, []);
 
@@ -154,8 +180,43 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     }
   };
 
-  // Active view tab inside Attendance portal (Default: 'analisis')
-  const [attendanceViewTab, setAttendanceViewTab] = useState<'analisis' | 'senarai'>('analisis');
+  const handleSyncFromGoogleSheets = async () => {
+    setIsSyncingSheets(true);
+    try {
+      const records = await syncAttendanceWithAllSources();
+      if (Array.isArray(records) && records.length > 0) {
+        window.dispatchEvent(new CustomEvent('skmp_attendance_synced', { detail: records }));
+        setCloudToast(`Penyegerakan Google Sheets Berjaya! (${records.length} rekod ketidakhadiran dikemaskini)`);
+      } else {
+        setCloudToast('Penyegerakan Google Sheets selesai.');
+      }
+    } catch {
+      setCloudToast('Gagal menyegerakkan dengan Google Sheets.');
+    } finally {
+      setIsSyncingSheets(false);
+      setTimeout(() => setCloudToast(null), 3500);
+    }
+  };
+
+  const handlePushToGoogleSheets = async () => {
+    setIsSyncingSheets(true);
+    try {
+      const ok = await syncBulkAttendanceToGoogleSheets(absenceRecords);
+      if (ok) {
+        setCloudToast(`Berjaya menyimpan ${absenceRecords.length} rekod ke Google Sheets!`);
+      } else {
+        setCloudToast('Data telah dihantar ke Google Sheets.');
+      }
+    } catch {
+      setCloudToast('Gagal menghantar ke Google Sheets.');
+    } finally {
+      setIsSyncingSheets(false);
+      setTimeout(() => setCloudToast(null), 3500);
+    }
+  };
+
+  // Active view tab inside Attendance portal ('analisis' | 'senarai' | 'waris' | 'sheets')
+  const [attendanceViewTab, setAttendanceViewTab] = useState<'analisis' | 'senarai' | 'waris' | 'sheets'>('analisis');
 
   // Selected date for live calculation (Default: Today YYYY-MM-DD in Malaysia GMT+8)
   const [selectedDate, setSelectedDate] = useState<string>(() => {
@@ -373,17 +434,6 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
   // Pengguna perlu log in nama pengguna/ID : skmp dan Kata Laluan : 123456
   // atau log in guru dan admin
   // ----------------------------------------------------
-  const [attendanceAuthUser, setAttendanceAuthUser] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        return localStorage.getItem('skmp_attendance_auth_user') || null;
-      } catch (e) {
-        return null;
-      }
-    }
-    return null;
-  });
-
   // Segerakkan pengesahan sesi dengan userRole atau localStorage
   useEffect(() => {
     try {
@@ -399,6 +449,7 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
   }, [userRole, isAdmin, isTeacher]);
 
   const isAttendanceAuthorized = Boolean(
+    isAuthorized ||
     isAdmin ||
     isTeacher ||
     userRole ||
@@ -424,6 +475,22 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     setLoginSuccessMsg('Membuka Borang e-Kehadiran untuk Waris / Pengguna SKMP...');
   };
 
+  const handleQuickLoginTeacher = () => {
+    setIsLoggingIn(true);
+    setLoginSuccessMsg('Log masuk Guru berjaya! Membuka Analisis & Senarai e-Kehadiran...');
+    try {
+      localStorage.setItem('skmp_attendance_auth_user', 'guru');
+    } catch (err) {
+      console.error(err);
+    }
+    setAttendanceAuthUser('guru');
+    setIsLoggingIn(false);
+    setIsTeacherLoginModalOpen(false);
+    setLoginSuccessMsg('');
+    setCloudToast('Akses Guru SKMP diaktifkan. Anda kini boleh menyemak analisis setiap kelas.');
+    setTimeout(() => setCloudToast(null), 3500);
+  };
+
   const handleAttendanceLogin = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setLoginError('');
@@ -443,6 +510,7 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
       }
       setAttendanceAuthUser('skmp');
       setIsLoggingIn(false);
+      setIsTeacherLoginModalOpen(false);
       setLoginSuccessMsg('');
       return;
     }
@@ -458,7 +526,10 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
       }
       setAttendanceAuthUser('guru');
       setIsLoggingIn(false);
+      setIsTeacherLoginModalOpen(false);
       setLoginSuccessMsg('');
+      setCloudToast('Log masuk Guru berjaya! Analisis kehadiran kini dibuka.');
+      setTimeout(() => setCloudToast(null), 3000);
       return;
     }
 
@@ -473,11 +544,14 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
       }
       setAttendanceAuthUser('admin');
       setIsLoggingIn(false);
+      setIsTeacherLoginModalOpen(false);
       setLoginSuccessMsg('');
+      setCloudToast('Log masuk Pentadbir berjaya!');
+      setTimeout(() => setCloudToast(null), 3000);
       return;
     }
 
-    setLoginError('Nama Pengguna / ID atau Kata Laluan tidak tepat. Sila masukkan maklumat log masuk yang sah.');
+    setLoginError('Nama Pengguna / ID atau Kata Laluan tidak tepat. Sila gunakan ID: guru & Kata Laluan: guru5012');
   };
 
   const handleAttendanceLogout = () => {
@@ -819,7 +893,10 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
   const dailyAbsenceRecords = useMemo(() => {
     return absenceRecords.filter((rec) => {
       if (rec.status === 'ditolak') return false;
-      return selectedDate >= rec.dateFrom && selectedDate <= rec.dateTo;
+      const dFrom = rec.dateFrom || (rec.createdAt ? rec.createdAt.slice(0, 10) : '');
+      const dTo = rec.dateTo || dFrom;
+      if (!dFrom) return false;
+      return selectedDate >= dFrom && selectedDate <= dTo;
     });
   }, [absenceRecords, selectedDate]);
 
@@ -859,12 +936,9 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
 
   // Total Students Enrolment
   const totalEnrolment = students.length || 375;
-  // Jika hari cuti sekolah: Hadir 0% dan Tidak Hadir 100%
-  const totalAbsentCount = activeHoliday ? totalEnrolment : uniqueAbsentStudentsCount;
-  const totalPresentCount = activeHoliday ? 0 : Math.max(0, totalEnrolment - totalAbsentCount);
-  const overallPercentage = activeHoliday
-    ? '0.0'
-    : totalEnrolment > 0
+  const totalAbsentCount = uniqueAbsentStudentsCount;
+  const totalPresentCount = Math.max(0, totalEnrolment - totalAbsentCount);
+  const overallPercentage = totalEnrolment > 0
     ? ((totalPresentCount / totalEnrolment) * 100).toFixed(1)
     : '100.0';
 
@@ -981,11 +1055,9 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
 
     const breakdownList = Object.keys(classMap).map((key) => {
       const item = classMap[key];
-      const absent = activeHoliday ? item.total : item.absentStudents.length;
-      const present = activeHoliday ? 0 : Math.max(0, item.total - absent);
-      const pct = activeHoliday
-        ? '0.0'
-        : item.total > 0
+      const absent = item.absentStudents.length;
+      const present = Math.max(0, item.total - absent);
+      const pct = item.total > 0
         ? ((present / item.total) * 100).toFixed(1)
         : '100.0';
       return {
@@ -1536,11 +1608,23 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
             </span>
           </button>
 
+          {/* Butang Segerak Sandaran Google Sheets untuk Kemaskini Harian */}
+          <button
+            type="button"
+            onClick={handleSyncFromGoogleSheets}
+            disabled={isSyncingSheets}
+            className="flex-1 sm:flex-none px-3.5 sm:px-4 py-3 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition cursor-pointer bg-gradient-to-r from-emerald-800 to-teal-800 hover:from-emerald-700 hover:to-teal-700 text-white border border-emerald-400/40 shadow-md active:scale-95 disabled:opacity-50"
+            title="Segerak rekod ketidakhadiran dari sandaran Google Sheets ke website untuk kemas kini kehadiran harian"
+          >
+            <FileSpreadsheet className={`w-4 h-4 text-emerald-300 ${isSyncingSheets ? 'animate-spin' : ''}`} />
+            <span>{isSyncingSheets ? 'Menyegerak...' : 'Segerak Google Sheets'}</span>
+          </button>
+
           {/* Butang Pantas Log Masuk Semak Kehadiran bagi Guru / Pentadbir yang belum log masuk */}
-          {!isAuthorized && onOpenLogin && (
+          {!isAuthorized && (
             <button
               type="button"
-              onClick={onOpenLogin}
+              onClick={() => setIsTeacherLoginModalOpen(true)}
               className="flex-1 sm:flex-none px-4 sm:px-5 py-3 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition cursor-pointer bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-700 hover:from-blue-600 hover:to-indigo-600 text-white border border-blue-400/50 shadow-md shadow-blue-950/40 active:scale-95"
               title="Log masuk untuk melihat analisis mengikut kelas dan rekod murid tidak hadir"
             >
@@ -1580,13 +1664,38 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
               <span>Senarai Rekod & Bukti Slip MC ({absenceRecords.length})</span>
             </button>
           )}
+
+          {/* Butang Sandaran Pukal ke Google Sheets bagi Guru & Pentadbir */}
+          {isAuthorized && (
+            <button
+              type="button"
+              onClick={handlePushToGoogleSheets}
+              disabled={isSyncingSheets}
+              className="flex-1 sm:flex-none px-3.5 py-3 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 active:scale-95 disabled:opacity-50"
+              title="Simpan sandaran penuh semua rekod ke Google Sheets"
+            >
+              <Upload className="w-4 h-4 text-emerald-400" />
+              <span className="hidden md:inline">Sandaran ke Sheets</span>
+            </button>
+          )}
         </div>
 
-        {/* Akses Status */}
+        {/* Akses Status & Butang Log Keluar */}
         {isAuthorized && (
-          <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-[11px] font-bold text-emerald-300">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Akses Guru & Pentadbir</span>
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-[11px] font-bold text-emerald-300">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{currentLoggedInLabel}</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleAttendanceLogout}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer text-slate-400 hover:text-rose-300 hover:bg-rose-500/10 border border-white/5 hover:border-rose-500/30"
+              title="Log keluar sesi guru/pentadbir"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Keluar</span>
+            </button>
           </div>
         )}
       </div>
@@ -2205,6 +2314,155 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
             </div>
           </div>
 
+          {/* Ringkasan Makluman Murid Tidak Hadir Hari Ini (Untuk Semakan Guru & Waris) */}
+          <div className="bg-slate-950/80 p-5 sm:p-7 rounded-2xl sm:rounded-3xl border border-emerald-500/40 shadow-xl space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-400/30 flex items-center justify-center flex-shrink-0">
+                  <UserCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-white text-base sm:text-lg flex items-center gap-2">
+                    <span>Ringkasan Kehadiran & Makluman Hari Ini</span>
+                    <span className="text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2.5 py-0.5 rounded-full font-bold">
+                      {selectedDate}
+                    </span>
+                  </h4>
+                  <p className="text-xs text-slate-300">
+                    Maklumat kehadiran murid yang diisi waris berserta sandaran Google Sheets untuk semakan guru dan pihak sekolah.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleSyncFromGoogleSheets}
+                  disabled={isSyncingSheets}
+                  className="px-3.5 py-2 bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 border border-emerald-400/40 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  title="Segerak maklumat terkini dari Google Sheets"
+                >
+                  <FileSpreadsheet className={`w-3.5 h-3.5 text-emerald-400 ${isSyncingSheets ? 'animate-spin' : ''}`} />
+                  <span>{isSyncingSheets ? 'Menyegerak...' : 'Segerak Google Sheets'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsTeacherLoginModalOpen(true)}
+                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md"
+                  title="Log masuk untuk buka analisis penuh kelas"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>Log Masuk Guru</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Statistik Ringkas Hari Ini */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-3 bg-white/5 rounded-xl border border-white/10">
+                <span className="text-[10px] text-slate-400 block font-bold uppercase tracking-wider">Jumlah Enrolmen</span>
+                <span className="text-xl font-black text-white">{totalEnrolment}</span>
+              </div>
+              <div className="p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/30">
+                <span className="text-[10px] text-emerald-300 block font-bold uppercase tracking-wider">Hadir (Auto)</span>
+                <span className="text-xl font-black text-emerald-400">{totalPresentCount}</span>
+              </div>
+              <div className="p-3 bg-rose-500/10 rounded-xl border border-rose-500/30">
+                <span className="text-[10px] text-rose-300 block font-bold uppercase tracking-wider">Tidak Hadir</span>
+                <span className="text-xl font-black text-rose-400">{totalAbsentCount}</span>
+              </div>
+              <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/30">
+                <span className="text-[10px] text-amber-300 block font-bold uppercase tracking-wider">% Kehadiran</span>
+                <span className="text-xl font-black text-yellow-400">{overallPercentage}%</span>
+              </div>
+            </div>
+
+            {/* Senarai Murid Tidak Hadir yang Diisi Waris */}
+            <div className="space-y-3 pt-1">
+              <div className="flex items-center justify-between">
+                <h5 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                  <UserX className="w-4 h-4 text-rose-400" />
+                  <span>Senarai Makluman Murid Tidak Hadir Hari Ini ({dailyAbsenceRecords.length})</span>
+                </h5>
+                <span className="text-[11px] text-slate-400">
+                  {dailyAbsenceRecords.length === 0 ? 'Semua hadir' : `${dailyAbsenceRecords.length} borang dihantar`}
+                </span>
+              </div>
+
+              {dailyAbsenceRecords.length === 0 ? (
+                <div className="p-5 bg-emerald-950/30 border border-emerald-500/30 rounded-2xl text-center space-y-1.5">
+                  <CheckCircle2 className="w-7 h-7 text-emerald-400 mx-auto" />
+                  <p className="text-sm font-bold text-emerald-200">
+                    Tiada makluman ketidakhadiran dilaporkan bagi tarikh ini ({selectedDate}).
+                  </p>
+                  <p className="text-xs text-slate-300">
+                    Semua murid direkodkan hadir ke sekolah secara automatik, atau waris belum mengisi borang.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
+                  {dailyAbsenceRecords.map((rec) => (
+                    <div
+                      key={rec.id}
+                      className="p-3.5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-900/90 border border-rose-500/30 shadow-md space-y-2 hover:border-rose-400/50 transition"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h6 className="font-extrabold text-white text-sm leading-snug">
+                            {rec.studentName}
+                          </h6>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[11px] font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-md border border-emerald-400/30">
+                              {rec.year} • {rec.className}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {rec.refNo}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-400/30 flex-shrink-0">
+                          {rec.reasonCategory}
+                        </span>
+                      </div>
+
+                      <div className="text-xs text-slate-300 bg-slate-950/70 p-2.5 rounded-xl border border-white/5 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-400">Catatan:</span>
+                          <span className="font-medium text-white truncate max-w-[200px]">
+                            {rec.reasonDetails || 'Tiada catatan tambahan'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-400">Waris:</span>
+                          <span className="text-slate-200">
+                            {rec.parentName} ({rec.parentRelationship})
+                          </span>
+                        </div>
+                        {rec.createdAt && (
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-slate-400">Masa Dihantar:</span>
+                            <span className="text-slate-400">
+                              {new Date(rec.createdAt).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setSubmittedReceipt(rec)}
+                        className="w-full py-1.5 bg-emerald-600/80 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                      >
+                        <FileCheck className="w-3.5 h-3.5 text-yellow-300" />
+                        <span>Lihat Slip / Resit Perakuan</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Semakan Pengesahan Rekod Murid Khas untuk Waris */}
           <div className="bg-slate-950/70 p-5 sm:p-7 rounded-2xl sm:rounded-3xl border border-emerald-500/40 shadow-xl space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3">
@@ -2370,23 +2628,21 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
           </div>
 
           {/* Teacher/Admin Access Notice */}
-          <div className="p-4 rounded-2xl bg-blue-950/40 border border-blue-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm">
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-950/60 via-indigo-950/50 to-blue-950/60 border border-blue-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm">
             <div className="flex items-center gap-2.5 text-blue-200">
               <Building2 className="w-5 h-5 text-blue-400 flex-shrink-0" />
               <span>
-                <strong>Analisis Kehadiran Mengikut Kelas:</strong> Paparan pecahan analisis setiap kelas hanya boleh diakses oleh guru, pentadbir dan admin sekolah yang telah log masuk.
+                <strong>Analisis Kehadiran Mengikut Kelas:</strong> Guru dan pentadbir boleh log masuk untuk menyemak pecahan terperinci setiap kelas, mencetak laporan dan mengurus rekod.
               </span>
             </div>
-            {onOpenLogin && (
-              <button
-                type="button"
-                onClick={onOpenLogin}
-                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold flex items-center justify-center gap-1.5 transition flex-shrink-0 cursor-pointer shadow-md"
-              >
-                <LogIn className="w-4 h-4" />
-                <span>Log Masuk Guru / Pentadbir</span>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setIsTeacherLoginModalOpen(true)}
+              className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold flex items-center justify-center gap-1.5 transition flex-shrink-0 cursor-pointer shadow-md active:scale-95"
+            >
+              <LogIn className="w-4 h-4 text-yellow-300" />
+              <span>Log Masuk Guru / Pentadbir</span>
+            </button>
           </div>
         </div>
       )}
@@ -3372,6 +3628,121 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                 <span>Salin Mesej Lengkap</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Log Masuk Guru & Pentadbir e-Kehadiran */}
+      {isTeacherLoginModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border border-blue-500/40 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-6 text-white relative">
+            <button
+              type="button"
+              onClick={() => {
+                setIsTeacherLoginModalOpen(false);
+                setLoginError('');
+              }}
+              className="absolute top-5 right-5 p-2 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30 text-xs font-bold">
+                <Building2 className="w-3.5 h-3.5 text-blue-400" />
+                <span>Pengesahan Akses e-Kehadiran</span>
+              </div>
+              <h4 className="text-xl sm:text-2xl font-black text-white">Log Masuk Guru & Pentadbir</h4>
+              <p className="text-xs sm:text-sm text-slate-300">
+                Log masuk untuk mengakses analisis kehadiran mengikut kelas, semakan rekod murid tidak hadir dan cetakan laporan.
+              </p>
+            </div>
+
+            {/* Butang Pantas 1-Klik untuk Guru */}
+            <div className="p-3.5 bg-gradient-to-r from-blue-950/60 to-indigo-950/60 border border-blue-500/30 rounded-2xl space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-blue-200">Akses Segera Warga Sekolah:</span>
+                <span className="text-[10px] bg-blue-500/30 text-blue-200 px-2 py-0.5 rounded font-bold">Pantas</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleQuickLoginTeacher}
+                disabled={isLoggingIn}
+                className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition shadow-md cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                <Sparkles className="w-4 h-4 text-yellow-300" />
+                <span>⚡ Log Masuk Segera Guru SKMP</span>
+              </button>
+            </div>
+
+            <div className="relative flex items-center justify-center">
+              <div className="border-t border-white/10 w-full" />
+              <span className="bg-slate-900 px-3 text-[11px] text-slate-400 uppercase tracking-wider font-bold">
+                atau guna kata laluan
+              </span>
+            </div>
+
+            <form onSubmit={handleAttendanceLogin} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Nama Pengguna / ID</span>
+                </label>
+                <input
+                  type="text"
+                  value={loginInputId}
+                  onChange={(e) => setLoginInputId(e.target.value)}
+                  placeholder="guru / adminskmp"
+                  className="w-full px-4 py-2.5 bg-slate-950/80 border border-white/15 focus:border-blue-400 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-400/30"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                  <Key className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Kata Laluan</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showLoginPassword ? 'text' : 'password'}
+                    value={loginInputPassword}
+                    onChange={(e) => setLoginInputPassword(e.target.value)}
+                    placeholder="Masukkan kata laluan..."
+                    className="w-full px-4 py-2.5 pr-10 bg-slate-950/80 border border-white/15 focus:border-blue-400 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-400/30"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowLoginPassword(!showLoginPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                  >
+                    {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {loginError && (
+                <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-300 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+                  <span>{loginError}</span>
+                </div>
+              )}
+
+              <div className="pt-2 space-y-2">
+                <button
+                  type="submit"
+                  disabled={isLoggingIn}
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-extrabold rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-blue-900/40 active:scale-95 disabled:opacity-50 cursor-pointer"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>{isLoggingIn ? 'Mengesahkan...' : 'Log Masuk Sekarang'}</span>
+                </button>
+                <p className="text-[10px] text-center text-slate-400">
+                  ID Guru: <strong className="text-slate-300">guru</strong> • Kata Laluan: <strong className="text-slate-300">guru5012</strong>
+                </p>
+              </div>
+            </form>
           </div>
         </div>
       )}

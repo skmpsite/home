@@ -388,6 +388,50 @@ async function startServer() {
   };
   syncAttendanceFromCloudFirestore();
 
+  // Segerakkan data e-Kehadiran daripada Google Sheets Spreadsheet rasmi semasa permulaan pelayan
+  const syncAttendanceFromGoogleSheets = async () => {
+    try {
+      const gasUrl = "https://script.google.com/macros/s/AKfycbzNt7sV40UAsBAIhjYbSsVreHS5hGlm6-WOzLEEDRnwxKgst1D2iXL1CsN_xZe_RdGl/exec?action=getAttendance";
+      const resp = await fetch(gasUrl);
+      if (!resp.ok) return;
+      const json: any = await resp.json();
+      const records = json.records || [];
+      if (!Array.isArray(records) || records.length === 0) return;
+
+      const recordMap = new Map<string, any>();
+      liveAttendanceRecords.forEach((r: any) => {
+        if (r && r.id && !deletedAttendanceIds.has(r.id)) recordMap.set(r.id, r);
+      });
+
+      let addedCount = 0;
+      records.forEach((rec: any) => {
+        if (!rec || !rec.id || deletedAttendanceIds.has(rec.id)) return;
+        if (!recordMap.has(rec.id)) {
+          recordMap.set(rec.id, rec);
+          addedCount++;
+        }
+      });
+
+      if (addedCount > 0) {
+        liveAttendanceRecords = Array.from(recordMap.values()).sort((a: any, b: any) =>
+          (b.createdAt || "").localeCompare(a.createdAt || "")
+        );
+        attendanceLastUpdated = Date.now();
+        scheduleAttendanceSave();
+        livePortalData['skmp_absence_records_v1'] = {
+          data: liveAttendanceRecords,
+          updatedAt: attendanceLastUpdated,
+          updatedBy: 'sheets_sync'
+        };
+        schedulePortalSyncSave();
+        console.log(`[GOOGLE SHEETS SYNC] Successfully loaded and merged ${addedCount} records from Google Sheets (Total: ${liveAttendanceRecords.length})`);
+      }
+    } catch (e) {
+      // Abaikan jika rangkaian luar talian
+    }
+  };
+  syncAttendanceFromGoogleSheets();
+
   // Gabungkan dan segerakkan data foto murid antara student-photos-live.json dan portal-live-sync.json
   const portalPhotosData = livePortalData['skmp_student_photos_v1']?.data;
   if (portalPhotosData && typeof portalPhotosData === 'object') {
@@ -979,6 +1023,21 @@ async function startServer() {
         };
         schedulePortalSyncSave();
         broadcastSyncUpdate('skmp_absence_records_v1', liveAttendanceRecords, attendanceLastUpdated, 'waris');
+
+        // Sandaran Awan Tak Segerak (Background Backup) ke Google Sheets
+        if (record && record.studentName) {
+          const gasUrl = "https://script.google.com/macros/s/AKfycbzNt7sV40UAsBAIhjYbSsVreHS5hGlm6-WOzLEEDRnwxKgst1D2iXL1CsN_xZe_RdGl/exec";
+          try {
+            fetch(gasUrl, {
+              method: "POST",
+              headers: { "Content-Type": "text/plain;charset=utf-8" },
+              body: JSON.stringify({
+                action: "submitAttendance",
+                data: record
+              })
+            }).catch(() => {});
+          } catch {}
+        }
 
         console.log(`[LIVE ATTENDANCE] Synced and broadcasted ${liveAttendanceRecords.length} records across all devices at ${new Date().toISOString()}`);
       }

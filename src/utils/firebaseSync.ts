@@ -16,6 +16,11 @@ import {
   setLogLevel
 } from 'firebase/firestore';
 
+// Matikan log dalaman Firestore serta-merta untuk mengelakkan ralat spam di konsol apabila kuota dicapai
+try {
+  setLogLevel('silent');
+} catch {}
+
 export interface FirebaseCustomConfig {
   apiKey: string;
   authDomain: string;
@@ -47,6 +52,7 @@ let firestoreDbInstance: Firestore | null = null;
 // ==========================================
 let quotaExhausted = false;
 let quotaExhaustedUntil = 0;
+const activeFirestoreListeners = new Set<() => void>();
 
 export function isQuotaError(err: any): boolean {
   if (!err) return false;
@@ -64,17 +70,22 @@ export function isQuotaError(err: any): boolean {
 export function isFirestoreQuotaExhausted(): boolean {
   if (!quotaExhausted) {
     try {
-      if (typeof sessionStorage !== 'undefined') {
-        const stored = sessionStorage.getItem('skmp_firestore_quota_until');
-        if (stored) {
-          const until = parseInt(stored, 10);
-          if (Date.now() < until) {
-            quotaExhausted = true;
-            quotaExhaustedUntil = until;
-            return true;
-          } else {
-            sessionStorage.removeItem('skmp_firestore_quota_until');
-          }
+      let stored: string | null = null;
+      if (typeof localStorage !== 'undefined') {
+        stored = localStorage.getItem('skmp_firestore_quota_until');
+      }
+      if (!stored && typeof sessionStorage !== 'undefined') {
+        stored = sessionStorage.getItem('skmp_firestore_quota_until');
+      }
+      if (stored) {
+        const until = parseInt(stored, 10);
+        if (Date.now() < until) {
+          quotaExhausted = true;
+          quotaExhaustedUntil = until;
+          return true;
+        } else {
+          if (typeof localStorage !== 'undefined') localStorage.removeItem('skmp_firestore_quota_until');
+          if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('skmp_firestore_quota_until');
         }
       }
     } catch {}
@@ -83,25 +94,36 @@ export function isFirestoreQuotaExhausted(): boolean {
   if (Date.now() > quotaExhaustedUntil) {
     quotaExhausted = false;
     try {
-      if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.removeItem('skmp_firestore_quota_until');
-      }
+      if (typeof localStorage !== 'undefined') localStorage.removeItem('skmp_firestore_quota_until');
+      if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('skmp_firestore_quota_until');
     } catch {}
     return false;
   }
   return true;
 }
 
-export function markFirestoreQuotaExhausted(durationMs = 60 * 60 * 1000): void {
+export function markFirestoreQuotaExhausted(durationMs = 2 * 60 * 60 * 1000): void {
   quotaExhausted = true;
   quotaExhaustedUntil = Date.now() + durationMs;
   try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('skmp_firestore_quota_until', quotaExhaustedUntil.toString());
+    }
     if (typeof sessionStorage !== 'undefined') {
       sessionStorage.setItem('skmp_firestore_quota_until', quotaExhaustedUntil.toString());
     }
   } catch {}
+
+  // Nyahlanggan (unsubscribe) serta-merta kesemua pendengar aktif untuk henti gelung backoff SDK
+  activeFirestoreListeners.forEach((unsub) => {
+    try {
+      unsub();
+    } catch {}
+  });
+  activeFirestoreListeners.clear();
+
   console.info(
-    '[FIRESTORE QUOTA GUARD] Had kuota Firestore telah dicapai. Beralih ke Storan Pelayan Tempatan & Express API secara automatik.'
+    '[FIRESTORE QUOTA GUARD] Kuota Firestore Spark dicapai. Beralih ke Storan Pelayan Tempatan & Google Sheets secara lancar tanpa ralat.'
   );
 }
 
@@ -201,15 +223,22 @@ export function onSnapshot(...args: any[]): () => void {
   const hasErrorHandler = typeof callArgs[lastIdx] === 'function' && lastIdx >= 2;
   const originalOnError = hasErrorHandler ? callArgs[lastIdx] : null;
 
-  const wrappedOnError = (err: any) => {
-    if (isQuotaError(err)) {
-      markFirestoreQuotaExhausted();
-      if (unsub && !isUnsubscribed) {
-        isUnsubscribed = true;
+  const removeSelf = () => {
+    if (!isUnsubscribed) {
+      isUnsubscribed = true;
+      if (unsub) {
+        activeFirestoreListeners.delete(unsub);
         try {
           unsub();
         } catch {}
       }
+    }
+  };
+
+  const wrappedOnError = (err: any) => {
+    if (isQuotaError(err)) {
+      markFirestoreQuotaExhausted();
+      removeSelf();
       return;
     }
     if (originalOnError) {
@@ -227,14 +256,10 @@ export function onSnapshot(...args: any[]): () => void {
 
   try {
     unsub = (firestoreOnSnapshot as any)(...callArgs);
-    return () => {
-      if (!isUnsubscribed && unsub) {
-        isUnsubscribed = true;
-        try {
-          unsub();
-        } catch {}
-      }
-    };
+    if (unsub && typeof unsub === 'function') {
+      activeFirestoreListeners.add(unsub);
+    }
+    return removeSelf;
   } catch (err) {
     if (isQuotaError(err)) {
       markFirestoreQuotaExhausted();
