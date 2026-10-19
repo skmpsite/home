@@ -45,7 +45,8 @@ import {
   CalendarCheck2,
   RefreshCw,
   RotateCcw,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Database
 } from 'lucide-react';
 import { StudentRecord, StudentAbsenceRecord, SchoolHoliday, UserRole, isTeacherRole } from '../../types';
 import {
@@ -80,6 +81,8 @@ import {
   getMalaysiaTodayDateStr
 } from '../../utils/studentHelpers';
 import { SchoolHolidayModal } from '../attendance/SchoolHolidayModal';
+import { SupabaseAttendanceModal } from '../attendance/SupabaseAttendanceModal';
+import { isSupabaseAttendanceConfigured } from '../../utils/supabaseAttendance';
 
 interface HemAttendanceSubSectionProps {
   students: StudentRecord[];
@@ -142,6 +145,7 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
 
   const [isHolidayModalOpen, setIsHolidayModalOpen] = useState<boolean>(false);
   const [isTeacherLoginModalOpen, setIsTeacherLoginModalOpen] = useState<boolean>(false);
+  const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState<boolean>(false);
 
   // Auto-hide info penerangan selepas 5 saat
   const [showPortalInfo, setShowPortalInfo] = useState<boolean>(true);
@@ -1676,6 +1680,24 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
             >
               <Upload className="w-4 h-4 text-emerald-400" />
               <span className="hidden md:inline">Sandaran ke Sheets</span>
+            </button>
+          )}
+
+          {/* Butang Konfigurasi Supabase e-Kehadiran */}
+          {isAuthorized && (
+            <button
+              type="button"
+              onClick={() => setIsSupabaseModalOpen(true)}
+              className="flex-1 sm:flex-none px-3.5 py-3 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer bg-slate-800 hover:bg-slate-700 text-teal-300 border border-teal-500/30 active:scale-95"
+              title="Tetapan pangkalan data Supabase khas e-Kehadiran"
+            >
+              <Database className="w-4 h-4 text-teal-400" />
+              <span className="hidden md:inline">Supabase</span>
+              {isSupabaseAttendanceConfigured() ? (
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="Supabase Aktif"></span>
+              ) : (
+                <span className="w-2 h-2 rounded-full bg-slate-500" title="Supabase Belum Dikonfigurasi"></span>
+              )}
             </button>
           )}
         </div>
@@ -3770,6 +3792,17 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
           onSelectDate={(dt) => setSelectedDate(dt)}
         />
       )}
+
+      {/* Supabase Attendance Modal */}
+      <SupabaseAttendanceModal
+        isOpen={isSupabaseModalOpen}
+        onClose={() => setIsSupabaseModalOpen(false)}
+        absenceRecords={absenceRecords}
+        onSyncComplete={(count) => {
+          setCloudToast(`Berjaya menyegerakkan ${count} rekod ke Supabase!`);
+          setTimeout(() => setCloudToast(null), 3500);
+        }}
+      />
     </div>
   );
 };

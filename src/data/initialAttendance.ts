@@ -2106,9 +2106,5 @@ export const initialAbsenceRecords: StudentAbsenceRecord[] = [
     "daysCount": 1,
     "refNo": "KHD-20260901-6480",
     "year": "TAHUN ENAM"
-  },
-  {
-    "id": "test_1",
-    "studentName": "TEST"
   }
 ];

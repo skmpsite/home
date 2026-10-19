@@ -17,6 +17,12 @@ import {
   syncBulkAttendanceToGoogleSheets,
   fetchAttendanceRecordsFromGoogleSheets
 } from './googleSheetsSync';
+import {
+  fetchAttendanceFromSupabase,
+  pushSingleAbsenceToSupabase,
+  pushBulkAbsenceToSupabase,
+  isSupabaseAttendanceConfigured
+} from './supabaseAttendance';
 
 let lastKnownServerTimestamp = 0;
 let isSyncInProgress = false;
@@ -111,7 +117,8 @@ export function mergeAbsenceRecords(
   localList: StudentAbsenceRecord[],
   serverList: StudentAbsenceRecord[],
   firestoreList: StudentAbsenceRecord[],
-  sheetsList: StudentAbsenceRecord[] = []
+  sheetsList: StudentAbsenceRecord[] = [],
+  supabaseList: StudentAbsenceRecord[] = []
 ): { merged: StudentAbsenceRecord[]; hasNewFromServerOrCloud: boolean; hasLocalOnly: boolean } {
   const map = new Map<string, StudentAbsenceRecord>();
   const deletedIds = getDeletedAbsenceIds();
@@ -149,7 +156,10 @@ export function mergeAbsenceRecords(
   // 3. Gabungkan rekod Google Sheets (Sandaran rasmi spreadsheet sekolah)
   sheetsList.forEach(mergeItem);
 
-  // 4. Gabungkan rekod Firestore
+  // 4. Gabungkan rekod Supabase (Backend alternatif PostgreSQL)
+  supabaseList.forEach(mergeItem);
+
+  // 5. Gabungkan rekod Firestore
   firestoreList.forEach(mergeItem);
 
   const merged = Array.from(map.values()).sort((a, b) => {
@@ -186,10 +196,11 @@ export async function syncAttendanceWithAllSources(
   try {
     const local = getAbsenceRecords();
 
-    // Fetch serentak daripada Server API, Google Sheets dan Firestore
-    const [serverRes, sheetsList, firestoreList] = await Promise.all([
+    // Fetch serentak daripada Server API, Google Sheets, Supabase dan Firestore
+    const [serverRes, sheetsList, supabaseList, firestoreList] = await Promise.all([
       fetchAttendanceFromServer(),
       fetchAttendanceRecordsFromGoogleSheets().catch(() => []),
+      fetchAttendanceFromSupabase().catch(() => []),
       fetchAbsenceRecordsFromFirestore().catch(() => null)
     ]);
 
@@ -202,17 +213,19 @@ export async function syncAttendanceWithAllSources(
       local,
       serverList,
       firestoreList || [],
-      sheetsList || []
+      sheetsList || [],
+      supabaseList || []
     );
 
-    // Jika ada rekod tempatan yang belum disegerakkan ke pelayan/Google Sheets/cloud
+    // Jika ada rekod tempatan yang belum disegerakkan ke pelayan/Google Sheets/Supabase/cloud
     if (hasLocalOnly && merged.length > 0) {
       saveAttendanceToServer(merged).catch(() => {});
       pushAbsenceRecordsToFirestore(merged).catch(() => {});
       syncBulkAttendanceToGoogleSheets(merged).catch(() => {});
+      pushBulkAbsenceToSupabase(merged).catch(() => {});
     }
 
-    // Jika data pelayan/cloud/Google Sheets membawa rekod baru ke peranti ini
+    // Jika data pelayan/cloud/Google Sheets/Supabase membawa rekod baru ke peranti ini
     if (hasNewFromServerOrCloud || merged.length !== local.length) {
       saveAbsenceRecords(merged, true, false); // simpan tanpa duplicate event
       if (onUpdateCallback) onUpdateCallback(merged);
@@ -255,10 +268,13 @@ export async function pushAbsenceRecordFully(
   // 5. Tolak ke Google Sheets (Sandaran awan Google Apps Script tanpa had kuota)
   const sheetsPromise = syncAttendanceToGoogleSheets(record).catch(() => false);
 
+  // 6. Tolak ke Supabase (Jika dikonfigurasikan)
+  const supabasePromise = pushSingleAbsenceToSupabase(record).catch(() => false);
+
   // Tunggu penghantaran disahkan (dengan had masa 3.5 saat agar tidak menyekat peranti luar talian)
   try {
     await Promise.race([
-      Promise.allSettled([serverPromise, firestorePromise, sheetsPromise]),
+      Promise.allSettled([serverPromise, firestorePromise, sheetsPromise, supabasePromise]),
       new Promise((resolve) => setTimeout(resolve, 3500))
     ]);
   } catch {}
@@ -319,6 +335,19 @@ export function startLiveAttendanceSync(
           const local = getAbsenceRecords();
           const { merged, hasNewFromServerOrCloud } = mergeAbsenceRecords(local, serverRes.records, []);
           if (hasNewFromServerOrCloud || merged.length !== local.length) {
+            saveAbsenceRecords(merged, true, false);
+            onUpdate(merged);
+          }
+        }
+      }
+
+      // 2b. Jika Supabase dikonfigurasikan, segerakkan secara langsung dari Supabase
+      if (isSupabaseAttendanceConfigured()) {
+        const supabaseList = await fetchAttendanceFromSupabase().catch(() => []);
+        if (supabaseList && supabaseList.length > 0) {
+          const local = getAbsenceRecords();
+          const { merged, hasNewFromServerOrCloud } = mergeAbsenceRecords(local, [], [], [], supabaseList);
+          if (hasNewFromServerOrCloud || merged.length > local.length) {
             saveAbsenceRecords(merged, true, false);
             onUpdate(merged);
           }
