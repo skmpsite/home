@@ -3288,8 +3288,19 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
       {/* MODAL 1: SUBMISSION RECEIPT CARD                                          */}
       {/* ========================================================================= */}
       {submittedReceipt && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-emerald-500/50 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-white shadow-2xl space-y-5 animate-scaleUp">
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
+          <div className="relative bg-slate-900 border border-emerald-500/50 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-white shadow-2xl space-y-5 animate-scaleUp">
+            <button
+              type="button"
+              onClick={() => {
+                setSubmittedReceipt(null);
+                setIsBorangModalOpen(false);
+              }}
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/10 transition cursor-pointer"
+              title="Tutup resit makluman"
+            >
+              <X className="w-5 h-5" />
+            </button>
             <div className="text-center space-y-2">
               <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto border-2 border-emerald-400/40 shadow-lg">
                 <CheckCircle2 className="w-8 h-8" />

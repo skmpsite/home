@@ -911,19 +911,34 @@ export default function App() {
     schoolHolidays?: SchoolHoliday[];
     studentsList?: StudentRecord[];
   }) => {
-    // 1. Push to Google Sheets
-    syncBulkDataToGoogleSheets({
-      profile: partialUpdate.profile || profile,
-      staffList: partialUpdate.staffList || staffList,
-      newsList: partialUpdate.newsList || newsList,
-      events: partialUpdate.events || events,
-      gallery: partialUpdate.gallery || gallery,
-      awards: partialUpdate.awards || awards,
-      documents: partialUpdate.documents || documents,
-      signageSlides: partialUpdate.signageSlides || signageSlides,
-      signageConfig: partialUpdate.signageConfig || signageConfig,
-      teacherLinks: partialUpdate.teacherLinks || teacherLinks
-    }).catch(err => console.warn('Auto cloud sync sheets failed:', err));
+    // 1. Push to Google Sheets (Hanya untuk data pentadbiran sekolah pukal)
+    const hasAdminData = Boolean(
+      partialUpdate.profile ||
+      partialUpdate.staffList ||
+      partialUpdate.newsList ||
+      partialUpdate.events ||
+      partialUpdate.gallery ||
+      partialUpdate.awards ||
+      partialUpdate.documents ||
+      partialUpdate.signageSlides ||
+      partialUpdate.signageConfig ||
+      partialUpdate.teacherLinks
+    );
+
+    if (hasAdminData) {
+      syncBulkDataToGoogleSheets({
+        profile: partialUpdate.profile || profile,
+        staffList: partialUpdate.staffList || staffList,
+        newsList: partialUpdate.newsList || newsList,
+        events: partialUpdate.events || events,
+        gallery: partialUpdate.gallery || gallery,
+        awards: partialUpdate.awards || awards,
+        documents: partialUpdate.documents || documents,
+        signageSlides: partialUpdate.signageSlides || signageSlides,
+        signageConfig: partialUpdate.signageConfig || signageConfig,
+        teacherLinks: partialUpdate.teacherLinks || teacherLinks
+      }).catch(err => console.warn('Auto cloud sync sheets failed:', err));
+    }
 
     // 2. Push to Google Firebase Firestore
     if (partialUpdate.profile) pushToFirestore('school_data', 'profile', partialUpdate.profile);
@@ -932,9 +947,6 @@ export default function App() {
     if (partialUpdate.events) pushToFirestore('school_data', 'events', { items: partialUpdate.events });
     if (partialUpdate.hemData) pushToFirestore('school_data', 'hem', partialUpdate.hemData);
     if (partialUpdate.teacherLinks) pushToFirestore('school_data', 'teacher_links', { items: partialUpdate.teacherLinks });
-    if (partialUpdate.absenceRecords) {
-      pushAbsenceRecordsToFirestore(partialUpdate.absenceRecords);
-    }
     if (partialUpdate.schoolHolidays) pushToFirestore('school_data', 'school_holidays', { items: partialUpdate.schoolHolidays });
     if (partialUpdate.studentsList) {
       pushToFirestore('school_data', 'students', {
@@ -1118,15 +1130,14 @@ export default function App() {
         updatedAt: new Date().toISOString()
       };
 
-      setAbsenceRecords((prev) => {
-        const updated = prev.map((r) => (r.id === existing.id ? updatedExisting : r));
-        saveAbsenceRecords(updated, true, true);
-        pushAbsenceRecordFully(updatedExisting, updated).then((synced) => {
-          setAbsenceRecords((p) => mergeAbsenceRecordArrays(p, synced));
-        }).catch(() => {});
-        autoPushToCloud({ absenceRecords: updated });
-        return updated;
-      });
+      const updated = absenceRecords.map((r) => (r.id === existing.id ? updatedExisting : r));
+      setAbsenceRecords(updated);
+      saveAbsenceRecords(updated, true, false);
+
+      // Tolak ke pelayan/awan secara tak segerak di latar belakang
+      setTimeout(() => {
+        pushAbsenceRecordFully(updatedExisting, updated).catch(() => {});
+      }, 10);
 
       return updatedExisting;
     }
@@ -1143,40 +1154,34 @@ export default function App() {
       createdAt: new Date().toISOString()
     };
 
-    setAbsenceRecords((prev) => {
-      const merged = [completeRecord, ...prev.filter((r) => r.id !== completeRecord.id)];
-      saveAbsenceRecords(merged, true, true);
-      pushAbsenceRecordFully(completeRecord, merged).then((synced) => {
-        setAbsenceRecords((p) => mergeAbsenceRecordArrays(p, synced));
-      }).catch(() => {});
-      autoPushToCloud({ absenceRecords: merged });
-      return merged;
-    });
+    const merged = [completeRecord, ...absenceRecords.filter((r) => r.id !== completeRecord.id)];
+    setAbsenceRecords(merged);
+    saveAbsenceRecords(merged, true, false);
+
+    // Tolak ke pelayan/awan di latar belakang tanpa menyekat UI (Responsif serta-merta)
+    setTimeout(() => {
+      pushAbsenceRecordFully(completeRecord, merged).catch(() => {});
+    }, 10);
 
     return completeRecord;
   };
 
   const handleUpdateAbsenceRecord = (updatedRecord: StudentAbsenceRecord) => {
-    setAbsenceRecords((prev) => {
-      const updated = prev.map((r) => (r.id === updatedRecord.id ? updatedRecord : r));
-      saveAbsenceRecords(updated, true, true);
-      pushAbsenceRecordFully(updatedRecord, updated).then((synced) => {
-        setAbsenceRecords((p) => mergeAbsenceRecordArrays(p, synced));
-      }).catch(() => {});
-      autoPushToCloud({ absenceRecords: updated });
-      return updated;
-    });
+    const updated = absenceRecords.map((r) => (r.id === updatedRecord.id ? updatedRecord : r));
+    setAbsenceRecords(updated);
+    saveAbsenceRecords(updated, true, false);
+    setTimeout(() => {
+      pushAbsenceRecordFully(updatedRecord, updated).catch(() => {});
+    }, 10);
   };
 
   const handleDeleteAbsenceRecord = (id: string) => {
-    setAbsenceRecords((prev) => {
-      const updated = prev.filter((r) => r.id !== id);
-      deleteAbsenceRecordFully(id, prev).then((synced) => {
-        setAbsenceRecords(synced);
-      }).catch(() => {});
-      autoPushToCloud({ absenceRecords: updated });
-      return updated;
-    });
+    const updated = absenceRecords.filter((r) => r.id !== id);
+    setAbsenceRecords(updated);
+    saveAbsenceRecords(updated, true, false);
+    setTimeout(() => {
+      deleteAbsenceRecordFully(id, absenceRecords).catch(() => {});
+    }, 10);
   };
 
   const handleSaveSchoolHolidays = (holidays: SchoolHoliday[]) => {

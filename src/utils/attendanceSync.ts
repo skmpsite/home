@@ -272,13 +272,9 @@ export async function pushAbsenceRecordFully(
   // 6. Tolak ke Supabase (Jika dikonfigurasikan)
   const supabasePromise = pushSingleAbsenceToSupabase(record).catch(() => false);
 
-  // Tunggu penghantaran disahkan (dengan had masa 3.5 saat agar tidak menyekat peranti luar talian)
-  try {
-    await Promise.race([
-      Promise.allSettled([serverPromise, firestorePromise, sheetsPromise, supabasePromise]),
-      new Promise((resolve) => setTimeout(resolve, 3500))
-    ]);
-  } catch {}
+  // 7. Tolak ke pelayan dan awan di latar belakang secara tak segerak (Non-blocking background push)
+  // Ini memastikan antara muka (UI) dan butang tutup sentiasa responsif serta-merta tanpa lag
+  Promise.allSettled([serverPromise, firestorePromise, sheetsPromise, supabasePromise]).catch(() => {});
 
   return updatedList;
 }
