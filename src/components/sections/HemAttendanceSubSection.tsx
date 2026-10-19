@@ -1343,6 +1343,18 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
               className="bg-white/10 border border-white/20 rounded-xl px-3 py-1.5 text-xs text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400"
             />
 
+            {selectedDate !== getMalaysiaTodayDateStr() && (
+              <button
+                type="button"
+                onClick={() => setSelectedDate(getMalaysiaTodayDateStr())}
+                className="px-2.5 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-lg text-[10px] font-black flex items-center justify-center gap-1 transition active:scale-95 cursor-pointer"
+                title="Kembali ke paparan tarikh hari ini"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Kembali ke Hari Ini ({getMalaysiaTodayDateStr()})</span>
+              </button>
+            )}
+
             {/* Active Holiday Banner under date picker */}
             {activeHoliday && (
               <div className="bg-amber-500/20 border border-amber-400/40 rounded-xl px-2.5 py-1.5 text-xs text-amber-200 font-bold flex flex-wrap items-center justify-between gap-2 shadow-sm">
@@ -1491,7 +1503,12 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
               <UserCheck className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider">Hadir (Auto)</p>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <p className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider">Hadir (Auto)</p>
+                <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-200 border border-emerald-500/30 font-bold">
+                  {selectedDate === getMalaysiaTodayDateStr() ? 'Hari Ini' : selectedDate}
+                </span>
+              </div>
               <h4 className="text-2xl font-black text-emerald-400">{totalPresentCount}</h4>
               <p className="text-[10px] text-emerald-300/80">
                 {activeHoliday ? '0.0% • Cuti Sekolah' : 'Kira sebagai hadir'}
@@ -1506,7 +1523,12 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
               <UserX className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-[11px] font-bold text-rose-300 uppercase tracking-wider">Tidak Hadir</p>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <p className="text-[11px] font-bold text-rose-300 uppercase tracking-wider">Tidak Hadir</p>
+                <span className="text-[9px] px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-200 border border-rose-500/30 font-bold">
+                  {selectedDate === getMalaysiaTodayDateStr() ? 'Hari Ini' : selectedDate}
+                </span>
+              </div>
               <h4 className="text-2xl font-black text-rose-400">{totalAbsentCount}</h4>
               <p className="text-[10px] text-rose-300/80">
                 {activeHoliday ? `100.0% • ${activeHoliday.title}` : `${dailyAbsenceRecords.length} borang diisi`}
