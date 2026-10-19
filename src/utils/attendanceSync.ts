@@ -21,6 +21,7 @@ import {
   fetchAttendanceFromSupabase,
   pushSingleAbsenceToSupabase,
   pushBulkAbsenceToSupabase,
+  deleteAbsenceFromSupabase,
   isSupabaseAttendanceConfigured
 } from './supabaseAttendance';
 
@@ -296,11 +297,12 @@ export async function deleteAbsenceRecordFully(
   const updatedList = (currentList || []).filter((r) => r && r.id !== id);
   saveAbsenceRecords(updatedList, true, true);
 
-  // 3. Padam daripada Server API dan Firebase Firestore serentak
+  // 3. Padam daripada Server API, Firebase Firestore dan Supabase serentak
   try {
     await Promise.all([
       deleteAttendanceFromServer(id).catch((e) => console.warn('[DELETE SYNC] Server delete error:', e)),
-      deleteAbsenceRecordFromFirestore(id).catch((e) => console.warn('[DELETE SYNC] Firestore delete error:', e))
+      deleteAbsenceRecordFromFirestore(id).catch((e) => console.warn('[DELETE SYNC] Firestore delete error:', e)),
+      deleteAbsenceFromSupabase(id).catch((e) => console.warn('[DELETE SYNC] Supabase delete error:', e))
     ]);
   } catch {
     // Abaikan ralat rangkaian kecil

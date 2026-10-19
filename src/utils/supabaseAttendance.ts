@@ -77,7 +77,60 @@ export function isSupabaseAttendanceConfigured(): boolean {
 }
 
 /**
- * Uji sambungan ke Supabase
+ * Bina HTTP headers yang tepat untuk Supabase PostgREST API
+ * Menyokong kedua-dua format JWT lama ('eyJ...') dan format baharu ('sb_publishable_...')
+ */
+export function buildSupabaseHeaders(key: string, custom: Record<string, string> = {}): Record<string, string> {
+  const cleanKey = (key || '').trim();
+  const headers: Record<string, string> = {
+    apikey: cleanKey,
+    Accept: 'application/json',
+    ...custom
+  };
+
+  // Hanya hantar Authorization Bearer jika kunci ialah JWT yang sah (bermula dengan 'ey')
+  // Mengelakkan ralat '401 Invalid JWT' jika pengguna menggunakan kunci baharu sb_publishable_
+  if (cleanKey.startsWith('ey')) {
+    headers['Authorization'] = `Bearer ${cleanKey}`;
+  }
+
+  return headers;
+}
+
+/**
+ * Panggilan fetch selamat ke Supabase dengan sokongan dwi-format automatik
+ */
+async function fetchSupabaseSafe(
+  url: string,
+  key: string,
+  options: { method?: string; headers?: Record<string, string>; body?: string } = {}
+): Promise<Response> {
+  const headers = buildSupabaseHeaders(key, options.headers);
+  const res = await fetch(url, {
+    method: options.method || 'GET',
+    headers,
+    body: options.body
+  });
+
+  // Jika dapat 401 dan Authorization header ada, cuba sekali lagi dengan hanya apikey
+  if (res.status === 401 && headers['Authorization']) {
+    const fallbackHeaders = { ...headers };
+    delete fallbackHeaders['Authorization'];
+    try {
+      const retryRes = await fetch(url, {
+        method: options.method || 'GET',
+        headers: fallbackHeaders,
+        body: options.body
+      });
+      if (retryRes.ok) return retryRes;
+    } catch {}
+  }
+
+  return res;
+}
+
+/**
+ * Uji sambungan ke Supabase dengan maklum balas diagnostik yang terperinci
  */
 export async function testSupabaseAttendanceConnection(
   urlInput?: string,
@@ -97,33 +150,36 @@ export async function testSupabaseAttendanceConnection(
 
   try {
     const endpoint = `${url}/rest/v1/${table}?select=id&limit=1`;
-    const res = await fetch(endpoint, {
-      method: 'GET',
-      headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-        Accept: 'application/json'
-      }
-    });
+    const res = await fetchSupabaseSafe(endpoint, key);
 
     if (res.ok) {
       const data = await res.json();
       return {
         success: true,
-        message: 'Sambungan ke jadual Supabase berjaya!',
+        message: 'Sambungan ke jadual Supabase attendance_records berjaya dan aktif!',
         count: Array.isArray(data) ? data.length : 0
       };
     } else {
       const errText = await res.text();
+      let friendlyError = `Ralat Supabase (${res.status}): ${errText.slice(0, 150)}`;
+
+      if (res.status === 404 || errText.includes('42P01') || errText.includes('does not exist')) {
+        friendlyError = `Pangkalan data bersambung, tetapi jadual '${table}' belum dicipta. Sila salin kod di tab 'Skrip SQL Schema' dan klik Run di Supabase SQL Editor.`;
+      } else if (res.status === 401) {
+        friendlyError = `Kunci API tidak sah atau salah disalin (401). Sila salin Publishable key atau anon public key dari Supabase Settings -> API.`;
+      } else if (res.status === 403) {
+        friendlyError = `Akses disekat oleh polisi keselamatan RLS (403). Sila pastikan anda telah menjalankan skrip SQL yang disertakan untuk memberi kebenaran baca/tulis.`;
+      }
+
       return {
         success: false,
-        message: `Ralat Supabase (${res.status}): ${errText.slice(0, 150)}`
+        message: friendlyError
       };
     }
   } catch (err: any) {
     return {
       success: false,
-      message: `Gagal menyambung ke Supabase: ${err.message || String(err)}`
+      message: `Gagal menyambung ke Supabase (${url}): ${err.message || String(err)}. Sila semak Project URL.`
     };
   }
 }
@@ -199,13 +255,8 @@ export async function fetchAttendanceFromSupabase(): Promise<StudentAbsenceRecor
     const table = cfg.tableName || DEFAULT_SUPABASE_TABLE;
     const endpoint = `${cfg.url}/rest/v1/${table}?select=*&order=created_at.desc&limit=500`;
 
-    const res = await fetch(endpoint, {
-      method: 'GET',
-      headers: {
-        apikey: cfg.anonKey,
-        Authorization: `Bearer ${cfg.anonKey}`,
-        Accept: 'application/json'
-      }
+    const res = await fetchSupabaseSafe(endpoint, cfg.anonKey, {
+      method: 'GET'
     });
 
     if (res.ok) {
@@ -233,11 +284,9 @@ export async function pushSingleAbsenceToSupabase(record: StudentAbsenceRecord):
     const endpoint = `${cfg.url}/rest/v1/${table}`;
     const payload = recordToSupabaseRow(record);
 
-    const res = await fetch(endpoint, {
+    const res = await fetchSupabaseSafe(endpoint, cfg.anonKey, {
       method: 'POST',
       headers: {
-        apikey: cfg.anonKey,
-        Authorization: `Bearer ${cfg.anonKey}`,
         'Content-Type': 'application/json',
         Prefer: 'resolution=merge-duplicates'
       },
@@ -263,11 +312,9 @@ export async function pushBulkAbsenceToSupabase(records: StudentAbsenceRecord[])
     const endpoint = `${cfg.url}/rest/v1/${table}`;
     const payload = records.map(recordToSupabaseRow);
 
-    const res = await fetch(endpoint, {
+    const res = await fetchSupabaseSafe(endpoint, cfg.anonKey, {
       method: 'POST',
       headers: {
-        apikey: cfg.anonKey,
-        Authorization: `Bearer ${cfg.anonKey}`,
         'Content-Type': 'application/json',
         Prefer: 'resolution=merge-duplicates'
       },
@@ -277,6 +324,28 @@ export async function pushBulkAbsenceToSupabase(records: StudentAbsenceRecord[])
     return res.ok;
   } catch (err) {
     console.warn('[SUPABASE ATTENDANCE] Gagal menolak rekod pukal:', err);
+    return false;
+  }
+}
+
+/**
+ * Padam satu rekod ketidakhadiran dari Supabase
+ */
+export async function deleteAbsenceFromSupabase(id: string): Promise<boolean> {
+  const cfg = getSupabaseAttendanceConfig();
+  if (!cfg.url || !cfg.anonKey || !cfg.enabled || !id) return false;
+
+  try {
+    const table = cfg.tableName || DEFAULT_SUPABASE_TABLE;
+    const endpoint = `${cfg.url}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`;
+
+    const res = await fetchSupabaseSafe(endpoint, cfg.anonKey, {
+      method: 'DELETE'
+    });
+
+    return res.ok;
+  } catch (err) {
+    console.warn('[SUPABASE ATTENDANCE] Gagal memadam rekod:', err);
     return false;
   }
 }
@@ -337,5 +406,11 @@ WITH CHECK (true);
 DROP POLICY IF EXISTS "Public Update Attendance" ON public.attendance_records;
 CREATE POLICY "Public Update Attendance" 
 ON public.attendance_records FOR UPDATE 
+USING (true);
+
+-- 4. Polisi: Benarkan pentadbir memadam rekod
+DROP POLICY IF EXISTS "Public Delete Attendance" ON public.attendance_records;
+CREATE POLICY "Public Delete Attendance" 
+ON public.attendance_records FOR DELETE 
 USING (true);
 `;
