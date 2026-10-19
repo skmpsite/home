@@ -840,6 +840,11 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
 
       setSubmittedReceipt(newRecord);
 
+      // Selaraskan selectedDate ke tarikh rekod yang baru dihantar agar maklumat terus dipaparkan serta-merta
+      if (newRecord && newRecord.dateFrom) {
+        setSelectedDate(newRecord.dateFrom);
+      }
+
       // Reset form
       setFormStudentId('');
       setFormStudentSearch('');
@@ -2359,6 +2364,16 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
               <div className="flex items-center gap-2 flex-wrap">
                 <button
                   type="button"
+                  onClick={handleManualCloudSync}
+                  disabled={isSyncingCloud}
+                  className="px-3.5 py-2 bg-teal-600/30 hover:bg-teal-600/50 text-teal-200 border border-teal-400/40 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  title="Segerak rekod secara live dari Supabase, Pelayan & Awan"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 text-teal-400 ${isSyncingCloud ? 'animate-spin' : ''}`} />
+                  <span>{isSyncingCloud ? 'Menyegerak...' : 'Segerak Live'}</span>
+                </button>
+                <button
+                  type="button"
                   onClick={handleSyncFromGoogleSheets}
                   disabled={isSyncingSheets}
                   className="px-3.5 py-2 bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 border border-emerald-400/40 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
@@ -2412,14 +2427,52 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
               </div>
 
               {dailyAbsenceRecords.length === 0 ? (
-                <div className="p-5 bg-emerald-950/30 border border-emerald-500/30 rounded-2xl text-center space-y-1.5">
-                  <CheckCircle2 className="w-7 h-7 text-emerald-400 mx-auto" />
-                  <p className="text-sm font-bold text-emerald-200">
-                    Tiada makluman ketidakhadiran dilaporkan bagi tarikh ini ({selectedDate}).
-                  </p>
-                  <p className="text-xs text-slate-300">
-                    Semua murid direkodkan hadir ke sekolah secara automatik, atau waris belum mengisi borang.
-                  </p>
+                <div className="space-y-3">
+                  <div className="p-5 bg-emerald-950/30 border border-emerald-500/30 rounded-2xl text-center space-y-1.5">
+                    <CheckCircle2 className="w-7 h-7 text-emerald-400 mx-auto" />
+                    <p className="text-sm font-bold text-emerald-200">
+                      Tiada makluman ketidakhadiran dilaporkan bagi tarikh ini ({selectedDate}).
+                    </p>
+                    <p className="text-xs text-slate-300">
+                      Semua murid direkodkan hadir ke sekolah pada tarikh ini, atau waris mengisi borang untuk tarikh yang berbeza.
+                    </p>
+                  </div>
+
+                  {/* Jika terdapat rekod pada tarikh lain, beritahu guru supaya tidak keliru */}
+                  {absenceRecords.length > 0 && (
+                    <div className="p-4 bg-slate-900 border border-amber-500/40 rounded-2xl space-y-2.5 shadow-lg">
+                      <div className="flex items-center justify-between text-xs text-amber-300 font-bold">
+                        <span className="flex items-center gap-1.5">
+                          <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                          <span>Terdapat {absenceRecords.length} Makluman Ketidakhadiran Pada Tarikh Lain:</span>
+                        </span>
+                        <span className="text-[10px] text-slate-400">Klik butang untuk tukar tarikh</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto">
+                        {absenceRecords.slice(0, 6).map((rec) => (
+                          <div
+                            key={rec.id}
+                            className="p-2.5 bg-slate-950/80 border border-white/10 rounded-xl flex items-center justify-between gap-2 text-xs"
+                          >
+                            <div className="min-w-0">
+                              <p className="font-bold text-white truncate">{rec.studentName}</p>
+                              <p className="text-[11px] text-emerald-300 truncate">
+                                {rec.className} • Tarikh: <span className="font-mono text-yellow-300">{rec.dateFrom}</span>
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDate(rec.dateFrom)}
+                              className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-[10px] rounded-lg transition active:scale-95 flex-shrink-0 cursor-pointer shadow"
+                              title="Tukar tarikh paparan ke tarikh rekod ini"
+                            >
+                              Papar {rec.dateFrom}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">

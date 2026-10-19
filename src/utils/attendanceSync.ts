@@ -347,7 +347,7 @@ export function startLiveAttendanceSync(
         if (supabaseList && supabaseList.length > 0) {
           const local = getAbsenceRecords();
           const { merged, hasNewFromServerOrCloud } = mergeAbsenceRecords(local, [], [], [], supabaseList);
-          if (hasNewFromServerOrCloud || merged.length > local.length) {
+          if (hasNewFromServerOrCloud || merged.length !== local.length) {
             saveAbsenceRecords(merged, true, false);
             onUpdate(merged);
           }
