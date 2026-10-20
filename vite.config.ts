@@ -12,6 +12,15 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    define: {
+      'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(
+        process.env.VITE_SUPABASE_URL || 'https://gzydcfewzmlddyvpiwdh.supabase.co'
+      ),
+      'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(
+        process.env.VITE_SUPABASE_ANON_KEY ||
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd6eWRjZmV3em1sZGR5dnBpd2RoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIzNzk2OTgsImV4cCI6MjEwNzk1NTY5OH0.r3SHAUe2oElZr6LGmq-98Pp_vydjmE_-jjgJvTlSf4o'
+      ),
+    },
     build: {
       rollupOptions: {
         input: {

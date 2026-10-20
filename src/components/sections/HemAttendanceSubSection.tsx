@@ -84,7 +84,7 @@ import {
 } from '../../utils/studentHelpers';
 import { SchoolHolidayModal } from '../attendance/SchoolHolidayModal';
 import { SupabaseAttendanceModal } from '../attendance/SupabaseAttendanceModal';
-import { isSupabaseAttendanceConfigured } from '../../utils/supabaseAttendance';
+import { isSupabaseAttendanceConfigured, fetchAttendanceFromSupabase } from '../../utils/supabaseAttendance';
 
 interface HemAttendanceSubSectionProps {
   students: StudentRecord[];
@@ -153,6 +153,7 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
   const [showPortalInfo, setShowPortalInfo] = useState<boolean>(true);
   const [isSyncingCloud, setIsSyncingCloud] = useState<boolean>(false);
   const [isSyncingSheets, setIsSyncingSheets] = useState<boolean>(false);
+  const [isSyncingSupabase, setIsSyncingSupabase] = useState<boolean>(false);
   const [cloudToast, setCloudToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -167,15 +168,34 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     syncAttendanceWithAllSources().catch(() => {});
   }, []);
 
+  const handleManualSupabaseSync = async () => {
+    setIsSyncingSupabase(true);
+    try {
+      const records = await fetchAttendanceFromSupabase();
+      if (Array.isArray(records) && records.length > 0) {
+        window.dispatchEvent(new CustomEvent('skmp_attendance_synced', { detail: records }));
+        setCloudToast(`Berjaya! ${records.length} rekod ketidakhadiran disegerakkan terus daripada Supabase secara live.`);
+      } else {
+        setCloudToast('Sambungan Supabase aktif. Pangkalan data bersedia.');
+      }
+    } catch (err: any) {
+      console.warn('Manual Supabase sync failed:', err);
+      setCloudToast(`Gagal menyegerak dari Supabase: ${err.message || 'Ralat'}`);
+    } finally {
+      setIsSyncingSupabase(false);
+      setTimeout(() => setCloudToast(null), 3500);
+    }
+  };
+
   const handleManualCloudSync = async () => {
     setIsSyncingCloud(true);
     try {
       const records = await syncAttendanceWithAllSources();
       if (Array.isArray(records) && records.length > 0) {
         window.dispatchEvent(new CustomEvent('skmp_attendance_synced', { detail: records }));
-        setCloudToast(`Penyegerakan Awan Berjaya! (${records.length} rekod ketidakhadiran disegerakkan)`);
+        setCloudToast(`Penyegerakan Live Berjaya! (${records.length} rekod ketidakhadiran disegerakkan terus melalui Supabase)`);
       } else {
-        setCloudToast('Penyegerakan Awan selesai. Tiada rekod ketidakhadiran baharu.');
+        setCloudToast('Penyegerakan selesai. Tiada rekod ketidakhadiran baharu.');
       }
     } catch (err) {
       console.warn('Manual cloud sync failed:', err);
@@ -1366,6 +1386,24 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
                 <span>{showPortalInfo ? "Sembunyikan Info" : "Info e-Kehadiran"}</span>
                 {showPortalInfo ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
               </button>
+
+              {/* Status Sambungan Supabase Live */}
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 shadow-sm">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>Supabase Live: Aktif</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleManualSupabaseSync}
+                  disabled={isSyncingSupabase}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-teal-500/20 hover:bg-teal-500/30 text-teal-200 border border-teal-400/30 transition cursor-pointer disabled:opacity-50"
+                  title="Segerak rekod terus dari pangkalan data Supabase"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isSyncingSupabase ? 'animate-spin' : ''}`} />
+                  <span>{isSyncingSupabase ? 'Menyegerak...' : 'Segerak Supabase'}</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -2506,6 +2544,16 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleManualSupabaseSync}
+                  disabled={isSyncingSupabase}
+                  className="px-3.5 py-2 bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 border border-emerald-400/40 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  title="Segerak rekod terus dari pangkalan data Supabase secara live"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 text-emerald-400 ${isSyncingSupabase ? 'animate-spin' : ''}`} />
+                  <span>{isSyncingSupabase ? 'Menyegerak...' : 'Segerak Supabase'}</span>
+                </button>
                 <button
                   type="button"
                   onClick={handleManualCloudSync}

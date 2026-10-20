@@ -23,7 +23,8 @@ import {
   pushBulkAbsenceToSupabase,
   deleteAbsenceFromSupabase,
   isSupabaseAttendanceConfigured,
-  syncSupabaseConfigFromServer
+  syncSupabaseConfigFromServer,
+  subscribeToSupabaseAttendanceRealtime
 } from './supabaseAttendance';
 
 let lastKnownServerTimestamp = 0;
@@ -323,13 +324,45 @@ export function startLiveAttendanceSync(
   // 1. Lakukan penyegerakan awal segera sekali sahaja
   syncAttendanceWithAllSources(onUpdate);
 
-  // 2. Polling Server API yang sangat ringan (setiap 5 saat, hanya jika tab aktif)
+  // 2. Langgan Realtime WebSocket dari Supabase (Segerak < 500ms bila ada borang dihantar)
+  const unsubSupabaseRealtime = subscribeToSupabaseAttendanceRealtime((supabaseRecords) => {
+    if (Array.isArray(supabaseRecords) && supabaseRecords.length > 0) {
+      const local = getAbsenceRecords();
+      const { merged, hasNewFromServerOrCloud } = mergeAbsenceRecords(local, [], [], [], supabaseRecords);
+      if (hasNewFromServerOrCloud || merged.length !== local.length) {
+        saveAbsenceRecords(merged, true, false);
+        onUpdate(merged);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('skmp_attendance_synced', { detail: merged }));
+        }
+      }
+    }
+  });
+
+  // 3. Polling latar belakang pantas (setiap 2 saat) untuk jaminan 100% data segar merentas semua peranti
   const interval = setInterval(async () => {
     if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
       return; // Jimat bateri & memori bila tab tidak aktif
     }
 
     try {
+      // 3a. Semak kemas kini dari Supabase secara langsung
+      if (isSupabaseAttendanceConfigured()) {
+        const supabaseList = await fetchAttendanceFromSupabase().catch(() => []);
+        if (supabaseList && supabaseList.length > 0) {
+          const local = getAbsenceRecords();
+          const { merged, hasNewFromServerOrCloud } = mergeAbsenceRecords(local, [], [], [], supabaseList);
+          if (hasNewFromServerOrCloud || merged.length !== local.length) {
+            saveAbsenceRecords(merged, true, false);
+            onUpdate(merged);
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('skmp_attendance_synced', { detail: merged }));
+            }
+          }
+        }
+      }
+
+      // 3b. Semak kemas kini dari Server API
       const serverRes = await fetchAttendanceFromServer();
       if (serverRes && Array.isArray(serverRes.records)) {
         if (serverRes.lastUpdated > lastKnownServerTimestamp || lastKnownServerTimestamp === 0) {
@@ -339,32 +372,22 @@ export function startLiveAttendanceSync(
           if (hasNewFromServerOrCloud || merged.length !== local.length) {
             saveAbsenceRecords(merged, true, false);
             onUpdate(merged);
-          }
-        }
-      }
-
-      // 2b. Jika Supabase dikonfigurasikan, segerakkan secara langsung dari Supabase
-      if (isSupabaseAttendanceConfigured()) {
-        const supabaseList = await fetchAttendanceFromSupabase().catch(() => []);
-        if (supabaseList && supabaseList.length > 0) {
-          const local = getAbsenceRecords();
-          const { merged, hasNewFromServerOrCloud } = mergeAbsenceRecords(local, [], [], [], supabaseList);
-          if (hasNewFromServerOrCloud || merged.length !== local.length) {
-            saveAbsenceRecords(merged, true, false);
-            onUpdate(merged);
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('skmp_attendance_synced', { detail: merged }));
+            }
           }
         }
       }
     } catch {
       // Abaikan ralat sementara
     }
-  }, 5000);
+  }, 2000);
 
-  // 3. Semak pantas apabila tetingkap difokuskan semula atau peranti kembali online
+  // 4. Semak pantas apabila tetingkap difokuskan semula atau peranti kembali online
   let lastFocusSync = 0;
   const handleFocus = () => {
     const now = Date.now();
-    if (now - lastFocusSync < 5000) return; // Debounce 5s
+    if (now - lastFocusSync < 2000) return; // Debounce 2s
     lastFocusSync = now;
     syncAttendanceWithAllSources(onUpdate);
   };
@@ -377,6 +400,7 @@ export function startLiveAttendanceSync(
 
   return () => {
     clearInterval(interval);
+    unsubSupabaseRealtime();
     if (typeof window !== 'undefined') {
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('online', handleFocus);

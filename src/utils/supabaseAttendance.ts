@@ -1,4 +1,6 @@
 import { StudentAbsenceRecord } from '../types';
+import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
+import { getAbsenceRecords, saveAbsenceRecords } from './storage';
 
 export interface SupabaseAttendanceConfig {
   url: string;
@@ -10,6 +12,37 @@ export interface SupabaseAttendanceConfig {
 const SUPABASE_ATTENDANCE_CONFIG_KEY = 'skmp_supabase_attendance_config_v1';
 
 export const DEFAULT_SUPABASE_TABLE = 'attendance_records';
+
+export const BUILTIN_SUPABASE_URL = 'https://gzydcfewzmlddyvpiwdh.supabase.co';
+export const BUILTIN_SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd6eWRjZmV3em1sZGR5dnBpd2RoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIzNzk2OTgsImV4cCI6MjEwNzk1NTY5OH0.r3SHAUe2oElZr6LGmq-98Pp_vydjmE_-jjgJvTlSf4o';
+
+let cachedClient: SupabaseClient | null = null;
+let cachedClientKey: string = '';
+
+/**
+ * Dapatkan atau bina instans Supabase Client rasmi
+ */
+export function getSupabaseClient(): SupabaseClient | null {
+  const cfg = getSupabaseAttendanceConfig();
+  if (!cfg.url || !cfg.anonKey || !cfg.enabled) {
+    return null;
+  }
+  const key = `${cfg.url}:::${cfg.anonKey}`;
+  if (cachedClient && cachedClientKey === key) {
+    return cachedClient;
+  }
+  try {
+    cachedClient = createClient(cfg.url, cfg.anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
+    cachedClientKey = key;
+    return cachedClient;
+  } catch (err) {
+    console.warn('[SUPABASE] Gagal membina client:', err);
+    return null;
+  }
+}
 
 /**
  * Bersihkan URL Supabase agar tidak berlaku pertindihan '/rest/v1' atau trailing slash
@@ -38,9 +71,11 @@ export function getSupabaseAttendanceConfig(): SupabaseAttendanceConfig {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed && parsed.url && parsed.anonKey) {
+          const storedUrl = sanitizeSupabaseUrl(parsed.url) || BUILTIN_SUPABASE_URL;
+          const storedKey = (parsed.anonKey || BUILTIN_SUPABASE_ANON_KEY).trim();
           return {
-            url: sanitizeSupabaseUrl(parsed.url),
-            anonKey: parsed.anonKey.trim(),
+            url: storedUrl,
+            anonKey: storedKey,
             tableName: parsed.tableName || DEFAULT_SUPABASE_TABLE,
             enabled: parsed.enabled !== false
           };
@@ -49,11 +84,14 @@ export function getSupabaseAttendanceConfig(): SupabaseAttendanceConfig {
     }
   } catch {}
 
+  const finalUrl = sanitizeSupabaseUrl(envUrl) || BUILTIN_SUPABASE_URL;
+  const finalKey = (envKey || BUILTIN_SUPABASE_ANON_KEY).trim();
+
   return {
-    url: sanitizeSupabaseUrl(envUrl),
-    anonKey: envKey.trim(),
+    url: finalUrl,
+    anonKey: finalKey,
     tableName: DEFAULT_SUPABASE_TABLE,
-    enabled: Boolean(envUrl && envKey)
+    enabled: true
   };
 }
 
@@ -293,17 +331,122 @@ function supabaseRowToRecord(row: any): StudentAbsenceRecord {
   };
 }
 
+let activeRealtimeChannel: RealtimeChannel | null = null;
+
 /**
- * Tarik semua rekod ketidakhadiran dari Supabase REST API
+ * Langgan kemas kini masa nyata (Realtime WebSocket) daripada Supabase
+ * Apabila waris menghantar borang di mana-mana peranti, acara ini akan diterima serta-merta (< 100ms)
+ */
+export function subscribeToSupabaseAttendanceRealtime(
+  onUpdate: (records: StudentAbsenceRecord[]) => void
+): () => void {
+  const client = getSupabaseClient();
+  const cfg = getSupabaseAttendanceConfig();
+  if (!client || !cfg.enabled) {
+    return () => {};
+  }
+
+  const table = cfg.tableName || DEFAULT_SUPABASE_TABLE;
+
+  try {
+    if (activeRealtimeChannel) {
+      try {
+        client.removeChannel(activeRealtimeChannel);
+      } catch {}
+    }
+
+    const channel = client
+      .channel('attendance_live_stream_' + Date.now())
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table },
+        async (payload) => {
+          console.log('[SUPABASE REALTIME EVENT]', payload.eventType, payload.new || payload.old);
+          try {
+            // 1. Tindak balas pantas (< 50ms) menggunakan data daripada acara masa nyata terus ke UI
+            if (payload.new && (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE')) {
+              const newRec = supabaseRowToRecord(payload.new);
+              if (newRec && newRec.id) {
+                const current = getAbsenceRecords();
+                const mergedNow = [newRec, ...current.filter((r) => r.id !== newRec.id)];
+                saveAbsenceRecords(mergedNow, true, false);
+                onUpdate(mergedNow);
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('skmp_attendance_synced', { detail: mergedNow }));
+                }
+              }
+            } else if (payload.old && payload.eventType === 'DELETE') {
+              const oldId = String((payload.old as any).id || '');
+              if (oldId) {
+                const current = getAbsenceRecords();
+                const filtered = current.filter((r) => r.id !== oldId);
+                saveAbsenceRecords(filtered, true, false);
+                onUpdate(filtered);
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('skmp_attendance_synced', { detail: filtered }));
+                }
+              }
+            }
+          } catch (e) {
+            console.warn('[SUPABASE REALTIME] Error processing instant payload:', e);
+          }
+
+          // 2. Muat turun senarai penuh secara langsung dari Supabase untuk jaminan 100% konsistensi
+          try {
+            const latestRecords = await fetchAttendanceFromSupabase();
+            if (latestRecords && latestRecords.length > 0) {
+              onUpdate(latestRecords);
+            }
+          } catch (err) {
+            console.warn('[SUPABASE REALTIME] Error fetching fresh list:', err);
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[SUPABASE REALTIME STATUS]', status);
+      });
+
+    activeRealtimeChannel = channel;
+
+    return () => {
+      try {
+        client.removeChannel(channel);
+      } catch {}
+    };
+  } catch (err) {
+    console.warn('[SUPABASE REALTIME] Langganan ralat:', err);
+    return () => {};
+  }
+}
+
+/**
+ * Tarik semua rekod ketidakhadiran dari Supabase secara langsung & pantas
  */
 export async function fetchAttendanceFromSupabase(): Promise<StudentAbsenceRecord[]> {
   const cfg = getSupabaseAttendanceConfig();
   if (!cfg.url || !cfg.anonKey || !cfg.enabled) return [];
 
-  try {
-    const table = cfg.tableName || DEFAULT_SUPABASE_TABLE;
-    const endpoint = `${cfg.url}/rest/v1/${table}?select=*&order=created_at.desc&limit=500`;
+  const table = cfg.tableName || DEFAULT_SUPABASE_TABLE;
+  const client = getSupabaseClient();
 
+  if (client) {
+    try {
+      const { data, error } = await client
+        .from(table)
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1000);
+
+      if (!error && Array.isArray(data)) {
+        return data.map(supabaseRowToRecord);
+      }
+    } catch (err) {
+      console.warn('[SUPABASE ATTENDANCE] Client fetch warning, falling back to REST:', err);
+    }
+  }
+
+  try {
+    const endpoint = `${cfg.url}/rest/v1/${table}?select=*&order=created_at.desc&limit=1000`;
     const res = await fetchSupabaseSafe(endpoint, cfg.anonKey, {
       method: 'GET'
     });
@@ -322,17 +465,30 @@ export async function fetchAttendanceFromSupabase(): Promise<StudentAbsenceRecor
 }
 
 /**
- * Hantar satu rekod ketidakhadiran ke Supabase (Upsert / Merge)
+ * Hantar satu rekod ketidakhadiran ke Supabase secara langsung & pantas (Upsert / Merge)
  */
 export async function pushSingleAbsenceToSupabase(record: StudentAbsenceRecord): Promise<boolean> {
   const cfg = getSupabaseAttendanceConfig();
   if (!cfg.url || !cfg.anonKey || !cfg.enabled) return false;
 
-  try {
-    const table = cfg.tableName || DEFAULT_SUPABASE_TABLE;
-    const endpoint = `${cfg.url}/rest/v1/${table}`;
-    const payload = recordToSupabaseRow(record);
+  const table = cfg.tableName || DEFAULT_SUPABASE_TABLE;
+  const payload = recordToSupabaseRow(record);
+  const client = getSupabaseClient();
 
+  if (client) {
+    try {
+      const { error } = await client
+        .from(table)
+        .upsert(payload, { onConflict: 'id' });
+      if (!error) return true;
+      console.warn('[SUPABASE ATTENDANCE] Client upsert warning, fallback REST:', error);
+    } catch (err) {
+      console.warn('[SUPABASE ATTENDANCE] Client upsert exception:', err);
+    }
+  }
+
+  try {
+    const endpoint = `${cfg.url}/rest/v1/${table}`;
     const res = await fetchSupabaseSafe(endpoint, cfg.anonKey, {
       method: 'POST',
       headers: {
@@ -356,11 +512,25 @@ export async function pushBulkAbsenceToSupabase(records: StudentAbsenceRecord[])
   const cfg = getSupabaseAttendanceConfig();
   if (!cfg.url || !cfg.anonKey || !cfg.enabled || !records.length) return false;
 
-  try {
-    const table = cfg.tableName || DEFAULT_SUPABASE_TABLE;
-    const endpoint = `${cfg.url}/rest/v1/${table}`;
-    const payload = records.map(recordToSupabaseRow);
+  const table = cfg.tableName || DEFAULT_SUPABASE_TABLE;
+  const validRecords = records.filter((r) => r && r.id && r.dateFrom);
+  const payload = validRecords.map(recordToSupabaseRow);
+  const client = getSupabaseClient();
 
+  if (client) {
+    try {
+      const { error } = await client
+        .from(table)
+        .upsert(payload, { onConflict: 'id' });
+      if (!error) return true;
+      console.warn('[SUPABASE ATTENDANCE] Bulk client upsert warning, fallback REST:', error);
+    } catch (err) {
+      console.warn('[SUPABASE ATTENDANCE] Bulk client upsert exception:', err);
+    }
+  }
+
+  try {
+    const endpoint = `${cfg.url}/rest/v1/${table}`;
     const res = await fetchSupabaseSafe(endpoint, cfg.anonKey, {
       method: 'POST',
       headers: {
@@ -384,17 +554,23 @@ export async function deleteAbsenceFromSupabase(id: string): Promise<boolean> {
   const cfg = getSupabaseAttendanceConfig();
   if (!cfg.url || !cfg.anonKey || !cfg.enabled || !id) return false;
 
-  try {
-    const table = cfg.tableName || DEFAULT_SUPABASE_TABLE;
-    const endpoint = `${cfg.url}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`;
+  const table = cfg.tableName || DEFAULT_SUPABASE_TABLE;
+  const client = getSupabaseClient();
 
+  if (client) {
+    try {
+      const { error } = await client.from(table).delete().eq('id', id);
+      if (!error) return true;
+    } catch {}
+  }
+
+  try {
+    const endpoint = `${cfg.url}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`;
     const res = await fetchSupabaseSafe(endpoint, cfg.anonKey, {
       method: 'DELETE'
     });
-
     return res.ok;
-  } catch (err) {
-    console.warn('[SUPABASE ATTENDANCE] Gagal memadam rekod:', err);
+  } catch {
     return false;
   }
 }

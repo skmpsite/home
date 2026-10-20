@@ -222,10 +222,13 @@ async function startServer() {
   let deletedAttendanceIds: Set<string> = new Set();
 
   // Supabase e-Kehadiran Config (Disegerakkan ke semua peranti waris & guru)
+  const DEFAULT_SUPABASE_URL = "https://gzydcfewzmlddyvpiwdh.supabase.co";
+  const DEFAULT_SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd6eWRjZmV3em1sZGR5dnBpd2RoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIzNzk2OTgsImV4cCI6MjEwNzk1NTY5OH0.r3SHAUe2oElZr6LGmq-98Pp_vydjmE_-jjgJvTlSf4o";
+
   const SUPABASE_CONFIG_FILE = path.join(DATA_DIR, "supabase-attendance-config.json");
   let liveSupabaseConfig: { url: string; anonKey: string; tableName?: string; enabled?: boolean } = {
-    url: process.env.VITE_SUPABASE_URL || "https://gzydcfewzmlddyvpiwdh.supabase.co",
-    anonKey: process.env.VITE_SUPABASE_ANON_KEY || "",
+    url: (process.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL).trim().replace(/\/+$/, '').replace(/\/rest\/v1\/?$/i, '').replace(/\/+$/, ''),
+    anonKey: (process.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_KEY).trim(),
     tableName: "attendance_records",
     enabled: true
   };
@@ -234,8 +237,9 @@ async function startServer() {
     try {
       const fileData = JSON.parse(fs.readFileSync(SUPABASE_CONFIG_FILE, "utf-8"));
       if (fileData && typeof fileData === "object") {
-        const cleanUrl = (fileData.url || liveSupabaseConfig.url || "").trim().replace(/\/+$/, '').replace(/\/rest\/v1\/?$/i, '').replace(/\/+$/, '');
-        liveSupabaseConfig = { ...liveSupabaseConfig, ...fileData, url: cleanUrl };
+        const cleanUrl = (fileData.url || liveSupabaseConfig.url || DEFAULT_SUPABASE_URL).trim().replace(/\/+$/, '').replace(/\/rest\/v1\/?$/i, '').replace(/\/+$/, '');
+        const cleanKey = (fileData.anonKey || liveSupabaseConfig.anonKey || DEFAULT_SUPABASE_KEY).trim();
+        liveSupabaseConfig = { ...liveSupabaseConfig, ...fileData, url: cleanUrl, anonKey: cleanKey };
       }
     } catch (e) {
       console.error("Error reading supabase-attendance-config.json:", e);
@@ -290,6 +294,73 @@ async function startServer() {
     }
   };
 
+  const fetchAttendanceFromSupabaseBackend = async () => {
+    if (!liveSupabaseConfig.url || !liveSupabaseConfig.anonKey || liveSupabaseConfig.enabled === false) return;
+    try {
+      const table = liveSupabaseConfig.tableName || "attendance_records";
+      const cleanUrl = liveSupabaseConfig.url.trim().replace(/\/+$/, '').replace(/\/rest\/v1\/?$/i, '').replace(/\/+$/, '');
+      const endpoint = `${cleanUrl}/rest/v1/${table}?select=*&order=created_at.desc&limit=1000`;
+      const res = await fetch(endpoint, {
+        headers: {
+          apikey: liveSupabaseConfig.anonKey.trim(),
+          Accept: "application/json"
+        }
+      });
+      if (res.ok) {
+        const rows = await res.json();
+        if (Array.isArray(rows) && rows.length > 0) {
+          let updated = false;
+          const map = new Map<string, any>();
+          liveAttendanceRecords.forEach((r: any) => {
+            if (r && r.id && !deletedAttendanceIds.has(r.id)) map.set(r.id, r);
+          });
+          rows.forEach((row: any) => {
+            const rec = {
+              id: String(row.id || ''),
+              refNo: String(row.ref_no || row.refNo || ''),
+              studentId: String(row.student_id || row.studentId || ''),
+              studentName: String(row.student_name || row.studentName || ''),
+              studentIc: String(row.student_ic || row.studentIc || '-'),
+              year: String(row.year || ''),
+              className: String(row.class_name || row.className || ''),
+              dateFrom: String(row.date_from || row.dateFrom || ''),
+              dateTo: String(row.date_to || row.dateTo || row.date_from || ''),
+              daysCount: Number(row.days_count || row.daysCount) || 1,
+              reasonCategory: row.reason_category || row.reasonCategory || 'lain',
+              reasonDetails: String(row.reason_details || row.reasonDetails || ''),
+              parentName: String(row.parent_name || row.parentName || ''),
+              parentPhone: String(row.parent_phone || row.parentPhone || ''),
+              parentRelationship: String(row.parent_relationship || row.parentRelationship || 'Waris'),
+              attachmentUrl: String(row.attachment_url || row.attachmentUrl || ''),
+              attachmentName: String(row.attachment_name || row.attachmentName || ''),
+              status: row.status || 'disahkan',
+              verifiedBy: String(row.verified_by || row.verifiedBy || ''),
+              verifiedAt: String(row.verified_at || row.verifiedAt || ''),
+              createdAt: String(row.created_at || row.createdAt || ''),
+              updatedAt: String(row.updated_at || row.updatedAt || '')
+            };
+            if (rec.id && !deletedAttendanceIds.has(rec.id)) {
+              if (!map.has(rec.id)) {
+                map.set(rec.id, rec);
+                updated = true;
+              }
+            }
+          });
+          if (updated) {
+            liveAttendanceRecords = Array.from(map.values()).sort((a: any, b: any) =>
+              (b.createdAt || "").localeCompare(a.createdAt || "")
+            );
+            attendanceLastUpdated = Date.now();
+            scheduleAttendanceSave();
+            console.log(`[SUPABASE BACKEND SYNC] Synced ${rows.length} records from Supabase, total memory: ${liveAttendanceRecords.length}`);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("[SUPABASE BACKEND SYNC] Error fetching from Supabase:", err);
+    }
+  };
+
   if (fs.existsSync(DELETED_ATTENDANCE_FILE)) {
     try {
       const fileData = JSON.parse(fs.readFileSync(DELETED_ATTENDANCE_FILE, "utf-8"));
@@ -337,6 +408,12 @@ async function startServer() {
       console.error("Error saving initial attendance file:", e);
     }
   }
+
+  // Muat turun dan segerakkan semua rekod e-Kehadiran dari Supabase ke memori pelayan secara langsung
+  fetchAttendanceFromSupabaseBackend().catch(() => {});
+  setInterval(() => {
+    fetchAttendanceFromSupabaseBackend().catch(() => {});
+  }, 30000);
 
   // ==========================================
   // STUDENT PHOTOS SERVER-SIDE STORAGE & LIVE SYNC
