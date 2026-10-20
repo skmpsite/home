@@ -18,6 +18,7 @@ import { StudentAbsenceRecord } from '../../types';
 import {
   getSupabaseAttendanceConfig,
   saveSupabaseAttendanceConfig,
+  syncSupabaseConfigFromServer,
   testSupabaseAttendanceConnection,
   pushBulkAbsenceToSupabase,
   SUPABASE_ATTENDANCE_SQL_SCHEMA,
@@ -61,6 +62,13 @@ export const SupabaseAttendanceModal: React.FC<SupabaseAttendanceModalProps> = (
       setTestMessage('');
       setBulkStatus('');
       setSaveToast('');
+
+      // Segerakkan dari pelayan jika pelayan menyimpan konfigurasi berpusat
+      syncSupabaseConfigFromServer().then((srvCfg) => {
+        if (srvCfg && srvCfg.url && srvCfg.anonKey) {
+          setConfig(srvCfg);
+        }
+      });
     }
   }, [isOpen]);
 

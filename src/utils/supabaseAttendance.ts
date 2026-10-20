@@ -12,6 +12,16 @@ const SUPABASE_ATTENDANCE_CONFIG_KEY = 'skmp_supabase_attendance_config_v1';
 export const DEFAULT_SUPABASE_TABLE = 'attendance_records';
 
 /**
+ * Bersihkan URL Supabase agar tidak berlaku pertindihan '/rest/v1' atau trailing slash
+ */
+export function sanitizeSupabaseUrl(rawUrl: string): string {
+  if (!rawUrl) return '';
+  let url = rawUrl.trim().replace(/\/+$/, '');
+  url = url.replace(/\/rest\/v1\/?$/i, '');
+  return url.replace(/\/+$/, '');
+}
+
+/**
  * Dapatkan konfigurasi Supabase khas untuk e-Kehadiran
  */
 export function getSupabaseAttendanceConfig(): SupabaseAttendanceConfig {
@@ -29,7 +39,7 @@ export function getSupabaseAttendanceConfig(): SupabaseAttendanceConfig {
         const parsed = JSON.parse(stored);
         if (parsed && parsed.url && parsed.anonKey) {
           return {
-            url: parsed.url.trim().replace(/\/+$/, ''),
+            url: sanitizeSupabaseUrl(parsed.url),
             anonKey: parsed.anonKey.trim(),
             tableName: parsed.tableName || DEFAULT_SUPABASE_TABLE,
             enabled: parsed.enabled !== false
@@ -40,32 +50,71 @@ export function getSupabaseAttendanceConfig(): SupabaseAttendanceConfig {
   } catch {}
 
   return {
-    url: envUrl.trim().replace(/\/+$/, ''),
+    url: sanitizeSupabaseUrl(envUrl),
     anonKey: envKey.trim(),
     tableName: DEFAULT_SUPABASE_TABLE,
     enabled: Boolean(envUrl && envKey)
   };
 }
 
+import { getBackendApiUrl } from './apiConfig';
+
 /**
- * Simpan konfigurasi Supabase
+ * Simpan konfigurasi Supabase (Tempatan dan Pelayan Berpusat)
  */
 export function saveSupabaseAttendanceConfig(config: SupabaseAttendanceConfig): void {
+  const cleanConfig = {
+    url: sanitizeSupabaseUrl(config.url),
+    anonKey: config.anonKey.trim(),
+    tableName: config.tableName || DEFAULT_SUPABASE_TABLE,
+    enabled: config.enabled !== false
+  };
+
   try {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(
         SUPABASE_ATTENDANCE_CONFIG_KEY,
-        JSON.stringify({
-          url: config.url.trim().replace(/\/+$/, ''),
-          anonKey: config.anonKey.trim(),
-          tableName: config.tableName || DEFAULT_SUPABASE_TABLE,
-          enabled: config.enabled !== false
-        })
+        JSON.stringify(cleanConfig)
       );
     }
   } catch (err) {
-    console.error('Failed to save Supabase config:', err);
+    console.error('Failed to save Supabase config to localStorage:', err);
   }
+
+  // Segerakkan ke Pelayan Express agar semua peranti (guru & waris) berkongsi tetapan Supabase yang sama
+  try {
+    const url = getBackendApiUrl('/api/attendance/supabase-config');
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cleanConfig)
+    }).catch(() => {});
+  } catch {}
+}
+
+/**
+ * Muat turun konfigurasi Supabase dari pelayan jika belum ada dalam storan tempatan
+ */
+export async function syncSupabaseConfigFromServer(): Promise<SupabaseAttendanceConfig | null> {
+  try {
+    const url = getBackendApiUrl('/api/attendance/supabase-config');
+    const res = await fetch(url, { headers: { Accept: 'application/json' } });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data && data.success && data.config && data.config.url && data.config.anonKey) {
+      const cfg: SupabaseAttendanceConfig = {
+        url: sanitizeSupabaseUrl(data.config.url),
+        anonKey: data.config.anonKey.trim(),
+        tableName: data.config.tableName || DEFAULT_SUPABASE_TABLE,
+        enabled: data.config.enabled !== false
+      };
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(SUPABASE_ATTENDANCE_CONFIG_KEY, JSON.stringify(cfg));
+      }
+      return cfg;
+    }
+  } catch {}
+  return null;
 }
 
 /**
@@ -137,7 +186,7 @@ export async function testSupabaseAttendanceConnection(
   keyInput?: string
 ): Promise<{ success: boolean; message: string; count?: number }> {
   const cfg = getSupabaseAttendanceConfig();
-  const url = (urlInput || cfg.url || '').trim().replace(/\/+$/, '');
+  const url = sanitizeSupabaseUrl(urlInput || cfg.url || '');
   const key = (keyInput || cfg.anonKey || '').trim();
   const table = cfg.tableName || DEFAULT_SUPABASE_TABLE;
 

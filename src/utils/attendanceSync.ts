@@ -22,7 +22,8 @@ import {
   pushSingleAbsenceToSupabase,
   pushBulkAbsenceToSupabase,
   deleteAbsenceFromSupabase,
-  isSupabaseAttendanceConfigured
+  isSupabaseAttendanceConfigured,
+  syncSupabaseConfigFromServer
 } from './supabaseAttendance';
 
 let lastKnownServerTimestamp = 0;
@@ -196,6 +197,9 @@ export async function syncAttendanceWithAllSources(
 
   try {
     const local = getAbsenceRecords();
+
+    // Pastikan konfigurasi Supabase terkini disegerakkan dari pelayan
+    syncSupabaseConfigFromServer().catch(() => {});
 
     // Fetch serentak daripada Server API, Google Sheets, Supabase dan Firestore
     const [serverRes, sheetsList, supabaseList, firestoreList] = await Promise.all([

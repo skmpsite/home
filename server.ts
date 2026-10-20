@@ -221,6 +221,75 @@ async function startServer() {
   const DELETED_ATTENDANCE_FILE = path.join(DATA_DIR, "deleted-attendance-ids.json");
   let deletedAttendanceIds: Set<string> = new Set();
 
+  // Supabase e-Kehadiran Config (Disegerakkan ke semua peranti waris & guru)
+  const SUPABASE_CONFIG_FILE = path.join(DATA_DIR, "supabase-attendance-config.json");
+  let liveSupabaseConfig: { url: string; anonKey: string; tableName?: string; enabled?: boolean } = {
+    url: process.env.VITE_SUPABASE_URL || "https://gzydcfewzmlddyvpiwdh.supabase.co",
+    anonKey: process.env.VITE_SUPABASE_ANON_KEY || "",
+    tableName: "attendance_records",
+    enabled: true
+  };
+
+  if (fs.existsSync(SUPABASE_CONFIG_FILE)) {
+    try {
+      const fileData = JSON.parse(fs.readFileSync(SUPABASE_CONFIG_FILE, "utf-8"));
+      if (fileData && typeof fileData === "object") {
+        const cleanUrl = (fileData.url || liveSupabaseConfig.url || "").trim().replace(/\/+$/, '').replace(/\/rest\/v1\/?$/i, '').replace(/\/+$/, '');
+        liveSupabaseConfig = { ...liveSupabaseConfig, ...fileData, url: cleanUrl };
+      }
+    } catch (e) {
+      console.error("Error reading supabase-attendance-config.json:", e);
+    }
+  }
+
+  const pushToSupabaseFromBackend = async (rec: any) => {
+    if (!rec || !liveSupabaseConfig.url || !liveSupabaseConfig.anonKey || liveSupabaseConfig.enabled === false) return;
+    try {
+      const table = liveSupabaseConfig.tableName || "attendance_records";
+      const cleanUrl = liveSupabaseConfig.url.trim().replace(/\/+$/, '').replace(/\/rest\/v1\/?$/i, '').replace(/\/+$/, '');
+      const endpoint = `${cleanUrl}/rest/v1/${table}`;
+      const headers: Record<string, string> = {
+        apikey: liveSupabaseConfig.anonKey.trim(),
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates"
+      };
+      if (liveSupabaseConfig.anonKey.trim().startsWith("ey")) {
+        headers["Authorization"] = `Bearer ${liveSupabaseConfig.anonKey.trim()}`;
+      }
+      await fetch(endpoint, {
+        method: "POST",
+        headers,
+        body: JSON.stringify([{
+          id: rec.id,
+          ref_no: rec.refNo,
+          student_id: rec.studentId,
+          student_name: rec.studentName,
+          student_ic: rec.studentIc,
+          year: rec.year,
+          class_name: rec.className,
+          date_from: rec.dateFrom,
+          date_to: rec.dateTo,
+          days_count: rec.daysCount,
+          reason_category: rec.reasonCategory,
+          reason_details: rec.reasonDetails,
+          parent_name: rec.parentName,
+          parent_phone: rec.parentPhone,
+          parent_relationship: rec.parentRelationship,
+          attachment_url: rec.attachmentUrl,
+          attachment_name: rec.attachmentName,
+          status: rec.status,
+          verified_by: rec.verifiedBy,
+          verified_at: rec.verifiedAt,
+          created_at: rec.createdAt,
+          updated_at: rec.updatedAt || rec.createdAt
+        }])
+      });
+      console.log(`[SUPABASE BACKEND] Synced record ${rec.id} to Supabase successfully.`);
+    } catch (err) {
+      console.warn("[SUPABASE BACKEND] Push error:", err);
+    }
+  };
+
   if (fs.existsSync(DELETED_ATTENDANCE_FILE)) {
     try {
       const fileData = JSON.parse(fs.readFileSync(DELETED_ATTENDANCE_FILE, "utf-8"));
@@ -1024,8 +1093,10 @@ async function startServer() {
         schedulePortalSyncSave();
         broadcastSyncUpdate('skmp_absence_records_v1', liveAttendanceRecords, attendanceLastUpdated, 'waris');
 
-        // Sandaran Awan Tak Segerak (Background Backup) ke Google Sheets
+        // Sandaran Awan Tak Segerak (Background Backup) ke Google Sheets & Supabase
         if (record && record.studentName) {
+          pushToSupabaseFromBackend(record).catch(() => {});
+
           const gasUrl = "https://script.google.com/macros/s/AKfycbzNt7sV40UAsBAIhjYbSsVreHS5hGlm6-WOzLEEDRnwxKgst1D2iXL1CsN_xZe_RdGl/exec";
           try {
             fetch(gasUrl, {
@@ -1050,6 +1121,35 @@ async function startServer() {
       });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // GET Supabase Attendance Configuration (Shared across all devices)
+  app.get("/api/attendance/supabase-config", (_req, res) => {
+    res.json({
+      success: true,
+      config: liveSupabaseConfig
+    });
+  });
+
+  // POST Supabase Attendance Configuration (Saved by Admin/Guru, shared with all users)
+  app.post("/api/attendance/supabase-config", (req, res) => {
+    try {
+      const { url, anonKey, tableName, enabled } = req.body || {};
+      liveSupabaseConfig = {
+        url: (url || "").trim().replace(/\/+$/, '').replace(/\/rest\/v1\/?$/i, '').replace(/\/+$/, ''),
+        anonKey: (anonKey || "").trim(),
+        tableName: (tableName || "attendance_records").trim(),
+        enabled: enabled !== false
+      };
+      try {
+        fs.writeFileSync(SUPABASE_CONFIG_FILE, JSON.stringify(liveSupabaseConfig, null, 2), "utf-8");
+      } catch (err) {
+        console.error("Error saving supabase-attendance-config.json:", err);
+      }
+      res.json({ success: true, config: liveSupabaseConfig });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
     }
   });
 

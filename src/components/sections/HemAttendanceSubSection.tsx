@@ -46,7 +46,9 @@ import {
   RefreshCw,
   RotateCcw,
   FileSpreadsheet,
-  Database
+  Database,
+  Bell,
+  ArrowRight
 } from 'lucide-react';
 import { StudentRecord, StudentAbsenceRecord, SchoolHoliday, UserRole, isTeacherRole } from '../../types';
 import {
@@ -215,6 +217,24 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
       setCloudToast('Gagal menghantar ke Google Sheets.');
     } finally {
       setIsSyncingSheets(false);
+      setTimeout(() => setCloudToast(null), 3500);
+    }
+  };
+
+  const [isLiveSyncing, setIsLiveSyncing] = useState<boolean>(false);
+
+  const handleManualLiveSync = async () => {
+    setIsLiveSyncing(true);
+    try {
+      const records = await syncAttendanceWithAllSources();
+      if (Array.isArray(records)) {
+        window.dispatchEvent(new CustomEvent('skmp_attendance_synced', { detail: records }));
+        setCloudToast(`Penyegerakan Live Selesai! (${records.length} rekod ketidakhadiran dikemas kini dari Pelayan & Supabase)`);
+      }
+    } catch {
+      setCloudToast('Penyegerakan selesai.');
+    } finally {
+      setIsLiveSyncing(false);
       setTimeout(() => setCloudToast(null), 3500);
     }
   };
@@ -924,6 +944,36 @@ export const HemAttendanceSubSection: React.FC<HemAttendanceSubSectionProps> = (
     return uniqueKeys.size;
   }, [dailyAbsenceRecords]);
 
+  // Analisis rekod ketidakhadiran merentasi semua tarikh untuk amaran pintar & loncatan pantas
+  const allDatesAbsenceSummary = useMemo(() => {
+    const valid = absenceRecords.filter((rec) => rec && rec.status !== 'ditolak');
+    const countsMap = new Map<string, number>();
+
+    valid.forEach((rec) => {
+      const dFrom = rec.dateFrom || (rec.createdAt ? rec.createdAt.slice(0, 10) : '');
+      const dTo = rec.dateTo || dFrom;
+      if (dFrom) {
+        countsMap.set(dFrom, (countsMap.get(dFrom) || 0) + 1);
+        if (dTo && dTo !== dFrom) {
+          countsMap.set(dTo, (countsMap.get(dTo) || 0) + 1);
+        }
+      }
+    });
+
+    const datesWithRecords = Array.from(countsMap.keys()).sort((a, b) => b.localeCompare(a));
+    const latestDate = datesWithRecords[0] || null;
+    const latestDateCount = latestDate ? (countsMap.get(latestDate) || 0) : 0;
+    const hasRecordsOnOtherDate = Boolean(latestDate && latestDate !== selectedDate && latestDateCount > 0);
+
+    return {
+      totalValid: valid.length,
+      countsMap,
+      latestDate,
+      latestDateCount,
+      hasRecordsOnOtherDate
+    };
+  }, [absenceRecords, selectedDate]);
+
   // Set padanan murid tidak hadir untuk tarikh terpilih (ID, IC, Nama)
   const absentStudentIds = useMemo(() => {
     const ids = new Set<string>();
@@ -1355,6 +1405,23 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
               </button>
             )}
 
+            {allDatesAbsenceSummary.hasRecordsOnOtherDate && allDatesAbsenceSummary.latestDate && (
+              <button
+                type="button"
+                onClick={() => setSelectedDate(allDatesAbsenceSummary.latestDate!)}
+                className="px-2.5 py-1.5 bg-gradient-to-r from-blue-600/40 to-indigo-600/40 hover:from-blue-600/60 hover:to-indigo-600/60 text-blue-200 border border-blue-400/60 rounded-lg text-[10px] font-black flex items-center justify-between gap-1 transition active:scale-95 cursor-pointer shadow-sm"
+                title="Papar tarikh terkini yang mempunyai borang ketidakhadiran waris"
+              >
+                <span className="flex items-center gap-1.5">
+                  <Bell className="w-3 h-3 text-yellow-300 animate-bounce" />
+                  <span>Papar Tarikh Ada Makluman: {allDatesAbsenceSummary.latestDate}</span>
+                </span>
+                <span className="px-1.5 py-0.2 rounded bg-yellow-400 text-slate-950 font-black">
+                  {allDatesAbsenceSummary.latestDateCount} Murid
+                </span>
+              </button>
+            )}
+
             {/* Active Holiday Banner under date picker */}
             {activeHoliday && (
               <div className="bg-amber-500/20 border border-amber-400/40 rounded-xl px-2.5 py-1.5 text-xs text-amber-200 font-bold flex flex-wrap items-center justify-between gap-2 shadow-sm">
@@ -1482,6 +1549,36 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
           </div>
         </div>
 
+        {/* Banner Makluman Pintar: Dikesan Rekod pada Tarikh Lain */}
+        {allDatesAbsenceSummary.hasRecordsOnOtherDate && allDatesAbsenceSummary.latestDate && (
+          <div className="mt-4 p-4 bg-gradient-to-r from-blue-950/90 via-slate-900 to-indigo-950/90 rounded-2xl border border-blue-500/40 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm text-blue-200 animate-fadeIn">
+            <div className="flex items-start sm:items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-blue-300 flex-shrink-0 shadow-inner">
+                <Bell className="w-5 h-5 text-yellow-300 animate-bounce" />
+              </div>
+              <div>
+                <p className="font-black text-white flex items-center gap-2 flex-wrap">
+                  <span>Makluman Terkini Dikesan Pada Tarikh Lain:</span>
+                  <span className="px-2 py-0.5 rounded-full bg-yellow-400 text-slate-950 text-xs font-black shadow-sm">
+                    {allDatesAbsenceSummary.latestDateCount} Murid Tidak Hadir
+                  </span>
+                </p>
+                <p className="text-xs text-blue-300/90 mt-0.5">
+                  Waris telah menghantar borang e-kehadiran bagi tarikh <strong>{allDatesAbsenceSummary.latestDate}</strong>. Skrin anda sekarang sedang melihat tarikh <strong>{selectedDate}</strong>.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedDate(allDatesAbsenceSummary.latestDate!)}
+              className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-black shadow-md border border-blue-300 transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer self-start sm:self-center flex-shrink-0"
+            >
+              <span>Papar Rekod {allDatesAbsenceSummary.latestDate}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         {/* Live Metrics Grid (Total Enrolment, Hadir, Tidak Hadir, Peratus) */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-6">
           {/* Total Enrolment */}
@@ -1517,7 +1614,16 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
           </div>
 
           {/* Tidak Hadir */}
-          <div className="bg-slate-900/80 backdrop-blur-md p-4 rounded-2xl border border-rose-500/30 flex items-center gap-3.5 shadow-lg relative overflow-hidden">
+          <div
+            onClick={() => {
+              if (totalAbsentCount === 0 && allDatesAbsenceSummary.hasRecordsOnOtherDate && allDatesAbsenceSummary.latestDate) {
+                setSelectedDate(allDatesAbsenceSummary.latestDate);
+              }
+            }}
+            className={`bg-slate-900/80 backdrop-blur-md p-4 rounded-2xl border border-rose-500/30 flex items-center gap-3.5 shadow-lg relative overflow-hidden ${
+              totalAbsentCount === 0 && allDatesAbsenceSummary.hasRecordsOnOtherDate ? 'cursor-pointer hover:border-rose-400/60 transition' : ''
+            }`}
+          >
             <div className="absolute top-0 right-0 w-2 h-full bg-rose-500" />
             <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-400/30 flex items-center justify-center flex-shrink-0">
               <UserX className="w-6 h-6" />
@@ -1531,7 +1637,11 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
               </div>
               <h4 className="text-2xl font-black text-rose-400">{totalAbsentCount}</h4>
               <p className="text-[10px] text-rose-300/80">
-                {activeHoliday ? `100.0% • ${activeHoliday.title}` : `${dailyAbsenceRecords.length} borang diisi`}
+                {activeHoliday
+                  ? `100.0% • ${activeHoliday.title}`
+                  : totalAbsentCount === 0 && allDatesAbsenceSummary.hasRecordsOnOtherDate
+                  ? `Ada ${allDatesAbsenceSummary.latestDateCount} rekod pada ${allDatesAbsenceSummary.latestDate} (Klik)`
+                  : `${dailyAbsenceRecords.length} borang diisi`}
               </p>
             </div>
           </div>
@@ -1727,6 +1837,18 @@ Kerjasama dan keprihatinan pihak tuan/puan didahului dengan ucapan terima kasih.
               )}
             </button>
           )}
+
+          {/* Butang Segerak Segera / Muat Semula Data Langsung */}
+          <button
+            type="button"
+            onClick={handleManualLiveSync}
+            disabled={isLiveSyncing}
+            className="flex-1 sm:flex-none px-3.5 py-3 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer bg-slate-800 hover:bg-slate-700 text-sky-300 border border-sky-500/30 active:scale-95 disabled:opacity-50"
+            title="Segerakkan data kehadiran masa nyata dari Pelayan & Supabase"
+          >
+            <RefreshCw className={`w-4 h-4 text-sky-400 ${isLiveSyncing ? 'animate-spin' : ''}`} />
+            <span className="hidden md:inline">Segerak Live</span>
+          </button>
         </div>
 
         {/* Akses Status & Butang Log Keluar */}
